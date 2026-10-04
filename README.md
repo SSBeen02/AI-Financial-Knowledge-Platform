@@ -10,24 +10,22 @@ project-root/
 │
 ├── frontend/                     # 김선빈
 │   └── src/
-│       ├── features/
-│       │   ├── character/        # 캐릭터 성장
-│       │   ├── minigame/         # 미니게임
-│       │   └── quiz/             # 퀴즈
+│       ├── character/            # 캐릭터 성장
+│       │   
 │       ├── components/           # 공통 UI
 │       ├── pages/                # 화면 단위
 │       └── api/                  # 백엔드 호출 함수
-│
+│s
 ├── backend-rag-bkt/              # 안유빈
 │   ├── parsing/                  # 금융 문서 파싱
 │   ├── embedding/                # 임베딩 생성
 │   ├── bkt/
-│   ├── quiz-bank/                # 난이도별 사전테스트 문항
 │   └── api/
 │
 ├── backend-finance/              # 박서현
-│   ├── news-summary/             # 금융 기사 요약
-│   ├── recommend/                # 청년/청소년 지원사업 추천
+│   ├── pre-test/                 # 사전테스트 문항 및 답안
+│   ├── report/                   # 리포트 생성
+│   ├── quiz/                     # 동적 퀴즈 관련
 │   └── api/
 │
 └── .github/
