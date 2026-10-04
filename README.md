@@ -15,7 +15,7 @@ project-root/
 │       ├── components/           # 공통 UI
 │       ├── pages/                # 화면 단위
 │       └── api/                  # 백엔드 호출 함수
-│s
+│
 ├── backend-rag-bkt/              # 안유빈
 │   ├── parsing/                  # 금융 문서 파싱
 │   ├── embedding/                # 임베딩 생성
