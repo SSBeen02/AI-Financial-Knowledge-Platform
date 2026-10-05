@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>사전테스트 미니 테스트</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", sans-serif;
+      background: #f4f1ea;
+      color: #1d1a16;
+    }
+    body {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+    h1, h2, h3 { margin: 0 0 8px; }
+    p { margin: 0; }
+    a { color: #0b5f4a; }
+    header p, .hint { color: #5c564e; }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 20px 0 12px;
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      background: #0b5f4a;
+      color: white;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:disabled,
+    button.secondary:disabled {
+      background: #c8c2b8;
+      color: #6d675f;
+      cursor: not-allowed;
+    }
+    button.secondary { background: #3d4a57; }
+    #status {
+      min-height: 1.4em;
+      margin-bottom: 16px;
+    }
+    #status.error { color: #9d1c1c; }
+    .card, .question {
+      background: white;
+      border: 1px solid #e4ddd2;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .meta { color: #5c564e; font-size: 14px; margin-bottom: 8px; }
+    .options { display: grid; gap: 6px; margin-top: 10px; }
+    label.option {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    ul { margin: 8px 0 0; padding-left: 18px; }
+    li + li { margin-top: 4px; }
+    .score {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px solid #eee7dc;
+    }
+    .vulnerable { color: #9d1c1c; }
+    .report-section { margin-top: 24px; }
+    .report-intro { font-size: 17px; line-height: 1.8; margin: 12px 0; max-width: 70ch; }
+    .domain-note, .answer-note { padding: 14px 0; border-bottom: 1px solid #eee7dc; }
+    .domain-note p, .answer-note p { line-height: 1.8; margin-top: 8px; overflow-wrap: anywhere; }
+    .domain-note h3, .answer-note h3 { font-size: 16px; }
+    .answer-group { margin: 12px 0; padding: 12px 16px; border: 1px solid #e4ddd2; border-radius: 8px; }
+    .answer-group summary { cursor: pointer; font-weight: 600; }
+    .answer-options { color: #5c564e; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>사전테스트 미니 테스트</h1>
+    <p class="hint">시작, 제출, 리포트 조회로 백엔드 동작을 확인합니다. API 문서는 <a href="/docs">/docs</a> 입니다.</p>
+  </header>
+
+  <div class="toolbar">
+    <button id="start" type="button">1. 사전테스트 시작</button>
+    <button id="fill" type="button" class="secondary" disabled>모두 1번 선택</button>
+    <button id="submit" type="button" disabled>2. 답안 제출</button>
+    <button id="load-report" type="button" class="secondary" disabled>3. 리포트 조회</button>
+  </div>
+  <p id="status"></p>
+  <section id="questions"></section>
+  <section id="result"></section>
+
+  <script>
+    const state = { diagnosticId: null, reportId: null, questions: [], submissionKey: null, reportStatus: "pending", answers: [] };
+    let pollTimer = null;
+    function saveState() { try { sessionStorage.setItem("pretest-state", JSON.stringify(state)); } catch {} }
+
+    const startButton = document.querySelector("#start");
+    const fillButton = document.querySelector("#fill");
+    const submitButton = document.querySelector("#submit");
+    const reportButton = document.querySelector("#load-report");
+    const statusNode = document.querySelector("#status");
+    const questionsNode = document.querySelector("#questions");
+    const resultNode = document.querySelector("#result");
+
+    questionsNode.addEventListener("change", () => { state.answers = collectAnswers(); saveState(); });
+    startButton.addEventListener("click", startDiagnostic);
+    fillButton.addEventListener("click", selectFirstOptions);
+    submitButton.addEventListener("click", submitAnswers);
+    reportButton.addEventListener("click", loadReport);
+
+    function setStatus(message, isError) {
+      statusNode.textContent = message;
+      statusNode.classList.toggle("error", Boolean(isError));
+    }
+
+    async function startDiagnostic() {
+      setBusy(true);
+      setStatus("사전테스트를 시작하는 중입니다.");
+      try {
+        const body = await request("/diagnostics", { method: "POST" });
+        state.diagnosticId = body.id;
+        state.reportId = null;
+        state.submissionKey = null;
+        state.answers = [];
+        state.reportStatus = "pending";
+        clearTimeout(pollTimer);
+        state.questions = body.questions;
+        resultNode.replaceChildren();
+        renderQuestions(body.questions);
+        saveState();
+        setStatus(`진단 ${body.id} 이 시작되었습니다. 문항 ${body.total_questions}개, 사용자 ${body.user_id}`);
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function selectFirstOptions() {
+      for (const input of questionsNode.querySelectorAll('input[value="1"]')) {
+        input.checked = true;
+      }
+      state.answers = collectAnswers();
+      saveState();
+      setStatus("모든 문항을 1번으로 선택했습니다.");
+    }
+
+    async function submitAnswers() {
+      clearTimeout(pollTimer);
+      const answers = collectAnswers();
+      if (answers.length !== state.questions.length) {
+        setStatus("모든 문항에 보기를 선택한 뒤 제출해 주세요.", true);
+        return;
+      }
+      setBusy(true);
+      state.submissionKey ||= crypto.randomUUID();
+      saveState();
+      setStatus("답안을 제출하는 중입니다.");
+      try {
+        const body = await request(`/diagnostics/${state.diagnosticId}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Idempotency-Key": state.submissionKey },
+          body: JSON.stringify({ answers }),
+        });
+        state.reportId = body.report_id;
+        state.reportStatus = body.status;
+        saveState();
+        renderSubmitResult(body);
+        setStatus(`답안이 접수되었습니다. 리포트 상태: ${body.status}`);
+        if (body.status === "processing") pollTimer = setTimeout(loadReport, 1500);
+      } catch (error) {
+        setStatus(error.message, true);
+        try {
+          const report = await request(`/reports/${state.diagnosticId}`);
+          state.reportStatus = report.status;
+          if (report.status !== "pending") {
+            state.reportId = report.id;
+            renderReport(report);
+            if (report.status === "processing") pollTimer = setTimeout(loadReport, 1500);
+          }
+          saveState();
+        } catch {}
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function loadReport() {
+      clearTimeout(pollTimer);
+      setBusy(true);
+      setStatus("리포트를 조회하는 중입니다.");
+      try {
+        const body = await request(`/reports/${state.diagnosticId}`);
+        state.reportStatus = body.status;
+        if (body.status !== "pending") state.reportId = body.id;
+        saveState();
+        renderReport(body);
+        if (body.status === "processing") pollTimer = setTimeout(loadReport, 1500);
+        setStatus(`리포트 ${body.id} 를 불러왔습니다. 상태 ${body.status}`);
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function collectAnswers() {
+      const answers = [];
+      for (const question of state.questions) {
+        const selected = questionsNode.querySelector(`input[name="${CSS.escape(cssName(question.id))}"]:checked`);
+        if (!selected) continue;
+        answers.push({
+          question_id: question.id,
+          selected_answer: Number(selected.value),
+        });
+      }
+      return answers;
+    }
+
+    function renderQuestions(questions) {
+      questionsNode.replaceChildren();
+      questions.forEach((question, index) => {
+        const article = document.createElement("article");
+        article.className = "question";
+        const meta = document.createElement("p");
+        meta.className = "meta";
+        meta.textContent = `${index + 1}. ${question.domain_label} · 난이도 ${question.difficulty}`;
+        const title = document.createElement("h2");
+        title.textContent = question.question;
+        const options = document.createElement("div");
+        options.className = "options";
+        question.options.forEach((option, optionIndex) => {
+          const label = document.createElement("label");
+          label.className = "option";
+          const input = document.createElement("input");
+          input.type = "radio";
+          input.name = cssName(question.id);
+          input.value = String(optionIndex + 1);
+          label.append(input, document.createTextNode(option));
+          options.append(label);
+        });
+        article.append(meta, title, options);
+        questionsNode.append(article);
+      });
+    }
+
+    function renderSubmitResult(body) {
+      const section = document.createElement("section");
+      section.className = "card";
+      const title = document.createElement("h2");
+      title.textContent = "채점 결과";
+      const summary = document.createElement("p");
+      summary.textContent = `${body.summary.correct_count}/${body.summary.total_questions}문항, ${body.summary.score}점, ${body.summary.level}`;
+      section.append(title, summary, scoreList(body.domain_scores));
+      resultNode.replaceChildren(section);
+    }
+
+    function renderReport(body) {
+      const llm = body.llm_report;
+      const section = document.createElement("section");
+      section.className = "card";
+      if (!llm) {
+        section.append(
+          heading("리포트"),
+          paragraph(body.status === "processing"
+            ? "리포트를 만들고 있습니다. 잠시만 기다려 주세요."
+            : `상태 ${body.status} · 사용자 ${body.user_id}`)
+        );
+        if (body.domain_scores) section.append(scoreList(body.domain_scores));
+        if (body.error) section.append(paragraph(body.error.message));
+        resultNode.replaceChildren(section);
+        return;
+      }
+      section.append(heading("사전테스트 리포트"));
+      const intro = paragraph(llm.level_diagnosis.summary);
+      intro.className = "report-intro";
+      section.append(paragraph(`이번 테스트: ${body.summary?.score ?? "-"}점 · ${llm.level_diagnosis.overall_level}`), intro);
+      const scores = document.createElement("section");
+      scores.className = "report-section";
+      scores.append(heading("영역별 결과", 3), scoreList(body.domain_scores || []));
+      for (const item of llm.level_diagnosis.domain_comments) {
+        const note = document.createElement("article");
+        note.className = "domain-note";
+        note.append(heading(item.domain_label, 3), paragraph(item.diagnosis));
+        scores.append(note);
+      }
+      section.append(scores);
+      const wrongSection = document.createElement("section");
+      wrongSection.className = "report-section";
+      wrongSection.append(heading("선택한 답과 정답의 차이", 3), paragraph(llm.wrong_answer_analysis.summary));
+      const resultById = new Map((body.question_results || []).map(item => [item.question_id, item]));
+      const groups = new Map();
+      for (const item of llm.wrong_answer_analysis.items) {
+        if (!groups.has(item.domain)) groups.set(item.domain, { label: item.domain_label, items: [] });
+        groups.get(item.domain).items.push(item);
+      }
+      for (const group of groups.values()) {
+        const details = document.createElement("details");
+        details.className = "answer-group";
+        details.open = llm.wrong_answer_analysis.items.length <= 6;
+        const summary = document.createElement("summary");
+        summary.textContent = `${group.label} · 오답 ${group.items.length}개`;
+        details.append(summary);
+        for (const item of group.items) {
+          const note = document.createElement("article");
+          note.className = "answer-note";
+          note.append(heading(item.concept, 3));
+          const result = resultById.get(item.question_id);
+          if (result) {
+            const options = paragraph(`선택: ${result.options[result.selected_answer - 1]} / 정답: ${result.options[result.correct_answer - 1]}`);
+            options.className = "answer-options";
+            note.append(options);
+          }
+          note.append(paragraph(item.vulnerability));
+          details.append(note);
+        }
+        wrongSection.append(details);
+      }
+      section.append(wrongSection);
+      const learning = document.createElement("section");
+      learning.className = "report-section";
+      learning.append(heading("학습 권장", 3));
+      for (const item of llm.recommendations) {
+        const note = document.createElement("article");
+        note.className = "domain-note";
+        note.append(heading(`${item.priority}. ${item.focus}`, 3));
+        note.append(paragraph(item.guide));
+        learning.append(note);
+      }
+      section.append(learning);
+      resultNode.replaceChildren(section);
+    }
+
+    function scoreList(rows) {
+      const list = document.createElement("div");
+      for (const row of rows) {
+        const line = document.createElement("div");
+        line.className = "score";
+        const name = document.createElement("span");
+        name.textContent = row.domain_label;
+        const score = document.createElement("span");
+        score.textContent = row.is_vulnerable ? `${row.score}점 · 취약` : `${row.score}점`;
+        score.classList.toggle("vulnerable", row.is_vulnerable);
+        line.append(name, score);
+        list.append(line);
+      }
+      return list;
+    }
+
+    function heading(text, level = 2) {
+      const node = document.createElement(level === 3 ? "h3" : "h2");
+      node.textContent = text;
+      return node;
+    }
+
+    function paragraph(text) {
+      const node = document.createElement("p");
+      node.textContent = text;
+      return node;
+    }
+
+    function textList(lines) {
+      const list = document.createElement("ul");
+      if (lines.length === 0) {
+        const item = document.createElement("li");
+        item.textContent = "없음";
+        list.append(item);
+        return list;
+      }
+      for (const line of lines) {
+        const item = document.createElement("li");
+        item.textContent = line;
+        list.append(item);
+      }
+      return list;
+    }
+
+    function cssName(questionId) {
+      return `q-${questionId}`;
+    }
+
+    function setBusy(isBusy) {
+      startButton.disabled = isBusy;
+      fillButton.disabled = isBusy || state.questions.length === 0;
+      submitButton.disabled = isBusy || state.questions.length === 0 || Boolean(state.reportId) || state.reportStatus !== "pending";
+      reportButton.disabled = isBusy || !state.diagnosticId;
+    }
+
+    async function request(path, options) {
+      const response = await fetch(path, options);
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(errorMessage(body, response.status));
+      }
+      return body;
+    }
+
+    function errorMessage(body, status) {
+      if (typeof body.message === "string" && body.message) return body.message;
+      const detail = body.detail;
+      if (typeof detail === "string") return detail;
+      if (detail && typeof detail === "object") return detail.message || JSON.stringify(detail);
+      return `요청에 실패했습니다. (${status})`;
+    }
+    try {
+      const saved = JSON.parse(sessionStorage.getItem("pretest-state") || "null");
+      if (saved && saved.diagnosticId && Array.isArray(saved.questions)) {
+        Object.assign(state, saved);
+        renderQuestions(state.questions);
+        for (const answer of state.answers || []) {
+          const input = questionsNode.querySelector(`input[name="${CSS.escape(cssName(answer.question_id))}"][value="${answer.selected_answer}"]`);
+          if (input) input.checked = true;
+        }
+        setBusy(false);
+        loadReport();
+      }
+    } catch { sessionStorage.removeItem("pretest-state"); }
+  </script>
+</body>
+</html>
