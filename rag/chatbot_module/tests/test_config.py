@@ -98,6 +98,16 @@ def test_relevance_model_falls_back_to_llm_model(clean_env: None) -> None:
     assert overridden.relevance_model == "gpt-small"
 
 
+def test_optional_llm_inline_comment_is_treated_as_blank(clean_env: None) -> None:
+    settings = Settings(
+        _env_file=None,
+        llm_model="solar-pro4",
+        llm_relevance_model="# 비우면 llm_model을 사용한다",
+    )
+    assert settings.llm_relevance_model == ""
+    assert settings.relevance_model == "solar-pro4"
+
+
 def test_dev_flag_reads_environment(clean_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DEV_ENABLE_TOOLS", "true")
     monkeypatch.setenv("DEV_SIMULATE_QUIZ_GENERATION_FAILURE", "true")

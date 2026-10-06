@@ -72,7 +72,11 @@ class Settings(BaseSettings):
     @field_validator("llm_model", "llm_relevance_model", "llm_reasoning_effort")
     @classmethod
     def _strip_optional_llm_values(cls, value: str) -> str:
-        return value.strip()
+        stripped = value.strip()
+        # pydantic-settings의 dotenv 파서는 ``KEY= # 설명`` 형태의 값을
+        # 환경에 따라 인라인 주석이 아닌 문자열로 돌려줄 수 있다. 선택 설정에
+        # 붙인 설명이 모델 ID로 전송되지 않도록 빈 값으로 정규화한다.
+        return "" if stripped.startswith("#") else stripped
 
     @field_validator("llm_provider")
     @classmethod

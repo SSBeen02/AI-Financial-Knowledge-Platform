@@ -74,8 +74,54 @@ class ChatCompletions:
         if kwargs.get("stream"):
             return iter(self.chunks)
         return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=self.output))]
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content=self.output),
+                    finish_reason="stop",
+                )
+            ]
         )
+
+
+class SequencedChatCompletions(ChatCompletions):
+    def __init__(self, results: list[object]) -> None:
+        super().__init__()
+        self.results = list(results)
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        result = self.results.pop(0)
+        return iter(result) if kwargs.get("stream") else result
+
+
+def _usage(*, completion_tokens: int, reasoning_tokens: int) -> SimpleNamespace:
+    return SimpleNamespace(
+        prompt_tokens=89,
+        completion_tokens=completion_tokens,
+        completion_tokens_details=SimpleNamespace(reasoning_tokens=reasoning_tokens),
+    )
+
+
+def _completion(
+    content: str | None,
+    *,
+    finish_reason: str,
+    reasoning: str | None = None,
+    completion_tokens: int = 0,
+    reasoning_tokens: int = 0,
+) -> SimpleNamespace:
+    message = SimpleNamespace(content=content)
+    if reasoning is not None:
+        message.reasoning = reasoning
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(message=message, finish_reason=finish_reason)
+        ],
+        usage=_usage(
+            completion_tokens=completion_tokens,
+            reasoning_tokens=reasoning_tokens,
+        ),
+    )
 
 
 def _chat_client(completions: ChatCompletions) -> SimpleNamespace:
@@ -248,6 +294,36 @@ def test_upstage_adapter_passes_top_level_reasoning_and_omits_temperature() -> N
     assert "temperature" not in completions.calls[0]
 
 
+def test_upstage_retries_length_exhausted_reasoning_without_storing_reasoning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    completions = SequencedChatCompletions(
+        [
+            _completion(
+                None,
+                finish_reason="length",
+                reasoning="internal reasoning must not be returned or logged",
+                completion_tokens=1200,
+                reasoning_tokens=1200,
+            ),
+            _completion("최종 답변", finish_reason="stop", completion_tokens=12),
+        ]
+    )
+    adapter = UpstageAdapter(
+        _upstage_settings(llm_reasoning_effort="low", llm_temperature=0.35),
+        client=_chat_client(completions),
+    )
+
+    assert adapter.generate(Prompt("지시", "입력")) == "최종 답변"
+    assert completions.calls[0]["reasoning_effort"] == "low"
+    assert "temperature" not in completions.calls[0]
+    assert "reasoning_effort" not in completions.calls[1]
+    assert completions.calls[1]["temperature"] == 0.35
+    assert "finish_reason='length'" in caplog.text
+    assert "reasoning_tokens=1200" in caplog.text
+    assert "internal reasoning" not in caplog.text
+
+
 def test_upstage_adapter_streams_chat_completion_deltas() -> None:
     completions = ChatCompletions(
         chunks=[
@@ -269,13 +345,74 @@ def test_upstage_adapter_streams_chat_completion_deltas() -> None:
 
     assert list(adapter.stream(Prompt("지시", "입력"))) == ["첫 ", "답변"]
     assert completions.calls[0]["stream"] is True
+    assert completions.calls[0]["stream_options"] == {"include_usage": True}
     assert completions.calls[0]["max_tokens"] == 1200
+
+
+def test_upstage_stream_retries_reasoning_only_length_response() -> None:
+    first = [
+        SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    delta=SimpleNamespace(reasoning="internal", role="assistant"),
+                    finish_reason=None,
+                )
+            ],
+            usage=None,
+        ),
+        SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    delta=SimpleNamespace(),
+                    finish_reason="length",
+                )
+            ],
+            usage=None,
+        ),
+        SimpleNamespace(
+            choices=[],
+            usage=_usage(completion_tokens=1200, reasoning_tokens=1200),
+        ),
+    ]
+    second = [
+        SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    delta=SimpleNamespace(content="최종 "),
+                    finish_reason=None,
+                )
+            ],
+            usage=None,
+        ),
+        SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    delta=SimpleNamespace(content="답변"),
+                    finish_reason="stop",
+                )
+            ],
+            usage=None,
+        ),
+    ]
+    completions = SequencedChatCompletions([first, second])
+    adapter = UpstageAdapter(
+        _upstage_settings(llm_reasoning_effort="low", llm_temperature=0.35),
+        client=_chat_client(completions),
+    )
+
+    assert list(adapter.stream(Prompt("지시", "입력"))) == ["최종 ", "답변"]
+    assert completions.calls[0]["reasoning_effort"] == "low"
+    assert "reasoning_effort" not in completions.calls[1]
+    assert completions.calls[1]["temperature"] == 0.35
 
 
 def test_upstage_relevance_uses_chat_completions_without_temperature() -> None:
     completions = ChatCompletions("yes")
     adapter = UpstageAdapter(
-        _upstage_settings(llm_relevance_model="solar-relevance"),
+        _upstage_settings(
+            llm_relevance_model="solar-relevance",
+            llm_reasoning_effort="low",
+        ),
         client=_chat_client(completions),
     )
 
@@ -287,6 +424,7 @@ def test_upstage_relevance_uses_chat_completions_without_temperature() -> None:
     assert call["max_tokens"] == 128
     assert "최근 대화" in call["messages"][1]["content"]
     assert "temperature" not in call
+    assert "reasoning_effort" not in call
 
 
 def test_upstage_adapter_configures_openai_client_base_url(monkeypatch) -> None:

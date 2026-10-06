@@ -210,10 +210,22 @@ LLM_API_KEY=
 ```
 
 Upstage 어댑터는 답변 생성, SSE 스트리밍, 관련성 판정을 모두 OpenAI 호환 Chat Completions API로
-호출한다. `LLM_REASONING_EFFORT`가 비어 있지 않으면 최상위 `reasoning_effort`로 보내고
-`temperature`는 생략한다. 값이 비어 있을 때만 답변 생성 요청에 `LLM_TEMPERATURE`를 보내며,
-관련성 yes/no 판정에는 어느 경우에도 `temperature`를 보내지 않는다. OpenAI 제공자는 기존 Responses
-API와 모델별 temperature 지원 규칙을 그대로 사용한다.
+호출한다. 답변 생성에서 `LLM_REASONING_EFFORT`가 비어 있지 않으면 최상위 `reasoning_effort`로 보내고
+`temperature`는 생략한다. 추론 토큰이 `max_tokens`를 모두 사용해 `finish_reason=length`이고 최종 본문이
+없으면 같은 요청을 추론 없이 한 번 재시도하며, 이때 `LLM_TEMPERATURE`를 사용한다. Upstage가 별도
+`message.reasoning` 또는 스트림의 `delta.reasoning`을 반환해도 이는 내부 추론이므로 화면과 DB에는
+저장하지 않는다. 관련성 yes/no 판정은 짧은 분류 작업이라 `reasoning_effort`와 `temperature`를 모두
+보내지 않는다. 빈 응답 로그는 본문 대신 종료 이유, 응답 필드 이름, 토큰 집계만 기록한다. OpenAI
+제공자는 기존 Responses API와 모델별 temperature 지원 규칙을 그대로 사용한다.
+
+`.env`에서 선택 항목을 비우면서 설명을 붙일 때는 설명을 앞줄에 두는 형식을 권장한다. 코드도
+`LLM_RELEVANCE_MODEL= # 설명`처럼 값이 `#`로 시작하면 빈 값으로 정규화해 기본 `LLM_MODEL`로
+대체하지만, 아래 형식이 dotenv 구현 차이의 영향을 받지 않는다.
+
+```dotenv
+# 비우면 LLM_MODEL을 관련성 판정에도 사용한다.
+LLM_RELEVANCE_MODEL=
+```
 
 이 변경 전에는 `temperature` 설정이 없어서 OpenAI 요청에서 파라미터를 생략했다. 현재 기본 설정값은
 `0.7`이지만 실제 전달 여부는 모델과 추론 설정에 따라 달라진다. OpenAI Responses API의 허용 범위는
