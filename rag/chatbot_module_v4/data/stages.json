@@ -1,0 +1,2253 @@
+{
+  "source": "시사경제용어사전",
+  "generated_from": "스테이지_선정개념_v4.xlsx",
+  "total_concepts": 250,
+  "unique_concepts": 211,
+  "stages": [
+    {
+      "id": "stage1",
+      "order": 1,
+      "name_ko": "사회경제현상과 소비생활",
+      "concept_count": 30,
+      "subcategories": [
+        "경제 기본",
+        "청년·일자리",
+        "인구·가구",
+        "도시·주거",
+        "소비생활",
+        "세대",
+        "위기·리스크"
+      ],
+      "concepts": [
+        {
+          "order": 1,
+          "subcategory": "경제 기본",
+          "concept_id": "sisa_1281",
+          "term": "분업/특화",
+          "term_full": "분업/특화",
+          "other_stages": []
+        },
+        {
+          "order": 2,
+          "subcategory": "청년·일자리",
+          "concept_id": "sisa_1963",
+          "term": "워킹푸어",
+          "term_full": "워킹푸어(Working Poor)",
+          "other_stages": []
+        },
+        {
+          "order": 3,
+          "subcategory": "청년·일자리",
+          "concept_id": "sisa_980",
+          "term": "렌트 푸어",
+          "term_full": "렌트 푸어(Rent-Poor)",
+          "other_stages": []
+        },
+        {
+          "order": 4,
+          "subcategory": "청년·일자리",
+          "concept_id": "sisa_1123",
+          "term": "민달팽이세대",
+          "term_full": "민달팽이세대",
+          "other_stages": []
+        },
+        {
+          "order": 5,
+          "subcategory": "청년·일자리",
+          "concept_id": "sisa_15",
+          "term": "88만원세대",
+          "term_full": "88만원세대",
+          "other_stages": []
+        },
+        {
+          "order": 6,
+          "subcategory": "청년·일자리",
+          "concept_id": "sisa_842",
+          "term": "니트족",
+          "term_full": "니트족(NEET; Not in Education, Employment or Training)",
+          "other_stages": []
+        },
+        {
+          "order": 7,
+          "subcategory": "청년·일자리",
+          "concept_id": "sisa_2375",
+          "term": "중규직",
+          "term_full": "중규직",
+          "other_stages": []
+        },
+        {
+          "order": 8,
+          "subcategory": "청년·일자리",
+          "concept_id": "sisa_2011",
+          "term": "유리천장",
+          "term_full": "유리천장",
+          "other_stages": []
+        },
+        {
+          "order": 9,
+          "subcategory": "청년·일자리",
+          "concept_id": "sisa_1704",
+          "term": "실업수당 청구건수",
+          "term_full": "실업수당 청구건수",
+          "other_stages": []
+        },
+        {
+          "order": 10,
+          "subcategory": "인구·가구",
+          "concept_id": "sisa_419",
+          "term": "고령화사회",
+          "term_full": "고령화사회",
+          "other_stages": []
+        },
+        {
+          "order": 11,
+          "subcategory": "인구·가구",
+          "concept_id": "sisa_2173",
+          "term": "장수리스크",
+          "term_full": "장수리스크",
+          "other_stages": []
+        },
+        {
+          "order": 12,
+          "subcategory": "인구·가구",
+          "concept_id": "sisa_1498",
+          "term": "소득 크레바스",
+          "term_full": "소득 크레바스",
+          "other_stages": []
+        },
+        {
+          "order": 13,
+          "subcategory": "인구·가구",
+          "concept_id": "sisa_1",
+          "term": "0.5인 가구",
+          "term_full": "0.5인 가구",
+          "other_stages": []
+        },
+        {
+          "order": 14,
+          "subcategory": "도시·주거",
+          "concept_id": "sisa_2309",
+          "term": "젠트리피케이션",
+          "term_full": "젠트리피케이션(Gentrification)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 15,
+          "subcategory": "도시·주거",
+          "concept_id": "sisa_1047",
+          "term": "메가시티",
+          "term_full": "메가시티",
+          "other_stages": []
+        },
+        {
+          "order": 16,
+          "subcategory": "도시·주거",
+          "concept_id": "sisa_1382",
+          "term": "산업공동화",
+          "term_full": "산업공동화",
+          "other_stages": []
+        },
+        {
+          "order": 17,
+          "subcategory": "도시·주거",
+          "concept_id": "sisa_923",
+          "term": "도시형주택",
+          "term_full": "도시형주택",
+          "other_stages": []
+        },
+        {
+          "order": 18,
+          "subcategory": "소비생활",
+          "concept_id": "sisa_2917",
+          "term": "해외 직구",
+          "term_full": "해외 직구",
+          "other_stages": []
+        },
+        {
+          "order": 19,
+          "subcategory": "소비생활",
+          "concept_id": "sisa_449",
+          "term": "공동구매",
+          "term_full": "공동구매",
+          "other_stages": []
+        },
+        {
+          "order": 20,
+          "subcategory": "소비생활",
+          "concept_id": "sisa_897",
+          "term": "대중명품",
+          "term_full": "대중명품(Masstige)",
+          "other_stages": []
+        },
+        {
+          "order": 21,
+          "subcategory": "소비생활",
+          "concept_id": "sisa_2805",
+          "term": "포미족",
+          "term_full": "포미족(ForMe족)",
+          "other_stages": []
+        },
+        {
+          "order": 22,
+          "subcategory": "소비생활",
+          "concept_id": "sisa_2835",
+          "term": "프레이밍 효과",
+          "term_full": "프레이밍 효과",
+          "other_stages": []
+        },
+        {
+          "order": 23,
+          "subcategory": "소비생활",
+          "concept_id": "sisa_813",
+          "term": "노쇼",
+          "term_full": "노쇼(No-Show)",
+          "other_stages": []
+        },
+        {
+          "order": 24,
+          "subcategory": "세대",
+          "concept_id": "sisa_1126",
+          "term": "밀레니얼 세대",
+          "term_full": "밀레니얼 세대(Millenials)",
+          "other_stages": []
+        },
+        {
+          "order": 25,
+          "subcategory": "세대",
+          "concept_id": "sisa_953",
+          "term": "디지털 네이티브",
+          "term_full": "디지털 네이티브(Digital Native)",
+          "other_stages": []
+        },
+        {
+          "order": 26,
+          "subcategory": "세대",
+          "concept_id": "sisa_1009",
+          "term": "리터루족",
+          "term_full": "리터루족(Returoo族)",
+          "other_stages": []
+        },
+        {
+          "order": 27,
+          "subcategory": "위기·리스크",
+          "concept_id": "sisa_2565",
+          "term": "치킨 게임",
+          "term_full": "치킨 게임",
+          "other_stages": []
+        },
+        {
+          "order": 28,
+          "subcategory": "위기·리스크",
+          "concept_id": "sisa_3011",
+          "term": "회색 코뿔소",
+          "term_full": "회색 코뿔소",
+          "other_stages": []
+        },
+        {
+          "order": 29,
+          "subcategory": "위기·리스크",
+          "concept_id": "sisa_2434",
+          "term": "지정학적 리스크",
+          "term_full": "지정학적 리스크",
+          "other_stages": []
+        },
+        {
+          "order": 30,
+          "subcategory": "위기·리스크",
+          "concept_id": "sisa_2777",
+          "term": "팬데믹",
+          "term_full": "팬데믹(Pandemic)",
+          "other_stages": []
+        }
+      ]
+    },
+    {
+      "id": "stage2",
+      "order": 2,
+      "name_ko": "금융과 투자",
+      "concept_count": 40,
+      "subcategories": [
+        "금리·이자",
+        "예금·저축",
+        "신용·결제",
+        "대출·부채",
+        "채무조정",
+        "투자",
+        "연금·보험",
+        "디지털자산",
+        "주거금융"
+      ],
+      "concepts": [
+        {
+          "order": 1,
+          "subcategory": "금리·이자",
+          "concept_id": "sisa_1237",
+          "term": "복리이자",
+          "term_full": "복리이자",
+          "other_stages": []
+        },
+        {
+          "order": 2,
+          "subcategory": "금리·이자",
+          "concept_id": "sisa_859",
+          "term": "단리이자",
+          "term_full": "단리이자",
+          "other_stages": []
+        },
+        {
+          "order": 3,
+          "subcategory": "금리·이자",
+          "concept_id": "sisa_1875",
+          "term": "예대마진",
+          "term_full": "예대마진",
+          "other_stages": []
+        },
+        {
+          "order": 4,
+          "subcategory": "금리·이자",
+          "concept_id": "sisa_290",
+          "term": "가산금리",
+          "term_full": "가산금리",
+          "other_stages": []
+        },
+        {
+          "order": 5,
+          "subcategory": "예금·저축",
+          "concept_id": "sisa_1874",
+          "term": "예금자보호",
+          "term_full": "예금자보호",
+          "other_stages": []
+        },
+        {
+          "order": 6,
+          "subcategory": "예금·저축",
+          "concept_id": "sisa_2363",
+          "term": "주택청약종합저축",
+          "term_full": "주택청약종합저축",
+          "other_stages": []
+        },
+        {
+          "order": 7,
+          "subcategory": "예금·저축",
+          "concept_id": "sisa_1852",
+          "term": "연금저축",
+          "term_full": "연금저축",
+          "other_stages": []
+        },
+        {
+          "order": 8,
+          "subcategory": "예금·저축",
+          "concept_id": "sisa_1320",
+          "term": "비과세저축",
+          "term_full": "비과세저축",
+          "other_stages": []
+        },
+        {
+          "order": 9,
+          "subcategory": "신용·결제",
+          "concept_id": "sisa_331",
+          "term": "개인신용평가시스템",
+          "term_full": "개인신용평가시스템",
+          "other_stages": []
+        },
+        {
+          "order": 10,
+          "subcategory": "신용·결제",
+          "concept_id": "sisa_313",
+          "term": "간편결제서비스",
+          "term_full": "간편결제서비스",
+          "other_stages": []
+        },
+        {
+          "order": 11,
+          "subcategory": "대출·부채",
+          "concept_id": "sisa_430",
+          "term": "고정 금리 저당 대출",
+          "term_full": "고정 금리 저당 대출(FRM: Fixed-rate mortgage)",
+          "other_stages": []
+        },
+        {
+          "order": 12,
+          "subcategory": "대출·부채",
+          "concept_id": "sisa_1213",
+          "term": "변동 금리 저당 대출",
+          "term_full": "변동 금리 저당 대출(ARM: Adjustable-rate mortgage)",
+          "other_stages": []
+        },
+        {
+          "order": 13,
+          "subcategory": "대출·부채",
+          "concept_id": "sisa_1023",
+          "term": "마이너스 대출",
+          "term_full": "마이너스 대출",
+          "other_stages": []
+        },
+        {
+          "order": 14,
+          "subcategory": "대출·부채",
+          "concept_id": "sisa_911",
+          "term": "대환대출",
+          "term_full": "대환대출",
+          "other_stages": []
+        },
+        {
+          "order": 15,
+          "subcategory": "대출·부채",
+          "concept_id": "sisa_2358",
+          "term": "주택담보인정비율",
+          "term_full": "주택담보인정비율(LTV비율)",
+          "other_stages": []
+        },
+        {
+          "order": 16,
+          "subcategory": "대출·부채",
+          "concept_id": "sisa_2519",
+          "term": "총부채원리금상환비율",
+          "term_full": "총부채원리금상환비율(DSR: debt service ratio)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 17,
+          "subcategory": "대출·부채",
+          "concept_id": "sisa_668",
+          "term": "금리인하 요구권",
+          "term_full": "금리인하 요구권",
+          "other_stages": []
+        },
+        {
+          "order": 18,
+          "subcategory": "대출·부채",
+          "concept_id": "sisa_885",
+          "term": "대부업",
+          "term_full": "대부업",
+          "other_stages": []
+        },
+        {
+          "order": 19,
+          "subcategory": "대출·부채",
+          "concept_id": "sisa_2293",
+          "term": "제2금융권",
+          "term_full": "제2금융권",
+          "other_stages": []
+        },
+        {
+          "order": 20,
+          "subcategory": "채무조정",
+          "concept_id": "sisa_2844",
+          "term": "프리워크아웃",
+          "term_full": "프리워크아웃(사전채무조정제도)",
+          "other_stages": []
+        },
+        {
+          "order": 21,
+          "subcategory": "채무조정",
+          "concept_id": "sisa_333",
+          "term": "개인워크아웃",
+          "term_full": "개인워크아웃",
+          "other_stages": []
+        },
+        {
+          "order": 22,
+          "subcategory": "채무조정",
+          "concept_id": "sisa_1510",
+          "term": "소비자 파산",
+          "term_full": "소비자 파산(개인파산)",
+          "other_stages": []
+        },
+        {
+          "order": 23,
+          "subcategory": "투자",
+          "concept_id": "sisa_2605",
+          "term": "코스트에버리지",
+          "term_full": "코스트에버리지(Cost Average)",
+          "other_stages": []
+        },
+        {
+          "order": 24,
+          "subcategory": "투자",
+          "concept_id": "sisa_2603",
+          "term": "코스닥",
+          "term_full": "코스닥",
+          "other_stages": []
+        },
+        {
+          "order": 25,
+          "subcategory": "투자",
+          "concept_id": "sisa_2606",
+          "term": "코스피200",
+          "term_full": "코스피200(KOSPI200)",
+          "other_stages": []
+        },
+        {
+          "order": 26,
+          "subcategory": "투자",
+          "concept_id": "sisa_1634",
+          "term": "시가총액",
+          "term_full": "시가총액",
+          "other_stages": []
+        },
+        {
+          "order": 27,
+          "subcategory": "투자",
+          "concept_id": "sisa_84",
+          "term": "ELS",
+          "term_full": "ELS(주가연계증권)",
+          "other_stages": []
+        },
+        {
+          "order": 28,
+          "subcategory": "투자",
+          "concept_id": "sisa_1992",
+          "term": "유가증권",
+          "term_full": "유가증권(Securities)",
+          "other_stages": []
+        },
+        {
+          "order": 29,
+          "subcategory": "투자",
+          "concept_id": "sisa_459",
+          "term": "공모펀드",
+          "term_full": "공모펀드",
+          "other_stages": []
+        },
+        {
+          "order": 30,
+          "subcategory": "투자",
+          "concept_id": "sisa_1410",
+          "term": "상장지수펀드",
+          "term_full": "상장지수펀드(ETF: Exchange Traded Fund)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 31,
+          "subcategory": "투자",
+          "concept_id": "sisa_2078",
+          "term": "인덱스펀드",
+          "term_full": "인덱스펀드(Index Fund)",
+          "other_stages": []
+        },
+        {
+          "order": 32,
+          "subcategory": "투자",
+          "concept_id": "sisa_234",
+          "term": "Short Sale",
+          "term_full": "Short Sale(공매)",
+          "other_stages": []
+        },
+        {
+          "order": 33,
+          "subcategory": "투자",
+          "concept_id": "sisa_457",
+          "term": "공모주청약",
+          "term_full": "공모주청약",
+          "other_stages": []
+        },
+        {
+          "order": 34,
+          "subcategory": "연금·보험",
+          "concept_id": "sisa_75",
+          "term": "DB형 퇴직연금",
+          "term_full": "DB형 퇴직연금",
+          "other_stages": []
+        },
+        {
+          "order": 35,
+          "subcategory": "연금·보험",
+          "concept_id": "sisa_571",
+          "term": "국민연금 소득대체율",
+          "term_full": "국민연금 소득대체율",
+          "other_stages": []
+        },
+        {
+          "order": 36,
+          "subcategory": "연금·보험",
+          "concept_id": "sisa_76",
+          "term": "DC형 퇴직연금",
+          "term_full": "DC형 퇴직연금",
+          "other_stages": []
+        },
+        {
+          "order": 37,
+          "subcategory": "연금·보험",
+          "concept_id": "sisa_1226",
+          "term": "보장성보험",
+          "term_full": "보장성보험",
+          "other_stages": []
+        },
+        {
+          "order": 38,
+          "subcategory": "디지털자산",
+          "concept_id": "sisa_1754",
+          "term": "암호화폐",
+          "term_full": "암호화폐(cryptocurrency)",
+          "other_stages": []
+        },
+        {
+          "order": 39,
+          "subcategory": "주거금융",
+          "concept_id": "sisa_1285",
+          "term": "분할상환식 담보대출",
+          "term_full": "분할상환식 담보대출(repayment mortgage)",
+          "other_stages": []
+        },
+        {
+          "order": 40,
+          "subcategory": "주거금융",
+          "concept_id": "sisa_1227",
+          "term": "보증보험",
+          "term_full": "보증보험",
+          "other_stages": []
+        }
+      ]
+    },
+    {
+      "id": "stage3",
+      "order": 3,
+      "name_ko": "거시경제와 통화·재정정책",
+      "concept_count": 50,
+      "subcategories": [
+        "경제 원리·시장",
+        "경제성장·경기",
+        "물가·고용",
+        "통화정책",
+        "재정",
+        "세금",
+        "분배·복지·인구"
+      ],
+      "concepts": [
+        {
+          "order": 1,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_745",
+          "term": "기회비용",
+          "term_full": "기회비용",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 2,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_1034",
+          "term": "매몰비용",
+          "term_full": "매몰비용(Sunk Cost)",
+          "other_stages": []
+        },
+        {
+          "order": 3,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_2883",
+          "term": "한계효용체감의 법칙",
+          "term_full": "한계효용체감의 법칙(Diminishing Marginal Utility)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 4,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_2881",
+          "term": "한계비용",
+          "term_full": "한계비용(Marginal Cost)",
+          "other_stages": []
+        },
+        {
+          "order": 5,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_1225",
+          "term": "보이지 않는 손",
+          "term_full": "보이지 않는 손(Invisible Hand)",
+          "other_stages": []
+        },
+        {
+          "order": 6,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_1642",
+          "term": "시장실패",
+          "term_full": "시장실패",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 7,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_2284",
+          "term": "정부실패",
+          "term_full": "정부실패",
+          "other_stages": []
+        },
+        {
+          "order": 8,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_1932",
+          "term": "외부효과",
+          "term_full": "외부효과(External Effect, Externalities)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 9,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_445",
+          "term": "공공재",
+          "term_full": "공공재(Public Goods)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 10,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_928",
+          "term": "독점",
+          "term_full": "독점",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 11,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_500",
+          "term": "과점시장",
+          "term_full": "과점시장",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 12,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_610",
+          "term": "규모의 경제",
+          "term_full": "규모의 경제(Economies of Scale)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 13,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_918",
+          "term": "도덕적 해이",
+          "term_full": "도덕적 해이(Moral Hazard)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 14,
+          "subcategory": "경제 원리·시장",
+          "concept_id": "sisa_1836",
+          "term": "역선택",
+          "term_full": "역선택(Adverse Selection)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 15,
+          "subcategory": "경제성장·경기",
+          "concept_id": "sisa_566",
+          "term": "국내총생산/국민총생산",
+          "term_full": "국내총생산(GDP)/국민총생산(GNP)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 16,
+          "subcategory": "경제성장·경기",
+          "concept_id": "sisa_1708",
+          "term": "실질 GDP",
+          "term_full": "실질 GDP",
+          "other_stages": []
+        },
+        {
+          "order": 17,
+          "subcategory": "경제성장·경기",
+          "concept_id": "sisa_578",
+          "term": "국민총소득",
+          "term_full": "국민총소득(GNI)",
+          "other_stages": []
+        },
+        {
+          "order": 18,
+          "subcategory": "경제성장·경기",
+          "concept_id": "sisa_3",
+          "term": "1인당 국민소득",
+          "term_full": "1인당 국민소득",
+          "other_stages": []
+        },
+        {
+          "order": 19,
+          "subcategory": "경제성장·경기",
+          "concept_id": "sisa_391",
+          "term": "경제성장률",
+          "term_full": "경제성장률",
+          "other_stages": []
+        },
+        {
+          "order": 20,
+          "subcategory": "경제성장·경기",
+          "concept_id": "sisa_2162",
+          "term": "잠재성장률",
+          "term_full": "잠재성장률",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 21,
+          "subcategory": "경제성장·경기",
+          "concept_id": "sisa_369",
+          "term": "경기순환",
+          "term_full": "경기순환",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 22,
+          "subcategory": "경제성장·경기",
+          "concept_id": "sisa_368",
+          "term": "경기선행지수",
+          "term_full": "경기선행지수(CLI)",
+          "other_stages": []
+        },
+        {
+          "order": 23,
+          "subcategory": "물가·고용",
+          "concept_id": "sisa_2091",
+          "term": "인플레이션",
+          "term_full": "인플레이션(Inflation)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 24,
+          "subcategory": "물가·고용",
+          "concept_id": "sisa_960",
+          "term": "디플레이션",
+          "term_full": "디플레이션",
+          "other_stages": []
+        },
+        {
+          "order": 25,
+          "subcategory": "물가·고용",
+          "concept_id": "sisa_1610",
+          "term": "스태그플레이션",
+          "term_full": "스태그플레이션",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 26,
+          "subcategory": "물가·고용",
+          "concept_id": "sisa_1514",
+          "term": "소비자물가지수·생활물가지수",
+          "term_full": "소비자물가지수(CPI: Consumer Price Index)·생활물가지수",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 27,
+          "subcategory": "물가·고용",
+          "concept_id": "sisa_1703",
+          "term": "실업률",
+          "term_full": "실업률",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 28,
+          "subcategory": "물가·고용",
+          "concept_id": "sisa_422",
+          "term": "고용률",
+          "term_full": "고용률",
+          "other_stages": []
+        },
+        {
+          "order": 29,
+          "subcategory": "물가·고용",
+          "concept_id": "sisa_401",
+          "term": "경제활동인구",
+          "term_full": "경제활동인구",
+          "other_stages": []
+        },
+        {
+          "order": 30,
+          "subcategory": "통화정책",
+          "concept_id": "sisa_735",
+          "term": "기준금리",
+          "term_full": "기준금리",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 31,
+          "subcategory": "통화정책",
+          "concept_id": "sisa_2701",
+          "term": "통화정책",
+          "term_full": "통화정책",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 32,
+          "subcategory": "통화정책",
+          "concept_id": "sisa_1784",
+          "term": "양적완화",
+          "term_full": "양적완화(QE: Quantitative Easing)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 33,
+          "subcategory": "통화정책",
+          "concept_id": "sisa_750",
+          "term": "긴축정책",
+          "term_full": "긴축정책",
+          "other_stages": []
+        },
+        {
+          "order": 34,
+          "subcategory": "통화정책",
+          "concept_id": "sisa_2694",
+          "term": "통화량",
+          "term_full": "통화량",
+          "other_stages": []
+        },
+        {
+          "order": 35,
+          "subcategory": "통화정책",
+          "concept_id": "sisa_2382",
+          "term": "중앙은행",
+          "term_full": "중앙은행",
+          "other_stages": []
+        },
+        {
+          "order": 36,
+          "subcategory": "재정",
+          "concept_id": "sisa_1879",
+          "term": "예산",
+          "term_full": "예산",
+          "other_stages": []
+        },
+        {
+          "order": 37,
+          "subcategory": "재정",
+          "concept_id": "sisa_2543",
+          "term": "추가경정예산",
+          "term_full": "추가경정예산",
+          "other_stages": []
+        },
+        {
+          "order": 38,
+          "subcategory": "재정",
+          "concept_id": "sisa_2200",
+          "term": "재정적자",
+          "term_full": "재정적자",
+          "other_stages": []
+        },
+        {
+          "order": 39,
+          "subcategory": "재정",
+          "concept_id": "sisa_554",
+          "term": "국가채무",
+          "term_full": "국가채무",
+          "other_stages": []
+        },
+        {
+          "order": 40,
+          "subcategory": "세금",
+          "concept_id": "sisa_1501",
+          "term": "소득세",
+          "term_full": "소득세",
+          "other_stages": []
+        },
+        {
+          "order": 41,
+          "subcategory": "세금",
+          "concept_id": "sisa_1246",
+          "term": "부가가치세",
+          "term_full": "부가가치세(Value Added Tax)",
+          "other_stages": []
+        },
+        {
+          "order": 42,
+          "subcategory": "세금",
+          "concept_id": "sisa_2446",
+          "term": "직접세",
+          "term_full": "직접세",
+          "other_stages": []
+        },
+        {
+          "order": 43,
+          "subcategory": "세금",
+          "concept_id": "sisa_311",
+          "term": "간접세",
+          "term_full": "간접세",
+          "other_stages": []
+        },
+        {
+          "order": 44,
+          "subcategory": "세금",
+          "concept_id": "sisa_837",
+          "term": "누진세율",
+          "term_full": "누진세율",
+          "other_stages": []
+        },
+        {
+          "order": 45,
+          "subcategory": "세금",
+          "concept_id": "sisa_1973",
+          "term": "원천징수",
+          "term_full": "원천징수",
+          "other_stages": []
+        },
+        {
+          "order": 46,
+          "subcategory": "세금",
+          "concept_id": "sisa_1499",
+          "term": "소득공제",
+          "term_full": "소득공제",
+          "other_stages": []
+        },
+        {
+          "order": 47,
+          "subcategory": "세금",
+          "concept_id": "sisa_1856",
+          "term": "연말정산",
+          "term_full": "연말정산",
+          "other_stages": []
+        },
+        {
+          "order": 48,
+          "subcategory": "분배·복지·인구",
+          "concept_id": "sisa_2401",
+          "term": "지니계수",
+          "term_full": "지니계수",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 49,
+          "subcategory": "분배·복지·인구",
+          "concept_id": "sisa_1372",
+          "term": "사회보험",
+          "term_full": "사회보험",
+          "other_stages": []
+        },
+        {
+          "order": 50,
+          "subcategory": "분배·복지·인구",
+          "concept_id": "sisa_2076",
+          "term": "인구절벽",
+          "term_full": "인구절벽(Demographic Cliff)",
+          "other_stages": []
+        }
+      ]
+    },
+    {
+      "id": "stage4",
+      "order": 4,
+      "name_ko": "국제경제와 산업·기술동향",
+      "concept_count": 60,
+      "subcategories": [
+        "무역",
+        "환율·외환",
+        "국제기구",
+        "국제금융위기",
+        "산업·기술",
+        "글로벌 기업·투자",
+        "기업 기초",
+        "기후·지속가능",
+        "경쟁·자원"
+      ],
+      "concepts": [
+        {
+          "order": 1,
+          "subcategory": "무역",
+          "concept_id": "sisa_1323",
+          "term": "비교우위",
+          "term_full": "비교우위(Comparative Advantage)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 2,
+          "subcategory": "무역",
+          "concept_id": "sisa_2267",
+          "term": "절대우위",
+          "term_full": "절대우위(Absolute Advantage)",
+          "other_stages": []
+        },
+        {
+          "order": 3,
+          "subcategory": "무역",
+          "concept_id": "sisa_507",
+          "term": "관세",
+          "term_full": "관세",
+          "other_stages": []
+        },
+        {
+          "order": 4,
+          "subcategory": "무역",
+          "concept_id": "sisa_1321",
+          "term": "비관세장벽",
+          "term_full": "비관세장벽",
+          "other_stages": []
+        },
+        {
+          "order": 5,
+          "subcategory": "무역",
+          "concept_id": "sisa_1560",
+          "term": "수입쿼터",
+          "term_full": "수입쿼터",
+          "other_stages": []
+        },
+        {
+          "order": 6,
+          "subcategory": "무역",
+          "concept_id": "sisa_1234",
+          "term": "보호무역주의",
+          "term_full": "보호무역주의",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 7,
+          "subcategory": "무역",
+          "concept_id": "sisa_913",
+          "term": "덤핑",
+          "term_full": "덤핑",
+          "other_stages": []
+        },
+        {
+          "order": 8,
+          "subcategory": "무역",
+          "concept_id": "sisa_104",
+          "term": "FTA",
+          "term_full": "FTA(Free Trade Agreement, 자유무역협정)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 9,
+          "subcategory": "무역",
+          "concept_id": "sisa_1472",
+          "term": "세계무역기구",
+          "term_full": "세계무역기구(WTO)",
+          "other_stages": []
+        },
+        {
+          "order": 10,
+          "subcategory": "무역",
+          "concept_id": "sisa_2542",
+          "term": "최혜국대우",
+          "term_full": "최혜국대우",
+          "other_stages": []
+        },
+        {
+          "order": 11,
+          "subcategory": "무역",
+          "concept_id": "sisa_1969",
+          "term": "원산지규정",
+          "term_full": "원산지규정",
+          "other_stages": []
+        },
+        {
+          "order": 12,
+          "subcategory": "무역",
+          "concept_id": "sisa_590",
+          "term": "국제수지",
+          "term_full": "국제수지",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 13,
+          "subcategory": "무역",
+          "concept_id": "sisa_1085",
+          "term": "무역의존도",
+          "term_full": "무역의존도",
+          "other_stages": []
+        },
+        {
+          "order": 14,
+          "subcategory": "무역",
+          "concept_id": "sisa_519",
+          "term": "교역조건",
+          "term_full": "교역조건",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 15,
+          "subcategory": "무역",
+          "concept_id": "sisa_2370",
+          "term": "중간재",
+          "term_full": "중간재",
+          "other_stages": []
+        },
+        {
+          "order": 16,
+          "subcategory": "무역",
+          "concept_id": "sisa_651",
+          "term": "근린궁핍화정책",
+          "term_full": "근린궁핍화정책",
+          "other_stages": []
+        },
+        {
+          "order": 17,
+          "subcategory": "무역",
+          "concept_id": "sisa_144",
+          "term": "J커브 효과",
+          "term_full": "J커브 효과(J-curve Effect)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 18,
+          "subcategory": "무역",
+          "concept_id": "sisa_1293",
+          "term": "불황형 흑자",
+          "term_full": "불황형 흑자",
+          "other_stages": []
+        },
+        {
+          "order": 19,
+          "subcategory": "환율·외환",
+          "concept_id": "sisa_2794",
+          "term": "평가절하/절상",
+          "term_full": "평가절하/절상",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 20,
+          "subcategory": "환율·외환",
+          "concept_id": "sisa_1975",
+          "term": "원화절상",
+          "term_full": "원화절상",
+          "other_stages": []
+        },
+        {
+          "order": 21,
+          "subcategory": "환율·외환",
+          "concept_id": "sisa_1976",
+          "term": "원화절하",
+          "term_full": "원화절하",
+          "other_stages": []
+        },
+        {
+          "order": 22,
+          "subcategory": "환율·외환",
+          "concept_id": "sisa_2987",
+          "term": "환리스크",
+          "term_full": "환리스크",
+          "other_stages": []
+        },
+        {
+          "order": 23,
+          "subcategory": "환율·외환",
+          "concept_id": "sisa_3000",
+          "term": "환헤지",
+          "term_full": "환헤지",
+          "other_stages": []
+        },
+        {
+          "order": 24,
+          "subcategory": "환율·외환",
+          "concept_id": "sisa_742",
+          "term": "기축통화",
+          "term_full": "기축통화(Key Currency)",
+          "other_stages": []
+        },
+        {
+          "order": 25,
+          "subcategory": "환율·외환",
+          "concept_id": "sisa_1937",
+          "term": "외환보유액",
+          "term_full": "외환보유액(Official Reserve Assets)",
+          "other_stages": []
+        },
+        {
+          "order": 26,
+          "subcategory": "환율·외환",
+          "concept_id": "sisa_2696",
+          "term": "통화스왑",
+          "term_full": "통화스왑",
+          "other_stages": []
+        },
+        {
+          "order": 27,
+          "subcategory": "국제기구",
+          "concept_id": "sisa_595",
+          "term": "국제통화기금",
+          "term_full": "국제통화기금",
+          "other_stages": []
+        },
+        {
+          "order": 28,
+          "subcategory": "국제기구",
+          "concept_id": "sisa_1475",
+          "term": "세계은행",
+          "term_full": "세계은행(World Bank)",
+          "other_stages": []
+        },
+        {
+          "order": 29,
+          "subcategory": "국제기구",
+          "concept_id": "sisa_113",
+          "term": "G20",
+          "term_full": "G20",
+          "other_stages": []
+        },
+        {
+          "order": 30,
+          "subcategory": "국제기구",
+          "concept_id": "sisa_182",
+          "term": "OECD",
+          "term_full": "OECD(Organization for Economic Cooperation and Development, 경제협력개발기구)",
+          "other_stages": []
+        },
+        {
+          "order": 31,
+          "subcategory": "국제금융위기",
+          "concept_id": "sisa_997",
+          "term": "리먼사태",
+          "term_full": "리먼사태",
+          "other_stages": []
+        },
+        {
+          "order": 32,
+          "subcategory": "국제금융위기",
+          "concept_id": "sisa_1064",
+          "term": "모라토리엄",
+          "term_full": "모라토리엄(Moratorium)",
+          "other_stages": []
+        },
+        {
+          "order": 33,
+          "subcategory": "국제금융위기",
+          "concept_id": "sisa_1505",
+          "term": "소버린리스크",
+          "term_full": "소버린리스크",
+          "other_stages": []
+        },
+        {
+          "order": 34,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_11",
+          "term": "4차 산업혁명",
+          "term_full": "4차 산업혁명(Fourth Industrial Revolution)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 35,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_951",
+          "term": "디지털 경제",
+          "term_full": "디지털 경제(Digital Economy)",
+          "other_stages": []
+        },
+        {
+          "order": 36,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_2847",
+          "term": "플랫폼 비즈니스",
+          "term_full": "플랫폼 비즈니스(Platform Business)",
+          "other_stages": []
+        },
+        {
+          "order": 37,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_531",
+          "term": "구독경제",
+          "term_full": "구독경제",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 38,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_1914",
+          "term": "온디맨드 경제",
+          "term_full": "온디맨드 경제(On-demand Economy)",
+          "other_stages": []
+        },
+        {
+          "order": 39,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_1310",
+          "term": "블록체인",
+          "term_full": "블록체인(Block Chain)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 40,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_207",
+          "term": "R&D",
+          "term_full": "R&D(Research and Development)",
+          "other_stages": []
+        },
+        {
+          "order": 41,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_1664",
+          "term": "신생 기업",
+          "term_full": "신생 기업(Start-Up)",
+          "other_stages": []
+        },
+        {
+          "order": 42,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_1208",
+          "term": "벤처캐피탈",
+          "term_full": "벤처캐피탈(Venture capital, VC)",
+          "other_stages": []
+        },
+        {
+          "order": 43,
+          "subcategory": "산업·기술",
+          "concept_id": "sisa_2636",
+          "term": "크라우드펀딩",
+          "term_full": "크라우드펀딩(Crowd Funding)",
+          "other_stages": []
+        },
+        {
+          "order": 44,
+          "subcategory": "글로벌 기업·투자",
+          "concept_id": "sisa_846",
+          "term": "다국적기업",
+          "term_full": "다국적기업",
+          "other_stages": []
+        },
+        {
+          "order": 45,
+          "subcategory": "글로벌 기업·투자",
+          "concept_id": "sisa_1001",
+          "term": "리쇼어링",
+          "term_full": "리쇼어링(Reshoring)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 46,
+          "subcategory": "글로벌 기업·투자",
+          "concept_id": "sisa_220",
+          "term": "SCM",
+          "term_full": "SCM(공급망관리)",
+          "other_stages": []
+        },
+        {
+          "order": 47,
+          "subcategory": "글로벌 기업·투자",
+          "concept_id": "sisa_1925",
+          "term": "외국인 직접투자",
+          "term_full": "외국인 직접투자",
+          "other_stages": []
+        },
+        {
+          "order": 48,
+          "subcategory": "글로벌 기업·투자",
+          "concept_id": "sisa_2082",
+          "term": "인수합병",
+          "term_full": "인수합병(Merger and Acquisition; M&A)",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 49,
+          "subcategory": "글로벌 기업·투자",
+          "concept_id": "sisa_718",
+          "term": "기업공개",
+          "term_full": "기업공개(IPO)",
+          "other_stages": []
+        },
+        {
+          "order": 50,
+          "subcategory": "기업 기초",
+          "concept_id": "sisa_2187",
+          "term": "재무제표",
+          "term_full": "재무제표",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 51,
+          "subcategory": "기업 기초",
+          "concept_id": "sisa_1869",
+          "term": "영업이익",
+          "term_full": "영업이익",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 52,
+          "subcategory": "기업 기초",
+          "concept_id": "sisa_1539",
+          "term": "손익분기점",
+          "term_full": "손익분기점",
+          "other_stages": [
+            "stage5"
+          ]
+        },
+        {
+          "order": 53,
+          "subcategory": "기업 기초",
+          "concept_id": "sisa_65",
+          "term": "CSR",
+          "term_full": "CSR(기업의 사회적 책임)",
+          "other_stages": []
+        },
+        {
+          "order": 54,
+          "subcategory": "기후·지속가능",
+          "concept_id": "sisa_1164",
+          "term": "배출권거래제",
+          "term_full": "배출권거래제",
+          "other_stages": []
+        },
+        {
+          "order": 55,
+          "subcategory": "기후·지속가능",
+          "concept_id": "sisa_1659",
+          "term": "신기후체제",
+          "term_full": "신기후체제(파리기후협약, Paris Agreement)",
+          "other_stages": []
+        },
+        {
+          "order": 56,
+          "subcategory": "기후·지속가능",
+          "concept_id": "sisa_2657",
+          "term": "탄소세",
+          "term_full": "탄소세",
+          "other_stages": []
+        },
+        {
+          "order": 57,
+          "subcategory": "기후·지속가능",
+          "concept_id": "sisa_484",
+          "term": "공정무역",
+          "term_full": "공정무역",
+          "other_stages": []
+        },
+        {
+          "order": 58,
+          "subcategory": "경쟁·자원",
+          "concept_id": "sisa_2567",
+          "term": "카르텔",
+          "term_full": "카르텔(담합)",
+          "other_stages": []
+        },
+        {
+          "order": 59,
+          "subcategory": "경쟁·자원",
+          "concept_id": "sisa_2433",
+          "term": "지적재산권",
+          "term_full": "지적재산권(지적소유권, Intellectual Property Right)",
+          "other_stages": []
+        },
+        {
+          "order": 60,
+          "subcategory": "경쟁·자원",
+          "concept_id": "sisa_1444",
+          "term": "석유수출국기구",
+          "term_full": "석유수출국기구(OPEC)",
+          "other_stages": []
+        }
+      ]
+    },
+    {
+      "id": "stage5",
+      "order": 5,
+      "name_ko": "TESAT·매경TEST 빈출 핵심 용어",
+      "concept_count": 70,
+      "subcategories": [
+        "미시경제",
+        "거시경제",
+        "국제경제",
+        "경영전략·마케팅",
+        "재무·회계",
+        "조직·인사",
+        "시사·트렌드"
+      ],
+      "concepts": [
+        {
+          "order": 1,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_1552",
+          "term": "수요의 법칙",
+          "term_full": "수요의 법칙(Law of Demand)",
+          "other_stages": []
+        },
+        {
+          "order": 2,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_1550",
+          "term": "수요의 가격탄력성",
+          "term_full": "수요의 가격탄력성(Price Elasticity of Demand)",
+          "other_stages": []
+        },
+        {
+          "order": 3,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_617",
+          "term": "균형가격",
+          "term_full": "균형가격",
+          "other_stages": []
+        },
+        {
+          "order": 4,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_1923",
+          "term": "완전경쟁시장",
+          "term_full": "완전경쟁시장(Perfect Competitive Market)",
+          "other_stages": []
+        },
+        {
+          "order": 5,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_928",
+          "term": "독점",
+          "term_full": "독점",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 6,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_500",
+          "term": "과점시장",
+          "term_full": "과점시장",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 7,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_929",
+          "term": "독점적 경쟁시장",
+          "term_full": "독점적 경쟁시장(Monopolistic Competitive Market)",
+          "other_stages": []
+        },
+        {
+          "order": 8,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_2338",
+          "term": "죄수의 딜레마",
+          "term_full": "죄수의 딜레마(Prisoner's Dilemma)",
+          "other_stages": []
+        },
+        {
+          "order": 9,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_1642",
+          "term": "시장실패",
+          "term_full": "시장실패",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 10,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_745",
+          "term": "기회비용",
+          "term_full": "기회비용",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 11,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_2883",
+          "term": "한계효용체감의 법칙",
+          "term_full": "한계효용체감의 법칙(Diminishing Marginal Utility)",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 12,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_1932",
+          "term": "외부효과",
+          "term_full": "외부효과(External Effect, Externalities)",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 13,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_445",
+          "term": "공공재",
+          "term_full": "공공재(Public Goods)",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 14,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_1836",
+          "term": "역선택",
+          "term_full": "역선택(Adverse Selection)",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 15,
+          "subcategory": "미시경제",
+          "concept_id": "sisa_918",
+          "term": "도덕적 해이",
+          "term_full": "도덕적 해이(Moral Hazard)",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 16,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_566",
+          "term": "국내총생산/국민총생산",
+          "term_full": "국내총생산(GDP)/국민총생산(GNP)",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 17,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_1514",
+          "term": "소비자물가지수·생활물가지수",
+          "term_full": "소비자물가지수(CPI: Consumer Price Index)·생활물가지수",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 18,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_2091",
+          "term": "인플레이션",
+          "term_full": "인플레이션(Inflation)",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 19,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_1610",
+          "term": "스태그플레이션",
+          "term_full": "스태그플레이션",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 20,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_369",
+          "term": "경기순환",
+          "term_full": "경기순환",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 21,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_1703",
+          "term": "실업률",
+          "term_full": "실업률",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 22,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_540",
+          "term": "구조적 실업",
+          "term_full": "구조적 실업",
+          "other_stages": []
+        },
+        {
+          "order": 23,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_2863",
+          "term": "필립스곡선",
+          "term_full": "필립스곡선",
+          "other_stages": []
+        },
+        {
+          "order": 24,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_2162",
+          "term": "잠재성장률",
+          "term_full": "잠재성장률",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 25,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_735",
+          "term": "기준금리",
+          "term_full": "기준금리",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 26,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_2701",
+          "term": "통화정책",
+          "term_full": "통화정책",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 27,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_1784",
+          "term": "양적완화",
+          "term_full": "양적완화(QE: Quantitative Easing)",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 28,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_1998",
+          "term": "유동성 함정",
+          "term_full": "유동성 함정(Liquidity Trap)",
+          "other_stages": []
+        },
+        {
+          "order": 29,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_1631",
+          "term": "승수효과",
+          "term_full": "승수효과(Multiplier Effect)",
+          "other_stages": []
+        },
+        {
+          "order": 30,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_546",
+          "term": "구축효과",
+          "term_full": "구축효과(Crowd-out Effect)",
+          "other_stages": []
+        },
+        {
+          "order": 31,
+          "subcategory": "거시경제",
+          "concept_id": "sisa_2401",
+          "term": "지니계수",
+          "term_full": "지니계수",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 32,
+          "subcategory": "국제경제",
+          "concept_id": "sisa_1323",
+          "term": "비교우위",
+          "term_full": "비교우위(Comparative Advantage)",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 33,
+          "subcategory": "국제경제",
+          "concept_id": "sisa_1234",
+          "term": "보호무역주의",
+          "term_full": "보호무역주의",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 34,
+          "subcategory": "국제경제",
+          "concept_id": "sisa_104",
+          "term": "FTA",
+          "term_full": "FTA(Free Trade Agreement, 자유무역협정)",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 35,
+          "subcategory": "국제경제",
+          "concept_id": "sisa_590",
+          "term": "국제수지",
+          "term_full": "국제수지",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 36,
+          "subcategory": "국제경제",
+          "concept_id": "sisa_377",
+          "term": "경상수지",
+          "term_full": "경상수지",
+          "other_stages": []
+        },
+        {
+          "order": 37,
+          "subcategory": "국제경제",
+          "concept_id": "sisa_1214",
+          "term": "변동환율제도",
+          "term_full": "변동환율제도",
+          "other_stages": []
+        },
+        {
+          "order": 38,
+          "subcategory": "국제경제",
+          "concept_id": "sisa_2794",
+          "term": "평가절하/절상",
+          "term_full": "평가절하/절상",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 39,
+          "subcategory": "국제경제",
+          "concept_id": "sisa_144",
+          "term": "J커브 효과",
+          "term_full": "J커브 효과(J-curve Effect)",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 40,
+          "subcategory": "국제경제",
+          "concept_id": "sisa_519",
+          "term": "교역조건",
+          "term_full": "교역조건",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 41,
+          "subcategory": "경영전략·마케팅",
+          "concept_id": "sisa_10",
+          "term": "4Ps",
+          "term_full": "4Ps",
+          "other_stages": []
+        },
+        {
+          "order": 42,
+          "subcategory": "경영전략·마케팅",
+          "concept_id": "sisa_233",
+          "term": "SWOT분석",
+          "term_full": "SWOT분석",
+          "other_stages": []
+        },
+        {
+          "order": 43,
+          "subcategory": "경영전략·마케팅",
+          "concept_id": "sisa_2919",
+          "term": "핵심역량",
+          "term_full": "핵심역량",
+          "other_stages": []
+        },
+        {
+          "order": 44,
+          "subcategory": "경영전략·마케팅",
+          "concept_id": "sisa_1312",
+          "term": "블루오션",
+          "term_full": "블루오션(Blue Ocean)",
+          "other_stages": []
+        },
+        {
+          "order": 45,
+          "subcategory": "경영전략·마케팅",
+          "concept_id": "sisa_1964",
+          "term": "원가우위",
+          "term_full": "원가우위(cost leadership)",
+          "other_stages": []
+        },
+        {
+          "order": 46,
+          "subcategory": "경영전략·마케팅",
+          "concept_id": "sisa_610",
+          "term": "규모의 경제",
+          "term_full": "규모의 경제(Economies of Scale)",
+          "other_stages": [
+            "stage3"
+          ]
+        },
+        {
+          "order": 47,
+          "subcategory": "경영전략·마케팅",
+          "concept_id": "sisa_2082",
+          "term": "인수합병",
+          "term_full": "인수합병(Merger and Acquisition; M&A)",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 48,
+          "subcategory": "재무·회계",
+          "concept_id": "sisa_2187",
+          "term": "재무제표",
+          "term_full": "재무제표",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 49,
+          "subcategory": "재무·회계",
+          "concept_id": "sisa_899",
+          "term": "대차대조표",
+          "term_full": "대차대조표",
+          "other_stages": []
+        },
+        {
+          "order": 50,
+          "subcategory": "재무·회계",
+          "concept_id": "sisa_1848",
+          "term": "연결재무제표",
+          "term_full": "연결재무제표",
+          "other_stages": []
+        },
+        {
+          "order": 51,
+          "subcategory": "재무·회계",
+          "concept_id": "sisa_1869",
+          "term": "영업이익",
+          "term_full": "영업이익",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 52,
+          "subcategory": "재무·회계",
+          "concept_id": "sisa_1539",
+          "term": "손익분기점",
+          "term_full": "손익분기점",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 53,
+          "subcategory": "재무·회계",
+          "concept_id": "sisa_315",
+          "term": "감가상각",
+          "term_full": "감가상각",
+          "other_stages": []
+        },
+        {
+          "order": 54,
+          "subcategory": "재무·회계",
+          "concept_id": "sisa_82",
+          "term": "EBITDA",
+          "term_full": "EBITDA",
+          "other_stages": []
+        },
+        {
+          "order": 55,
+          "subcategory": "재무·회계",
+          "concept_id": "sisa_211",
+          "term": "ROE/ROI",
+          "term_full": "ROE/ROI",
+          "other_stages": []
+        },
+        {
+          "order": 56,
+          "subcategory": "재무·회계",
+          "concept_id": "sisa_177",
+          "term": "Net Present Value",
+          "term_full": "Net Present Value(순현재가치)",
+          "other_stages": []
+        },
+        {
+          "order": 57,
+          "subcategory": "조직·인사",
+          "concept_id": "sisa_2349",
+          "term": "주인-대리인 문제",
+          "term_full": "주인-대리인 문제(Principal-Agent Problem)",
+          "other_stages": []
+        },
+        {
+          "order": 58,
+          "subcategory": "조직·인사",
+          "concept_id": "sisa_729",
+          "term": "기업지배구조",
+          "term_full": "기업지배구조",
+          "other_stages": []
+        },
+        {
+          "order": 59,
+          "subcategory": "조직·인사",
+          "concept_id": "sisa_2112",
+          "term": "임금피크제",
+          "term_full": "임금피크제",
+          "other_stages": []
+        },
+        {
+          "order": 60,
+          "subcategory": "조직·인사",
+          "concept_id": "sisa_1613",
+          "term": "스톡옵션",
+          "term_full": "스톡옵션(Stock Option)",
+          "other_stages": []
+        },
+        {
+          "order": 61,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_1440",
+          "term": "서킷브레이커",
+          "term_full": "서킷브레이커",
+          "other_stages": []
+        },
+        {
+          "order": 62,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_1410",
+          "term": "상장지수펀드",
+          "term_full": "상장지수펀드(ETF: Exchange Traded Fund)",
+          "other_stages": [
+            "stage2"
+          ]
+        },
+        {
+          "order": 63,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_2859",
+          "term": "핀테크",
+          "term_full": "핀테크(FinTech)",
+          "other_stages": []
+        },
+        {
+          "order": 64,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_2519",
+          "term": "총부채원리금상환비율",
+          "term_full": "총부채원리금상환비율(DSR: debt service ratio)",
+          "other_stages": [
+            "stage2"
+          ]
+        },
+        {
+          "order": 65,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_11",
+          "term": "4차 산업혁명",
+          "term_full": "4차 산업혁명(Fourth Industrial Revolution)",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 66,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_1310",
+          "term": "블록체인",
+          "term_full": "블록체인(Block Chain)",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 67,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_531",
+          "term": "구독경제",
+          "term_full": "구독경제",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 68,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_2656",
+          "term": "탄소배출권거래제",
+          "term_full": "탄소배출권거래제",
+          "other_stages": []
+        },
+        {
+          "order": 69,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_1001",
+          "term": "리쇼어링",
+          "term_full": "리쇼어링(Reshoring)",
+          "other_stages": [
+            "stage4"
+          ]
+        },
+        {
+          "order": 70,
+          "subcategory": "시사·트렌드",
+          "concept_id": "sisa_2309",
+          "term": "젠트리피케이션",
+          "term_full": "젠트리피케이션(Gentrification)",
+          "other_stages": [
+            "stage1"
+          ]
+        }
+      ]
+    }
+  ]
+}
