@@ -10,4 +10,4 @@ sentence-transformers==6.1.0
 numpy>=1.26
 kiwipiepy>=0.20
 # PostgreSQL(Supabase) 드라이버
-psycopg[binary]>=3.2
+psycopg[binary]
