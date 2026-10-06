@@ -1,0 +1,36 @@
+{
+  "session_id": "session-example-1",
+  "user_id": "00000000-0000-0000-0000-000000000001",
+  "status": "completed",
+  "quiz_status": "pending",
+  "concept": {
+    "concept_id": "sisa_1281",
+    "term": "분업/특화",
+    "stage_id": "stage1",
+    "status": "in_progress",
+    "attempt": 1,
+    "definition": "생산 과정을 나누고 각자가 특정 업무에 집중하는 방식이다."
+  },
+  "turns": [
+    {
+      "question": "분업/특화에 대해 알려줘",
+      "answer": "분업은 일을 나누고 특화는 잘하는 일에 집중하는 것이오.",
+      "is_related": true,
+      "sources": [
+        {
+          "concept_id": "sisa_1281",
+          "collection": "sisa_terms",
+          "label": "시사경제용어사전"
+        }
+      ],
+      "created_at": "2026-10-06T03:00:00Z"
+    }
+  ],
+  "mentioned_concepts": [],
+  "reference_chunk_ids": ["sisa_1281"],
+  "completed_at": "2026-10-06T03:01:00Z",
+  "quiz": {
+    "quiz_set_id": "quiz-set-example-1",
+    "status": "pending"
+  }
+}

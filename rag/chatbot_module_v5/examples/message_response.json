@@ -1,0 +1,33 @@
+{
+  "answer": "워킹푸어는 일을 하지만 소득이 충분하지 않아 생활의 어려움을 겪는 사람을 뜻하오.",
+  "session_id": null,
+  "session_started": false,
+  "concept": null,
+  "is_related": false,
+  "band": "high",
+  "top_score": 0.72,
+  "sources": [
+    {
+      "concept_id": "sisa_1963",
+      "term": "워킹푸어",
+      "score": 0.72,
+      "collection": "sisa_terms",
+      "label": "시사경제용어사전"
+    }
+  ],
+  "display_sources": [
+    {
+      "concept_id": "sisa_1963",
+      "term": "워킹푸어",
+      "score": 0.72,
+      "collection": "sisa_terms",
+      "label": "시사경제용어사전"
+    }
+  ],
+  "message_id": "message-example-1",
+  "notice": "워킹푸어는 이번 스테이지에서 배우는 개념이오. 학습으로 남기려면 아래 버튼을 눌러 시작해 보시오.",
+  "suggested_concept": {
+    "concept_id": "sisa_1963",
+    "term": "워킹푸어"
+  }
+}
