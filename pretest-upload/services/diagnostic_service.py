@@ -1,6 +1,7 @@
 import copy
 import logging
 import threading
+import time
 from collections import Counter
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -17,7 +18,7 @@ logger = logging.getLogger("diagnostics")
 _service: "DiagnosticService | None" = None
 _service_lock = threading.Lock()
 # 생성 중 서버가 종료되어도 조회 시 무한 processing 상태를 해소한다.
-REPORT_DEADLINE_SECONDS = 300
+REPORT_DEADLINE_SECONDS = 30
 
 
 def utc_now_iso() -> str:
@@ -87,20 +88,32 @@ class DiagnosticService:
 
     def generate_report(self, attempt_id: str, user_id: str) -> None:
         """라우터가 최초 접수에만 실행. 답안·채점 데이터는 이미 저장되어 있다."""
+        started = time.perf_counter()
         try:
             attempt = self._repository.get_attempt(attempt_id, user_id)
             if not attempt or attempt["status"] != "processing":
                 return
             graded = {key: attempt[key] for key in ("summary", "domain_scores", "question_results", "vulnerabilities")}
-            llm = generate_llm_report(graded)
+            elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(attempt["submitted_at"].replace("Z", "+00:00"))).total_seconds()
+            if elapsed >= REPORT_DEADLINE_SECONDS:
+                from services.report_parallel import ReportDeadlineError
+                raise ReportDeadlineError("리포트 처리 대기 시간이 목표를 초과했소.")
+            llm = generate_llm_report(graded, budget=min(28.0, REPORT_DEADLINE_SECONDS - elapsed))
+            if (datetime.now(timezone.utc) - datetime.fromisoformat(attempt["submitted_at"].replace("Z", "+00:00"))).total_seconds() >= REPORT_DEADLINE_SECONDS:
+                from services.report_parallel import ReportDeadlineError
+                raise ReportDeadlineError("리포트 생성 목표 시간을 초과했소.")
             # 조회의 기준은 개별 컬럼. report는 이전 데이터 호환용으로 유지한다.
             self._repository.update_attempt(attempt_id, user_id, "processing", {
                 "status": "completed", "llm_report": llm.model_dump(),
                 "error": None, "updated_at": utc_now_iso(),
             })
-        except Exception:
+        except Exception as exc:
+            from services.report_parallel import ReportDeadlineError
             logger.exception("리포트 작업 실패: diagnostic_id=%s", attempt_id)
-            self._fail(attempt_id, user_id, "REPORT_GENERATION_FAILED", "리포트를 생성하지 못했습니다. 채점 결과는 저장되어 있습니다.")
+            timed_out = isinstance(exc, ReportDeadlineError)
+            self._fail(attempt_id, user_id, "REPORT_GENERATION_TIMEOUT" if timed_out else "REPORT_GENERATION_FAILED", "리포트 생성 목표 시간을 초과했소. 채점 결과는 보존되어 있소." if timed_out else "리포트를 생성하지 못했소. 채점 결과는 보존되어 있소.")
+        finally:
+            logger.info("report_service_total diagnostic_id=%s seconds=%.4f", attempt_id, time.perf_counter() - started)
 
     def _fail(self, attempt_id: str, user_id: str, code: str, message: str) -> None:
         try:
