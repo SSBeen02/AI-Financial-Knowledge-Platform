@@ -171,12 +171,13 @@ Qdrant 실제 연결 테스트는 `.env`에 연결 정보가 있을 때 실행�
 | `QDRANT_API_KEY` | 필수 | 빈 값 | Qdrant Cloud API 키 |
 | `QDRANT_COLLECTION` | 선택 | `sisa_terms` | 기본 개념 컬렉션. 기본 검색 프로필의 컬렉션명도 함께 바뀐다. |
 | `DENSE_MODEL` | 선택 | `nlpai-lab/KURE-v1` | 프로세스 시작 시 한 번 로드하는 Dense 임베딩 모델 |
-| `LLM_PROVIDER` | 선택 | `openai` | `openai` 또는 `fake`. `fake`는 외부 호출 없이 고정 답변을 반환한다. |
-| `LLM_MODEL` | 조건부 필수 | 없음 | `LLM_PROVIDER=openai`일 때 필수인 답변 모델. `fake`에서는 생략한다. |
-| `LLM_API_KEY` | 조건부 필수 | 빈 값 | `LLM_PROVIDER=openai`일 때 필요한 OpenAI API 키. `fake`에서는 생략한다. |
+| `LLM_PROVIDER` | 선택 | `openai` | `openai`, `upstage`, `fake` 중 하나. `fake`는 외부 호출 없이 고정 답변을 반환한다. |
+| `LLM_MODEL` | 조건부 필수 | 없음 | `openai`와 `upstage`에서 필수인 답변 모델 ID. `fake`에서는 생략한다. |
+| `LLM_API_KEY` | 조건부 필수 | 빈 값 | 선택한 실제 LLM 제공자의 API 키. `fake`에서는 생략한다. |
+| `LLM_BASE_URL` | 선택 | `https://api.upstage.ai/v1` | `upstage`에서 OpenAI 호환 클라이언트에 지정하는 API 기준 URL. `openai`와 `fake`에서는 사용하지 않는다. |
 | `LLM_RELEVANCE_MODEL` | 선택 | 빈 값 | 관련성 판정 모델. 비우면 `LLM_MODEL`을 사용한다. |
-| `LLM_REASONING_EFFORT` | 선택 | 빈 값 | 비우면 요청 파라미터를 생략한다. 모델이 지원할 때만 `low` 등을 지정한다. |
-| `LLM_MAX_OUTPUT_TOKENS` | 선택 | `1200` | 답변 생성의 최대 출력 토큰 수 |
+| `LLM_REASONING_EFFORT` | 선택 | 빈 값 | 비우면 요청 파라미터를 생략한다. Upstage에서는 값이 있을 때 Chat Completions 최상위 `reasoning_effort`로 전달한다. |
+| `LLM_MAX_OUTPUT_TOKENS` | 선택 | `1200` | 답변 생성의 최대 출력 토큰 수. Upstage Chat Completions에는 `max_tokens`로 전달한다. |
 | `LLM_TEMPERATURE` | 선택 | `0.7` | 답변 생성의 무작위성(0~2). 지원 모델에만 보낸다. `reasoning.effort`가 `none`이 아니거나 지원 여부가 불명확한 추론 모델에는 자동으로 생략하며, 관련성 yes/no 판정에도 사용하지 않는다. |
 | `CHAT_TONE` | 선택 | `hao` | `hao`는 읽기 쉬운 학당 훈장 하오체, `modern`은 현대 해요체. 답변과 범위 밖·재학습·퀴즈 대기 안내에 함께 적용한다. |
 | `ANSWER_KNOWLEDGE_MODE` | 선택 | `dictionary_plus` | `dictionary_only`는 사전 중심 방식, `dictionary_plus`는 핵심 정의를 지키며 일반 경제 상식을 보충, `free`는 사전을 참고하되 핵심 정의와 충돌하지 않게 자유 설명한다. |
@@ -196,6 +197,23 @@ Qdrant 실제 연결 테스트는 `.env`에 연결 정보가 있을 때 실행�
 
 `LLM_MODEL`에는 계정에서 실제 사용할 수 있는 모델을 지정한다. 모델 지원 여부는
 [OpenAI 모델 카탈로그](https://developers.openai.com/api/docs/models)에서 확인한다.
+
+Upstage를 사용할 때는 개인 `.env`에서 다음처럼 제공자와 모델을 바꾼다. `LLM_MODEL`은 Upstage에서
+현재 계정이 사용할 수 있는 모델 ID로 교체하고 API 키 값은 문서나 Git에 남기지 않는다.
+
+```dotenv
+LLM_PROVIDER=upstage
+LLM_BASE_URL=https://api.upstage.ai/v1
+LLM_MODEL=<UPSTAGE_MODEL_ID>
+LLM_RELEVANCE_MODEL=
+LLM_API_KEY=
+```
+
+Upstage 어댑터는 답변 생성, SSE 스트리밍, 관련성 판정을 모두 OpenAI 호환 Chat Completions API로
+호출한다. `LLM_REASONING_EFFORT`가 비어 있지 않으면 최상위 `reasoning_effort`로 보내고
+`temperature`는 생략한다. 값이 비어 있을 때만 답변 생성 요청에 `LLM_TEMPERATURE`를 보내며,
+관련성 yes/no 판정에는 어느 경우에도 `temperature`를 보내지 않는다. OpenAI 제공자는 기존 Responses
+API와 모델별 temperature 지원 규칙을 그대로 사용한다.
 
 이 변경 전에는 `temperature` 설정이 없어서 OpenAI 요청에서 파라미터를 생략했다. 현재 기본 설정값은
 `0.7`이지만 실제 전달 여부는 모델과 추론 설정에 따라 달라진다. OpenAI Responses API의 허용 범위는

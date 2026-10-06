@@ -32,6 +32,7 @@ SEARCH_PROFILES: dict[str, SearchProfile] = {
 logger = logging.getLogger(__name__)
 
 AnswerKnowledgeMode = Literal["dictionary_only", "dictionary_plus", "free"]
+DEFAULT_UPSTAGE_BASE_URL = "https://api.upstage.ai/v1"
 
 
 class Settings(BaseSettings):
@@ -50,6 +51,7 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"
     llm_model: str = ""
     llm_api_key: str = Field(default="", repr=False)
+    llm_base_url: str = DEFAULT_UPSTAGE_BASE_URL
     llm_relevance_model: str = ""
     llm_reasoning_effort: str = ""
     llm_max_output_tokens: int = Field(default=1200, ge=1)
@@ -77,11 +79,16 @@ class Settings(BaseSettings):
     def _normalize_llm_provider(cls, value: str) -> str:
         return value.strip().casefold()
 
+    @field_validator("llm_base_url")
+    @classmethod
+    def _normalize_llm_base_url(cls, value: str) -> str:
+        return value.strip() or DEFAULT_UPSTAGE_BASE_URL
+
     @model_validator(mode="after")
     def _check_bands(self) -> Settings:
         if self.band_low < 0 or self.band_high < 0 or self.band_low >= self.band_high:
             raise ValueError("BAND_LOW는 0 이상이고 BAND_HIGH보다 작아야 합니다.")
-        if self.llm_provider == "openai" and not self.llm_model:
+        if self.llm_provider in {"openai", "upstage"} and not self.llm_model:
             raise ValueError("LLM_MODEL 환경변수를 지정해야 합니다.")
         return self
 

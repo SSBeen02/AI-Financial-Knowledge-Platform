@@ -403,7 +403,8 @@ README_chatbot.md  # 통합 방법, 환경변수, API 예시
 | `QDRANT_API_KEY` | (비밀) |
 | `QDRANT_COLLECTION` | `sisa_terms` |
 | `DENSE_MODEL` | `nlpai-lab/KURE-v1` |
-| `LLM_PROVIDER` / `LLM_MODEL` / `LLM_API_KEY` | 기본 `openai`. `fake`는 모델·키 없이 고정 개발 답변 |
+| `LLM_PROVIDER` / `LLM_MODEL` / `LLM_API_KEY` | 기본 `openai`. `upstage`는 OpenAI 호환 Chat Completions, `fake`는 모델·키 없이 고정 개발 답변 |
+| `LLM_BASE_URL` | Upstage API 기준 URL. 기본 `https://api.upstage.ai/v1` |
 | `LLM_REASONING_EFFORT` | 빈 값이면 파라미터 생략. 모델이 지원할 때만 `low` 등 지정 |
 | `LLM_MAX_OUTPUT_TOKENS` | 답변 최대 출력 토큰 수 |
 | `LLM_TEMPERATURE` | 기본 `0.7`, 범위 0~2. 답변 생성 모델이 지원할 때만 전달하고 추론 강도가 `none`이 아니면 생략 |
@@ -475,7 +476,7 @@ install_learning_error_handlers(app)
 
 ## 10. 확정 사항 (구현 전 질문에 대한 답변, 위 내용과 충돌하면 이 절이 우선)
 
-1. **LLM**: OpenAI API 사용. 모델명은 환경변수 `LLM_MODEL` 로 지정(경량 모델, 기본값은 현재 사용 가능한 OpenAI 경량 모델로 README에 명시). 관련성 판정은 `LLM_RELEVANCE_MODEL` (미지정 시 `LLM_MODEL` 과 동일). `llm.py` 는 제공사 교체가 가능한 어댑터 구조 유지.
+1. **LLM**: `LLM_PROVIDER`는 `openai`(Responses API), `upstage`(OpenAI 호환 Chat Completions API), `fake`를 지원한다. 실제 제공자의 모델명은 환경변수 `LLM_MODEL`로 지정하고 관련성 판정은 `LLM_RELEVANCE_MODEL`(미지정 시 `LLM_MODEL`과 동일)을 쓴다. `llm.py`는 제공사 교체가 가능한 어댑터 구조를 유지한다.
 2. **stages.json 경로**: 파일을 `data/stages.json` 으로 옮기고 설정 기본값도 그대로 둔다.
 3. **별칭**: 요청마다 조회하지 않는다. **서버 시작 시 1회** stages.json의 모든 concept_id(고유 211개)에 대해 Qdrant payload(`term`, `aliases`, `text`)를 가져와 메모리에 캐시한다. Qdrant 포인트 ID는 `uuid5(NAMESPACE_URL, concept_id)`이므로 ID로 직접 조회 가능하다. 코드는 `concept_id`를 기준으로 하되 기존 Qdrant payload의 `doc_id` 읽기·필터 fallback을 유지한다.
 4. **메시지 저장**: user/assistant **두 행**으로 저장. 응답의 `message_id` 는 assistant 행. `is_related`, `band`, `top_score`, `sources`, `latency_ms` 는 assistant 행에 저장. 학습 맥락은 user→assistant 쌍으로 묶어 만든다.
@@ -492,7 +493,7 @@ install_learning_error_handlers(app)
 11. **Stage 5 학습**: Stage 1~4가 모두 통과되면 상태 기반 계산 결과가 Stage 5가 된다. 겹치는 개념을 포함한 70개 전체를 심화 버전으로 다시 학습하며 상태, `in_progress` 잠금, 최신 퀴즈, attempt는 모두 `(concept_id, stage_id)` 기준이다. Stage 5까지 모두 통과해도 현재 스테이지 값은 Stage 5를 유지한다. Stage 5 프롬프트는 기초를 안다고 보고 TESAT·매경TEST 출제 포인트와 관련 개념 연결을 강조한다. 학습 관리는 Stage 5 완료 이벤트를 기록하고 캐릭터 승급·보상 판정은 게임 모듈이 담당한다.
 12. **재학습 첫 메시지 관련성**: 재학습 모드에서는 잠긴 `concept_id`가 포함된 첫 요청으로 새 세션을 시작하지만, `is_related`는 일반 관련성 규칙으로 판정한다. "첫 메시지는 항상 true" 규칙은 `keyword`/`detected` 시작에만 적용한다.
 13. **LLM 필수 설정**: `LLM_MODEL`은 코드 기본값을 두지 않으며, 미지정 시 시작 단계에서 명확한 설정 오류로 실패한다. 권장 모델과 확인 방법은 README에만 기록한다.
-14. **추론 강도**: `LLM_REASONING_EFFORT`의 코드 기본값은 빈 값이며, 빈 값이면 OpenAI 요청에서 `reasoning` 파라미터를 생략한다. `.env.example`에는 `low` 예시와 모델 미지원 시 비우라는 주석을 둔다.
+14. **추론 강도**: `LLM_REASONING_EFFORT`의 코드 기본값은 빈 값이다. 빈 값이면 OpenAI의 `reasoning`과 Upstage Chat Completions의 최상위 `reasoning_effort`를 모두 생략한다. `.env.example`에는 `low` 예시와 모델 미지원 시 비우라는 주석을 둔다.
 15. **low band 근거**: `band=low`이면 응답 `sources`는 빈 배열이다. `band`와 `top_score`는 유지하며, 검색 결과는 답변 근거로 사용하지 않는다.
 16. **외부 호출 실패의 원자성**: 완성된 user/assistant 쌍만 저장한다. Qdrant 또는 LLM 호출 실패는 HTTP 502로 반환하고 메시지를 저장하지 않는다. 새 세션 생성과 `mark_in_progress()`는 LLM 답변 생성이 성공한 뒤에만 실행해 외부 호출 실패 시 세션·개념 상태가 바뀌지 않게 한다.
 17. **화면 표시용 출처**: 메시지 응답에 `display_sources`를 추가한다. `sources`는 LLM에 전달한 전체 근거로 유지하고, 화면 복원을 위해 `display_sources`도 별도 저장한다. `band=low`이면 `display_sources=[]`이며, 그 외에는 현재 세션 개념 문서가 검색됐으면 항상 포함하고 다른 문서는 `DISPLAY_SOURCE_MIN_SCORE`(기본 `0.60`) 이상만 포함한다.
@@ -508,7 +509,7 @@ install_learning_error_handlers(app)
 27. **현재 스테이지 계산**: `ConceptStatusService.get_current_stage()`는 `get_statuses()`를 이용해 `not_started` 또는 `in_progress`가 남은 가장 낮은 스테이지를 반환하는 기본 구현을 가진다. 순서는 Stage 1→2→3→4→5이며, Stage 1~4가 모두 `passed`면 Stage 5, Stage 5까지 모두 `passed`여도 Stage 5다.
 28. **서비스 말투**: `CHAT_TONE`은 `hao`(기본) 또는 `modern`이다. `hao`는 친절한 학당 훈장의 읽기 쉬운 하오체를 사용하되 경제 용어·숫자·제도 이름과 현대 생활 예시는 현대 표현을 유지한다. `modern`은 해요체를 사용한다. 모든 답변과 범위 밖·재학습·퀴즈 대기 안내는 선택한 말투를 일관되게 사용한다.
 29. **설명 재구성**: 사실·숫자·정의는 사전 근거를 따르되 사전 문장을 그대로 옮기지 않는다. 핵심 의미, 중요성, 학습자 생활과의 연결 순서로 자유롭게 설명하며 세부 숫자·유래·인물은 질문이 요구할 때만 쓴다. 일반 배경 지식은 허용하되 근거와 다른 사실·숫자를 만들지 않는다. 같은 세션의 기존 설명은 짧게 언급하고 원인·영향·유사 개념과의 차이·적용 상황 가운데 새로운 각도를 택하며 숫자·유래·예시를 반복하지 않는다.
-30. **temperature**: `LLM_TEMPERATURE`의 코드 기본값은 `0.7`이고 허용 범위는 0~2다. 답변 생성에만 적용하며 관련성 yes/no 판정에는 적용하지 않는다. 모델이 지원하지 않거나 `LLM_REASONING_EFFORT`가 `none`이 아니면 OpenAI 요청에서 파라미터를 생략한다. GPT-5 이상 추론 모델은 `reasoning.effort=none`을 명시한 경우에만 전달하고 `o1`/`o3`/`o4` 계열에는 전달하지 않는다.
+30. **temperature**: `LLM_TEMPERATURE`의 코드 기본값은 `0.7`이고 허용 범위는 0~2다. 답변 생성에만 적용하며 관련성 yes/no 판정에는 적용하지 않는다. OpenAI는 모델이 지원하지 않거나 `LLM_REASONING_EFFORT`가 `none`이 아니면 생략하고, GPT-5 이상 추론 모델은 `reasoning.effort=none`을 명시한 경우에만 전달하며 `o1`/`o3`/`o4` 계열에는 전달하지 않는다. Upstage는 `LLM_REASONING_EFFORT` 값이 하나라도 있으면 생략하고 빈 값일 때만 전달한다.
 31. **학습 맥락 전체 대화**: 완료 맥락의 `turns`에는 해당 세션의 완성된 user/assistant 쌍을 관련 여부와 무관하게 모두 넣고 각 turn에 `is_related`를 표시한다. `mentioned_concepts`도 세션 전체 질문에서 수집한다. free 메시지는 제외하며 관련 turn이 하나도 없으면 완료 400을 유지한다. 상태 갱신 대상은 처음 개념의 `(concept_id, stage_id)` 하나뿐이다.
 32. **메시지 안내 분리**: 비스트리밍 응답과 SSE `done`에 nullable `notice`를 둔다. 다른 스테이지·이미 통과·extra·excluded·low band 안내는 서버가 `CHAT_TONE`에 맞게 생성하며 LLM 본문에 넣지 않는다. extra/excluded는 검색 1위의 term 또는 aliases가 질문에 실제 포함된 경우만 적용한다. 세션 중 다른 개념 질문에도 적용하되 세션과 상태는 바꾸지 않는다. `/learning/current.complete_hint`는 active 세션이 없을 때 학습 시작 안내를 제공한다.
 33. **학습 진행률**: `GET /learning/progress`와 `/learning/current.progress`를 제공한다. 스테이지별 `passed`·`in_progress`·`not_started` 수를 `(concept_id, stage_id)`로 집계하고 퍼센트는 `passed` 수만 사용해 소수점 이하를 버린다. Stage 5는 겹치는 개념을 포함한 70개를 별도로 센다.
@@ -530,3 +531,4 @@ install_learning_error_handlers(app)
 49. **10/06 대화 복원**: `/learning/history`는 `limit`만 받고 각 메시지에 `session_id`, `attempt`, `concept_id`, `start_type`을 반환한다. 재학습 화면은 시도 경계에 구분선을 표시하되 LLM 대화 맥락과 퀴즈 학습 맥락은 변경하지 않는다. `learning_sessions` DB 컬럼은 `stage_id`를 사용한다.
 50. **팀원 개발 환경**: `LLM_PROVIDER=fake`는 OpenAI 모델·키 없이 고정 답변을 반환한다. 브라우저 origin은 `CORS_ALLOW_ORIGINS`로 제한하며, Qdrant 표준 payload에는 누락 시 `source=시사경제용어사전`을 보강한다.
 51. **응답 스테이지 필드**: API 응답의 스테이지 식별자는 모두 `stage_id`를 사용한다. 개념 목록은 `stage_id`와 `stage_name_ko`, 메시지 개념·세션·학습 맥락 개념은 `stage_id`를 반환한다. 기존 SQLite에 저장된 학습 맥락의 `concept.stage`는 읽기 호환만 유지하고 새 응답과 저장 payload는 `concept.stage_id`를 사용한다. 게임 이벤트 조회는 4.7의 평면 객체를 반환하며 DB의 JSON payload 저장 구조는 유지한다.
+52. **Upstage 제공자**: `LLM_PROVIDER=upstage`는 `OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)` 클라이언트의 `chat.completions.create`만 사용하고 Responses API는 사용하지 않는다. 답변·스트림·관련성 판정 모두 같은 경로를 쓰며 출력 제한은 `LLM_MAX_OUTPUT_TOKENS`를 `max_tokens`로 전달한다. 스트림은 `choices[0].delta.content`만 토큰으로 변환한다.
