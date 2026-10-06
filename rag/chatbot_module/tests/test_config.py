@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from chatbot.config import SEARCH_PROFILES, Settings
+from chatbot.config import SEARCH_PROFILES, Settings, get_settings
 
 
 def test_defaults(clean_env: None) -> None:
@@ -16,16 +16,68 @@ def test_defaults(clean_env: None) -> None:
     assert settings.display_source_min_score == 0.60
     assert settings.stages_json_path.as_posix() == "data/stages.json"
     assert settings.chat_db_url == "sqlite:///chat.db"
-    assert settings.dev_use_local_status is False
-    assert settings.dev_simulate_quiz_status is False
+    assert settings.db_auto_create is False
+    assert settings.dev_enable_tools is False
+    assert settings.dev_simulate_quiz_generation_failure is False
     assert settings.relevance_model == "gpt-test"
     assert settings.llm_reasoning_effort == ""
     assert settings.llm_max_output_tokens == 1200
+    assert settings.llm_temperature == 0.7
+    assert settings.chat_tone == "hao"
+    assert settings.answer_knowledge_mode == "dictionary_plus"
+    assert settings.free_question_auto_start is False
+    assert settings.cors_origins == ["http://localhost:5173", "http://localhost:3000"]
+
+
+@pytest.mark.parametrize("temperature", [-0.01, 2.01])
+def test_llm_temperature_must_be_in_openai_range(
+    clean_env: None, temperature: float
+) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, llm_model="gpt-test", llm_temperature=temperature)
+
+
+def test_chat_tone_accepts_only_supported_values(clean_env: None) -> None:
+    assert Settings(_env_file=None, llm_model="gpt-test", chat_tone="modern").chat_tone == "modern"
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, llm_model="gpt-test", chat_tone="formal")
+
+
+def test_answer_knowledge_mode_accepts_only_supported_values(clean_env: None) -> None:
+    for mode in ("dictionary_only", "dictionary_plus", "free"):
+        assert (
+            Settings(
+                _env_file=None,
+                llm_model="gpt-test",
+                answer_knowledge_mode=mode,
+            ).answer_knowledge_mode
+            == mode
+        )
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            llm_model="gpt-test",
+            answer_knowledge_mode="anything",
+        )
 
 
 def test_llm_model_is_required(clean_env: None) -> None:
     with pytest.raises(ValidationError, match="LLM_MODEL"):
         Settings(_env_file=None)
+    fake = Settings(_env_file=None, llm_provider="fake")
+    assert fake.llm_model == ""
+
+
+def test_cors_origins_are_comma_separated_and_trimmed(clean_env: None) -> None:
+    settings = Settings(
+        _env_file=None,
+        llm_model="gpt-test",
+        cors_allow_origins=" http://localhost:5173, ,https://frontend.example ",
+    )
+    assert settings.cors_origins == [
+        "http://localhost:5173",
+        "https://frontend.example",
+    ]
 
 
 def test_relevance_model_falls_back_to_llm_model(clean_env: None) -> None:
@@ -36,11 +88,22 @@ def test_relevance_model_falls_back_to_llm_model(clean_env: None) -> None:
 
 
 def test_dev_flag_reads_environment(clean_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DEV_USE_LOCAL_STATUS", "true")
-    monkeypatch.setenv("DEV_SIMULATE_QUIZ_STATUS", "true")
+    monkeypatch.setenv("DEV_ENABLE_TOOLS", "true")
+    monkeypatch.setenv("DEV_SIMULATE_QUIZ_GENERATION_FAILURE", "true")
     settings = Settings(_env_file=None, llm_model="gpt-test")
-    assert settings.dev_use_local_status is True
-    assert settings.dev_simulate_quiz_status is True
+    assert settings.dev_enable_tools is True
+    assert settings.dev_simulate_quiz_generation_failure is True
+
+
+def test_legacy_dev_flag_logs_rename_warning(
+    clean_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    monkeypatch.setenv("DEV_USE_LOCAL_STATUS", "true")
+    monkeypatch.setenv("LLM_MODEL", "gpt-test")
+    get_settings()
+    assert "DEV_ENABLE_TOOLS로 바뀌었습니다" in caplog.text
 
 
 def test_secrets_are_hidden_from_repr(clean_env: None) -> None:

@@ -8,7 +8,7 @@ from chatbot.schemas import MessageIn, MessageResponse, QuizResultIn, SourceOut
 
 def test_source_omits_images_when_absent() -> None:
     dumped = SourceOut(
-        doc_id="sisa_1281",
+        concept_id="sisa_1281",
         term="분업/특화",
         score=0.71,
         collection="sisa_terms",
@@ -19,7 +19,7 @@ def test_source_omits_images_when_absent() -> None:
 
 def test_source_keeps_images_when_present() -> None:
     dumped = SourceOut(
-        doc_id="sisa_1281",
+        concept_id="sisa_1281",
         term="분업/특화",
         score=0.71,
         collection="sisa_terms",
@@ -40,7 +40,7 @@ def test_nested_source_omits_absent_images() -> None:
         top_score=0.2,
         sources=[
             SourceOut(
-                doc_id="sisa_1",
+                concept_id="sisa_1",
                 term="용어",
                 score=0.2,
                 collection="sisa_terms",
@@ -58,21 +58,26 @@ def test_message_rejects_user_id_and_blank_text() -> None:
         MessageIn.model_validate({"message": "알려줘", "user_id": "u1"})
     with pytest.raises(ValidationError):
         MessageIn(message="   ")
-    parsed = MessageIn(message="  알려줘  ", selected_doc_id="  ")
+    parsed = MessageIn(message="  알려줘  ", concept_id="  ")
     assert parsed.message == "알려줘"
-    assert parsed.selected_doc_id is None
+    assert parsed.concept_id is None
 
 
-def test_stage5_requires_selected_doc_id() -> None:
-    parsed = MessageIn(message="알려줘", selected_doc_id="sisa_1", stage="stage5")
-    assert parsed.stage == "stage5"
+def test_message_rejects_removed_stage_field() -> None:
     with pytest.raises(ValidationError):
-        MessageIn(message="알려줘", stage="stage5")
-    with pytest.raises(ValidationError):
-        MessageIn.model_validate({"message": "알려줘", "selected_doc_id": "sisa_1", "stage": "stage1"})
+        MessageIn.model_validate(
+            {"message": "알려줘", "concept_id": "sisa_1", "stage": "stage5"}
+        )
 
 
-def test_quiz_result_is_bool_only() -> None:
-    assert QuizResultIn.model_validate({"passed": True}).passed is True
+def test_quiz_result_uses_confirmed_quiz_contract() -> None:
+    payload = {
+        "submission_id": "submission-1",
+        "concept_id": "sisa_1281",
+        "stage_id": "stage1",
+        "correct_count": 2,
+        "passed": True,
+    }
+    assert QuizResultIn.model_validate(payload).passed is True
     with pytest.raises(ValidationError):
-        QuizResultIn.model_validate({"passed": True, "doc_id": "sisa_1281"})
+        QuizResultIn.model_validate({**payload, "session_id": "not-in-body"})

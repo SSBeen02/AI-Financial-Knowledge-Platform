@@ -43,9 +43,9 @@ class _Qdrant(Protocol):
     def scroll(self, collection_name: str, **kwargs: Any) -> tuple[list[Any], Any]: ...
 
 
-def concept_point_id(doc_id: str) -> PointId:
-    """Qdrant 포인트 ID. uuid5(NAMESPACE_URL, doc_id)."""
-    return str(uuid.uuid5(uuid.NAMESPACE_URL, doc_id))
+def concept_point_id(concept_id: str) -> PointId:
+    """Qdrant 포인트 ID. 기존 적재 규칙과 같은 concept ID 기반 UUID다."""
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, concept_id))
 
 
 def judge_band(score: float, *, high: float, low: float) -> Band:
@@ -58,7 +58,7 @@ def judge_band(score: float, *, high: float, low: float) -> Band:
 
 @dataclass(frozen=True)
 class CachedConcept:
-    doc_id: str
+    concept_id: str
     term: str
     aliases: tuple[str, ...]
     text: str
@@ -67,7 +67,7 @@ class CachedConcept:
 
 @dataclass(frozen=True)
 class RetrievedDoc:
-    doc_id: str
+    concept_id: str
     term: str
     score: float
     collection: str
@@ -75,6 +75,7 @@ class RetrievedDoc:
     text: str
     images: tuple[str, ...] | None
     stages: tuple[str, ...]
+    aliases: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -88,12 +89,12 @@ class RetrievalResult:
 class ConceptCache:
     """서버 시작 시 학습 개념 payload를 한 번 읽어 둔다."""
 
-    def __init__(self, client: _Qdrant, collection: str, doc_ids: Iterable[str]):
-        unique = list(dict.fromkeys(doc_ids))
+    def __init__(self, client: _Qdrant, collection: str, concept_ids: Iterable[str]):
+        unique = list(dict.fromkeys(concept_ids))
         self._docs = _load_concepts(client, collection, unique)
 
-    def get(self, doc_id: str) -> CachedConcept | None:
-        return self._docs.get(doc_id)
+    def get(self, concept_id: str) -> CachedConcept | None:
+        return self._docs.get(concept_id)
 
     def values(self) -> tuple[CachedConcept, ...]:
         return tuple(self._docs.values())
@@ -168,7 +169,7 @@ class Retriever:
 
 def to_source_out(doc: RetrievedDoc) -> SourceOut:
     return SourceOut(
-        doc_id=doc.doc_id,
+        concept_id=doc.concept_id,
         term=doc.term,
         score=doc.score,
         collection=doc.collection,
@@ -177,43 +178,49 @@ def to_source_out(doc: RetrievedDoc) -> SourceOut:
     )
 
 
-def _load_concepts(client: _Qdrant, collection: str, doc_ids: list[str]) -> dict[str, CachedConcept]:
+def _load_concepts(client: _Qdrant, collection: str, concept_ids: list[str]) -> dict[str, CachedConcept]:
     found: dict[str, CachedConcept] = {}
-    by_point = {concept_point_id(doc_id): doc_id for doc_id in doc_ids}
-    for chunk in _chunks(doc_ids, _BATCH):
+    by_point = {concept_point_id(concept_id): concept_id for concept_id in concept_ids}
+    for chunk in _chunks(concept_ids, _BATCH):
         points = client.retrieve(
             collection_name=collection,
-            ids=[concept_point_id(doc_id) for doc_id in chunk],
+            ids=[concept_point_id(concept_id) for concept_id in chunk],
             with_payload=True,
             with_vectors=False,
         )
         for point in points:
             concept = _cached(point, by_point)
             if concept is not None:
-                found[concept.doc_id] = concept
-    missing = [doc_id for doc_id in doc_ids if doc_id not in found]
+                found[concept.concept_id] = concept
+    missing = [concept_id for concept_id in concept_ids if concept_id not in found]
     if missing:
-        _fill_by_doc_id(client, collection, missing, found)
-    still_missing = [doc_id for doc_id in doc_ids if doc_id not in found]
+        _fill_by_concept_id(client, collection, missing, found)
+    still_missing = [concept_id for concept_id in concept_ids if concept_id not in found]
     if still_missing:
         sample = ", ".join(still_missing[:5])
         raise ConceptCacheError(f"개념 문서를 찾지 못했습니다: {len(still_missing)}건 ({sample})")
     return found
 
 
-def _fill_by_doc_id(
+def _fill_by_concept_id(
     client: _Qdrant,
     collection: str,
-    doc_ids: list[str],
+    concept_ids: list[str],
     found: dict[str, CachedConcept],
 ) -> None:
     from qdrant_client import models
 
-    for chunk in _chunks(doc_ids, _BATCH):
+    for chunk in _chunks(concept_ids, _BATCH):
         points, _offset = client.scroll(
             collection_name=collection,
             scroll_filter=models.Filter(
-                must=[models.FieldCondition(key="doc_id", match=models.MatchAny(any=chunk))]
+                should=[
+                    models.FieldCondition(
+                        key="concept_id", match=models.MatchAny(any=chunk)
+                    ),
+                    # 기존 Qdrant 컬렉션의 payload는 doc_id를 사용한다.
+                    models.FieldCondition(key="doc_id", match=models.MatchAny(any=chunk)),
+                ]
             ),
             limit=len(chunk),
             with_payload=True,
@@ -221,20 +228,24 @@ def _fill_by_doc_id(
         )
         for point in points:
             concept = _cached(point, {})
-            if concept is not None and concept.doc_id in set(chunk):
-                found[concept.doc_id] = concept
+            if concept is not None and concept.concept_id in set(chunk):
+                found[concept.concept_id] = concept
 
 
 def _cached(point: Any, by_point: Mapping[str, str]) -> CachedConcept | None:
     payload = point.payload or {}
-    doc_id = payload.get("doc_id") or by_point.get(str(point.id))
-    if not isinstance(doc_id, str) or not doc_id:
+    concept_id = (
+        payload.get("concept_id")
+        or payload.get("doc_id")
+        or by_point.get(str(point.id))
+    )
+    if not isinstance(concept_id, str) or not concept_id:
         return None
     aliases = payload.get("aliases") or []
     if not isinstance(aliases, list):
         aliases = []
     return CachedConcept(
-        doc_id=doc_id,
+        concept_id=concept_id,
         term=str(payload.get("term") or ""),
         aliases=tuple(str(alias) for alias in aliases),
         text=str(payload.get("text") or ""),
@@ -245,7 +256,7 @@ def _cached(point: Any, by_point: Mapping[str, str]) -> CachedConcept | None:
 def _retrieved(point: Any, collection: str, label: str) -> RetrievedDoc:
     payload = point.payload or {}
     return RetrievedDoc(
-        doc_id=str(payload.get("doc_id") or ""),
+        concept_id=str(payload.get("concept_id") or payload.get("doc_id") or ""),
         term=str(payload.get("term") or ""),
         score=float(point.score),
         collection=collection,
@@ -253,6 +264,7 @@ def _retrieved(point: Any, collection: str, label: str) -> RetrievedDoc:
         text=str(payload.get("text") or ""),
         images=_images(payload),
         stages=_stages(payload),
+        aliases=_aliases(payload),
     )
 
 
@@ -270,6 +282,13 @@ def _stages(payload: Mapping[str, Any]) -> tuple[str, ...]:
     if not isinstance(stages, list):
         return ()
     return tuple(str(item) for item in stages)
+
+
+def _aliases(payload: Mapping[str, Any]) -> tuple[str, ...]:
+    aliases = payload.get("aliases") or []
+    if not isinstance(aliases, list):
+        return ()
+    return tuple(str(item) for item in aliases)
 
 
 def _chunks(items: Sequence[str], size: int) -> Iterable[Sequence[str]]:

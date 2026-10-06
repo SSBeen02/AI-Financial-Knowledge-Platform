@@ -1,8 +1,8 @@
 """stages.json 로딩과 개념 추천.
 
-추천은 현재 스테이지의 미학습 개념만 order 순으로 반환한다.
-재학습은 미통과 개념의 최신 퀴즈 상태가 failed일 때만 연다.
-퀴즈가 대기 중이거나, 통과로 기록됐지만 개념 상태가 아직 미통과이면 quiz_pending이다.
+추천은 현재 스테이지의 not_started 개념만 order 순으로 반환한다.
+재학습은 in_progress 개념의 최신 퀴즈 상태가 failed일 때만 연다.
+퀴즈가 대기 중이거나, 통과로 기록됐지만 개념 상태가 아직 in_progress이면 quiz_pending이다.
 """
 
 from __future__ import annotations
@@ -12,12 +12,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from chatbot.schemas import ChatMode, ConceptOut, ConceptsResponse, StageOut
+from chatbot.schemas import ChatMode, ConceptOut, ConceptsResponse
+from chatbot.tone import (
+    ChatTone,
+    quiz_generation_failed_notice,
+    quiz_pending_notice,
+    relearn_notice,
+)
 
-STATUS_UNLEARNED = "미학습"
-STATUS_FAILED = "미통과"
-STATUS_PASSED = "통과"
-SELECTABLE_STAGE = "stage5"
+STATUS_NOT_STARTED = "not_started"
+STATUS_IN_PROGRESS = "in_progress"
+STATUS_PASSED = "passed"
 
 
 class StageQueryError(Exception):
@@ -38,7 +43,7 @@ class ConceptCatalogError(Exception):
 
 @dataclass(frozen=True)
 class ConceptRef:
-    doc_id: str
+    concept_id: str
     term: str
     term_full: str
     subcategory: str
@@ -57,11 +62,11 @@ class StageRef:
 @dataclass(frozen=True)
 class StageCatalog:
     stages: dict[str, StageRef]
-    by_doc: dict[str, tuple[ConceptRef, ...]]
+    by_concept: dict[str, tuple[ConceptRef, ...]]
 
 
-class FailedConceptView(Protocol):
-    doc_id: str
+class InProgressConceptView(Protocol):
+    concept_id: str
     term: str
     stage: str
 
@@ -71,7 +76,7 @@ class ConceptStatusReader(Protocol):
 
     def get_statuses(self, user_id: str, stage: str) -> dict[str, str]: ...
 
-    def get_failed_concept(self, user_id: str) -> FailedConceptView | None: ...
+    def get_in_progress_concept(self, user_id: str, stage: str) -> InProgressConceptView | None: ...
 
 
 def load_stage_catalog(path: Path) -> StageCatalog:
@@ -79,7 +84,7 @@ def load_stage_catalog(path: Path) -> StageCatalog:
         raise FileNotFoundError(f"stages.json을 찾을 수 없습니다: {path}")
     data = json.loads(path.read_text(encoding="utf-8"))
     stages: dict[str, StageRef] = {}
-    by_doc: dict[str, list[ConceptRef]] = {}
+    by_concept: dict[str, list[ConceptRef]] = {}
     for raw_stage in data["stages"]:
         stage_id = raw_stage["id"]
         if stage_id in stages:
@@ -87,7 +92,7 @@ def load_stage_catalog(path: Path) -> StageCatalog:
         concepts: list[ConceptRef] = []
         for raw in raw_stage["concepts"]:
             ref = ConceptRef(
-                doc_id=raw["doc_id"],
+                concept_id=raw["concept_id"],
                 term=raw["term"],
                 term_full=raw["term_full"],
                 subcategory=raw["subcategory"],
@@ -96,7 +101,7 @@ def load_stage_catalog(path: Path) -> StageCatalog:
                 stage_name_ko=raw_stage["name_ko"],
             )
             concepts.append(ref)
-            by_doc.setdefault(ref.doc_id, []).append(ref)
+            by_concept.setdefault(ref.concept_id, []).append(ref)
         stages[stage_id] = StageRef(
             id=stage_id,
             name_ko=raw_stage["name_ko"],
@@ -104,7 +109,7 @@ def load_stage_catalog(path: Path) -> StageCatalog:
         )
     return StageCatalog(
         stages=stages,
-        by_doc={doc_id: tuple(refs) for doc_id, refs in by_doc.items()},
+        by_concept={concept_id: tuple(refs) for concept_id, refs in by_concept.items()},
     )
 
 
@@ -115,14 +120,14 @@ def recommend_concepts(
     *,
     offset: int,
     limit: int,
-    stage: str | None,
     screen_mode: ChatMode = "normal",
     locked_concept: ConceptRef | None = None,
+    chat_tone: ChatTone = "hao",
 ) -> ConceptsResponse:
-    """미학습 개념 페이지와 현재 모드의 잠금을 만든다."""
+    """not_started 개념 페이지와 현재 모드의 잠금을 만든다."""
     if offset < 0 or limit < 1:
         raise StageQueryError("offset은 0 이상, limit은 1 이상이어야 합니다.")
-    stage_id = _resolve_stage(stage, status_service.get_current_stage(user_id))
+    stage_id = status_service.get_current_stage(user_id)
     stage_ref = catalog.stages.get(stage_id)
     if stage_ref is None:
         raise ConceptCatalogError(f"알 수 없는 스테이지입니다: {stage_id}")
@@ -131,14 +136,19 @@ def recommend_concepts(
     unlearned = [
         concept
         for concept in sorted(stage_ref.concepts, key=lambda item: item.order)
-        if statuses.get(concept.doc_id, STATUS_UNLEARNED) == STATUS_UNLEARNED
+        if statuses.get(concept.concept_id, STATUS_NOT_STARTED) == STATUS_NOT_STARTED
     ]
     page = unlearned[offset : offset + limit]
     has_more = offset + limit < len(unlearned)
-    mode, locked, notice, suggested = lock_presentation(screen_mode, locked_concept)
+    mode, locked, notice, suggested = lock_presentation(
+        screen_mode,
+        locked_concept,
+        chat_tone=chat_tone,
+    )
     return ConceptsResponse(
         mode=mode,
-        stage=StageOut(id=stage_ref.id, name_ko=stage_ref.name_ko),
+        stage_id=stage_ref.id,  # type: ignore[arg-type]
+        stage_name_ko=stage_ref.name_ko,
         concepts=[_to_out(concept) for concept in page],
         next_offset=offset + limit if has_more else None,
         has_more=has_more,
@@ -147,44 +157,40 @@ def recommend_concepts(
         suggested_message=suggested,
     )
 
-
-def _resolve_stage(requested: str | None, current_stage: str) -> str:
-    if requested is None:
-        return current_stage
-    text = requested.strip()
-    if text != SELECTABLE_STAGE:
-        raise StageQueryError("stage는 stage5만 지정할 수 있습니다.")
-    return text
-
-
 def lock_presentation(
     mode: ChatMode,
     concept: ConceptRef | None,
+    *,
+    chat_tone: ChatTone = "hao",
 ) -> tuple[ChatMode, ConceptOut | None, str | None, str | None]:
     """재학습 안내와 퀴즈 대기 안내를 만든다. 모드 판정은 서비스가 한다."""
     if concept is None or mode == "normal":
         return "normal", None, None, None
     locked = _to_out(concept)
     if mode == "quiz_pending":
-        notice = f"현재 {concept.term} 개념의 퀴즈 결과를 기다리는 중입니다."
+        notice = quiz_pending_notice(concept.term, chat_tone)
         return "quiz_pending", locked, notice, None
-    notice = (
-        f"현재 미통과인 {concept.term} 개념 학습중입니다. "
-        "통과해야 다음 개념을 넘어갈 수 있습니다."
-    )
+    if mode == "quiz_generation_failed":
+        return (
+            "quiz_generation_failed",
+            locked,
+            quiz_generation_failed_notice(chat_tone),
+            None,
+        )
+    notice = relearn_notice(concept.term, chat_tone)
     return "relearn", locked, notice, f"{concept.term}에 대해 다시 알려줘"
 
 
-def find_concept(catalog: StageCatalog, doc_id: str, stage_id: str) -> ConceptRef:
-    for concept in catalog.by_doc.get(doc_id, ()):
+def find_concept(catalog: StageCatalog, concept_id: str, stage_id: str) -> ConceptRef:
+    for concept in catalog.by_concept.get(concept_id, ()):
         if concept.stage_id == stage_id:
             return concept
-    raise ConceptCatalogError(f"스테이지 {stage_id}에서 개념을 찾을 수 없습니다: {doc_id}")
+    raise ConceptCatalogError(f"스테이지 {stage_id}에서 개념을 찾을 수 없습니다: {concept_id}")
 
 
 def _to_out(concept: ConceptRef) -> ConceptOut:
     return ConceptOut(
-        doc_id=concept.doc_id,
+        concept_id=concept.concept_id,
         term=concept.term,
         term_full=concept.term_full,
         subcategory=concept.subcategory,
