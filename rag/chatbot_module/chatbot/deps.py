@@ -11,7 +11,7 @@ from typing import Any
 from chatbot.concepts import StageCatalog, load_stage_catalog
 from chatbot.config import Settings, get_settings
 from chatbot.integrations import ConceptStatusService, SqlConceptStatusService
-from chatbot.llm import FakeLLMAdapter, LLMAdapter, OpenAIAdapter
+from chatbot.llm import FakeLLMAdapter, LLMAdapter, OpenAIAdapter, UpstageAdapter
 from chatbot.retrieval import ConceptCache, Retriever
 from chatbot.quiz import DevQuizService, QuizService
 from chatbot.store import ChatStore, SqlChatStore
@@ -94,6 +94,8 @@ def get_llm_adapter() -> LLMAdapter:
         settings = get_cached_settings()
         if settings.llm_provider == "fake":
             _llm_adapter = FakeLLMAdapter(settings)
+        elif settings.llm_provider == "upstage":
+            _llm_adapter = UpstageAdapter(settings)
         else:
             _llm_adapter = OpenAIAdapter(settings)
     return _llm_adapter

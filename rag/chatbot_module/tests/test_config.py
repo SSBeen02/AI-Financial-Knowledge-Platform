@@ -11,6 +11,7 @@ def test_defaults(clean_env: None) -> None:
     assert settings.qdrant_collection == "sisa_terms"
     assert settings.dense_model == "nlpai-lab/KURE-v1"
     assert settings.llm_provider == "openai"
+    assert settings.llm_base_url == "https://api.upstage.ai/v1"
     assert settings.band_high == 0.50
     assert settings.band_low == 0.45
     assert settings.display_source_min_score == 0.60
@@ -66,6 +67,16 @@ def test_llm_model_is_required(clean_env: None) -> None:
         Settings(_env_file=None)
     fake = Settings(_env_file=None, llm_provider="fake")
     assert fake.llm_model == ""
+    with pytest.raises(ValidationError, match="LLM_MODEL"):
+        Settings(_env_file=None, llm_provider="upstage")
+    upstage = Settings(
+        _env_file=None,
+        llm_provider="UPSTAGE",
+        llm_model="solar-test",
+        llm_base_url=" ",
+    )
+    assert upstage.llm_provider == "upstage"
+    assert upstage.llm_base_url == "https://api.upstage.ai/v1"
 
 
 def test_cors_origins_are_comma_separated_and_trimmed(clean_env: None) -> None:

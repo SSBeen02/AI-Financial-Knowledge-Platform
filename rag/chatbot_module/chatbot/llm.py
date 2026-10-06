@@ -1,4 +1,4 @@
-"""교체 가능한 LLM 어댑터와 OpenAI Responses API 구현."""
+"""교체 가능한 LLM 어댑터와 제공자별 API 구현."""
 
 from __future__ import annotations
 
@@ -173,6 +173,129 @@ class OpenAIAdapter(LLMAdapter):
             model=model,
             reasoning_effort=self._settings.llm_reasoning_effort,
         ):
+            kwargs["temperature"] = self._settings.llm_temperature
+        return kwargs
+
+
+class UpstageAdapter(LLMAdapter):
+    """OpenAI SDK로 Upstage의 Chat Completions 호환 API를 사용한다."""
+
+    def __init__(self, settings: Settings, *, client: Any | None = None):
+        if settings.llm_provider.casefold() != "upstage":
+            raise LLMConfigurationError(f"지원하지 않는 LLM_PROVIDER입니다: {settings.llm_provider}")
+        if not settings.llm_api_key.strip():
+            raise LLMConfigurationError("LLM_API_KEY 환경변수를 지정해야 합니다.")
+        self._settings = settings
+        if client is None:
+            from openai import OpenAI
+
+            client = OpenAI(
+                api_key=settings.llm_api_key,
+                base_url=settings.llm_base_url,
+            )
+        self._client = client
+
+    def generate(self, prompt: Prompt) -> str:
+        return self._create(
+            model=self._settings.llm_model,
+            prompt=prompt,
+            max_tokens=self._settings.llm_max_output_tokens,
+            use_temperature=True,
+        )
+
+    def stream(self, prompt: Prompt) -> Iterator[str]:
+        kwargs = self._request_kwargs(
+            model=self._settings.llm_model,
+            prompt=prompt,
+            max_tokens=self._settings.llm_max_output_tokens,
+            use_temperature=True,
+        )
+        kwargs["stream"] = True
+        received_text = False
+        try:
+            stream = self._client.chat.completions.create(**kwargs)
+            for chunk in stream:
+                choices = getattr(chunk, "choices", None) or []
+                if not choices:
+                    continue
+                delta = getattr(choices[0], "delta", None)
+                text = getattr(delta, "content", None) if delta is not None else None
+                if text:
+                    received_text = True
+                    yield str(text)
+        except LLMError:
+            raise
+        except Exception as exc:
+            raise LLMError("LLM 스트리밍 호출에 실패했습니다.") from exc
+        if not received_text:
+            raise LLMError("LLM이 비어 있는 응답을 반환했습니다.")
+
+    def judge_relevance(
+        self,
+        *,
+        question: str,
+        current_term: str,
+        history: list[HistoryTurn],
+    ) -> bool:
+        prompt = build_relevance_prompt(
+            question=question,
+            current_term=current_term,
+            history=history,
+        )
+        text = self._create(
+            model=self._settings.relevance_model,
+            prompt=prompt,
+            max_tokens=min(self._settings.llm_max_output_tokens, 128),
+            use_temperature=False,
+        )
+        normalized = text.strip().casefold()
+        return normalized.startswith("yes") or normalized.startswith("예")
+
+    def _create(
+        self,
+        *,
+        model: str,
+        prompt: Prompt,
+        max_tokens: int,
+        use_temperature: bool,
+    ) -> str:
+        kwargs = self._request_kwargs(
+            model=model,
+            prompt=prompt,
+            max_tokens=max_tokens,
+            use_temperature=use_temperature,
+        )
+        try:
+            response = self._client.chat.completions.create(**kwargs)
+            choices = getattr(response, "choices", None) or []
+            message = getattr(choices[0], "message", None) if choices else None
+            content = getattr(message, "content", None) if message is not None else None
+            output = str(content or "").strip()
+        except Exception as exc:
+            raise LLMError("LLM 호출에 실패했습니다.") from exc
+        if not output:
+            raise LLMError("LLM이 비어 있는 응답을 반환했습니다.")
+        return output
+
+    def _request_kwargs(
+        self,
+        *,
+        model: str,
+        prompt: Prompt,
+        max_tokens: int,
+        use_temperature: bool,
+    ) -> dict[str, Any]:
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": prompt.instructions},
+                {"role": "user", "content": prompt.input},
+            ],
+            "max_tokens": max_tokens,
+        }
+        if self._settings.llm_reasoning_effort:
+            kwargs["reasoning_effort"] = self._settings.llm_reasoning_effort
+        elif use_temperature:
             kwargs["temperature"] = self._settings.llm_temperature
         return kwargs
 

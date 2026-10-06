@@ -10,6 +10,7 @@ from chatbot.llm import (
     LLMConfigurationError,
     LLMError,
     OpenAIAdapter,
+    UpstageAdapter,
     supports_temperature,
 )
 from chatbot.prompts import Prompt
@@ -51,12 +52,34 @@ class StreamingResponses(Responses):
 
 
 def _settings(**kwargs) -> Settings:
-    return Settings(
-        _env_file=None,
-        llm_model="gpt-test",
-        llm_api_key="test-key",
-        **kwargs,
-    )
+    values = {"llm_model": "gpt-test", "llm_api_key": "test-key", **kwargs}
+    return Settings(_env_file=None, **values)
+
+
+def _upstage_settings(**kwargs) -> Settings:
+    return _settings(llm_provider="upstage", **kwargs)
+
+
+class ChatCompletions:
+    def __init__(self, output: str = "답변", chunks: list[object] | None = None) -> None:
+        self.output = output
+        self.chunks = chunks or []
+        self.calls: list[dict] = []
+        self.error: Exception | None = None
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        if self.error is not None:
+            raise self.error
+        if kwargs.get("stream"):
+            return iter(self.chunks)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=self.output))]
+        )
+
+
+def _chat_client(completions: ChatCompletions) -> SimpleNamespace:
+    return SimpleNamespace(chat=SimpleNamespace(completions=completions))
 
 
 def test_openai_adapter_omits_blank_reasoning_effort() -> None:
@@ -191,3 +214,151 @@ def test_fake_adapter_returns_deterministic_answer_without_external_client() -> 
     ) is False
     modern = FakeLLMAdapter(_settings(chat_tone="modern"))
     assert modern.generate(prompt).endswith("이루어지지 않았어요.")
+
+
+def test_upstage_adapter_uses_chat_completions_parameters() -> None:
+    completions = ChatCompletions()
+    adapter = UpstageAdapter(
+        _upstage_settings(llm_temperature=0.35, llm_max_output_tokens=777),
+        client=_chat_client(completions),
+    )
+
+    assert adapter.generate(Prompt("지시", "입력")) == "답변"
+    call = completions.calls[0]
+    assert call == {
+        "model": "gpt-test",
+        "messages": [
+            {"role": "system", "content": "지시"},
+            {"role": "user", "content": "입력"},
+        ],
+        "max_tokens": 777,
+        "temperature": 0.35,
+    }
+
+
+def test_upstage_adapter_passes_top_level_reasoning_and_omits_temperature() -> None:
+    completions = ChatCompletions()
+    adapter = UpstageAdapter(
+        _upstage_settings(llm_reasoning_effort="low", llm_temperature=0.35),
+        client=_chat_client(completions),
+    )
+
+    adapter.generate(Prompt("지시", "입력"))
+    assert completions.calls[0]["reasoning_effort"] == "low"
+    assert "temperature" not in completions.calls[0]
+
+
+def test_upstage_adapter_streams_chat_completion_deltas() -> None:
+    completions = ChatCompletions(
+        chunks=[
+            SimpleNamespace(choices=[]),
+            SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content="첫 "))]
+            ),
+            SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content="답변"))]
+            ),
+            SimpleNamespace(
+                choices=[SimpleNamespace(delta=SimpleNamespace(content=None))]
+            ),
+        ]
+    )
+    adapter = UpstageAdapter(
+        _upstage_settings(), client=_chat_client(completions)
+    )
+
+    assert list(adapter.stream(Prompt("지시", "입력"))) == ["첫 ", "답변"]
+    assert completions.calls[0]["stream"] is True
+    assert completions.calls[0]["max_tokens"] == 1200
+
+
+def test_upstage_relevance_uses_chat_completions_without_temperature() -> None:
+    completions = ChatCompletions("yes")
+    adapter = UpstageAdapter(
+        _upstage_settings(llm_relevance_model="solar-relevance"),
+        client=_chat_client(completions),
+    )
+
+    assert adapter.judge_relevance(
+        question="질문", current_term="분업", history=[]
+    ) is True
+    call = completions.calls[0]
+    assert call["model"] == "solar-relevance"
+    assert call["max_tokens"] == 128
+    assert "최근 대화" in call["messages"][1]["content"]
+    assert "temperature" not in call
+
+
+def test_upstage_adapter_configures_openai_client_base_url(monkeypatch) -> None:
+    import openai
+
+    captured: dict[str, str] = {}
+
+    def make_client(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(openai, "OpenAI", make_client)
+    UpstageAdapter(
+        _upstage_settings(
+            llm_api_key="upstage-test-key",
+            llm_base_url="https://upstage.example/v1",
+        )
+    )
+    assert captured == {
+        "api_key": "upstage-test-key",
+        "base_url": "https://upstage.example/v1",
+    }
+
+
+def test_upstage_adapter_wraps_errors_and_requires_key() -> None:
+    completions = ChatCompletions()
+    completions.error = RuntimeError("secret provider detail")
+    adapter = UpstageAdapter(
+        _upstage_settings(), client=_chat_client(completions)
+    )
+    with pytest.raises(LLMError, match="LLM 호출에 실패"):
+        adapter.generate(Prompt("지시", "입력"))
+
+    with pytest.raises(LLMConfigurationError, match="LLM_API_KEY"):
+        UpstageAdapter(
+            Settings(
+                _env_file=None,
+                llm_provider="upstage",
+                llm_model="solar-test",
+            ),
+            client=object(),
+        )
+
+
+@pytest.mark.parametrize(
+    "completions",
+    [
+        ChatCompletions(chunks=[]),
+        ChatCompletions(chunks=[SimpleNamespace(choices=[])]),
+    ],
+)
+def test_upstage_adapter_rejects_empty_stream(completions: ChatCompletions) -> None:
+    adapter = UpstageAdapter(
+        _upstage_settings(), client=_chat_client(completions)
+    )
+    with pytest.raises(LLMError, match="비어 있는 응답"):
+        list(adapter.stream(Prompt("지시", "입력")))
+
+
+def test_dependency_factory_selects_upstage_adapter(monkeypatch) -> None:
+    import chatbot.deps as deps
+
+    settings = _upstage_settings()
+    sentinel = object()
+    received: list[Settings] = []
+
+    def make_adapter(value: Settings):
+        received.append(value)
+        return sentinel
+
+    monkeypatch.setattr(deps, "_llm_adapter", None)
+    monkeypatch.setattr(deps, "get_cached_settings", lambda: settings)
+    monkeypatch.setattr(deps, "UpstageAdapter", make_adapter)
+    assert deps.get_llm_adapter() is sentinel
+    assert received == [settings]

@@ -29,7 +29,9 @@
 - **4차-C 완료**: 게임 이벤트 평면 계약, API 응답 `stage_id` 통일, 퀴즈·게임·프론트·인증
   연동 README와 Pydantic 검증 examples를 반영. dev UI 실시간 재학습 구분선과 한글·영문·숫자
   빠른 질문 조사 처리를 완료
-- 테스트: 4차-C 기준 fake LLM·외부 연결 차단 전체 테스트 184개 통과, Qdrant 실제 연결 1개 skip
+- **LLM 제공자 확장**: `openai`·`fake`를 유지하면서 Upstage OpenAI 호환 Chat Completions를
+  답변·SSE 스트리밍·관련성 판정에 추가하고 `LLM_BASE_URL` 설정과 mock 검증을 반영
+- 테스트: Upstage 제공자 확장 기준 fake LLM·외부 연결 차단 전체 테스트 193개 통과, Qdrant 실제 연결 1개 skip
   (`python -m pytest -q`, 실제 OpenAI·Qdrant 호출 없음)
 - 실제 메시지 확인: "분업/특화에 대해 알려줘" → 세션 시작, 1위 sisa_1281, band high, OpenAI 답변·두 행 저장 확인
 - 실제 말투 확인: `CHAT_TONE=hao`로 "인플레이션에 대해 알려줘" OpenAI 1회 호출 → 4문장 하오체 응답 확인
