@@ -5,7 +5,13 @@ from types import SimpleNamespace
 import pytest
 
 from chatbot.config import Settings
-from chatbot.llm import LLMConfigurationError, LLMError, OpenAIAdapter
+from chatbot.llm import (
+    FakeLLMAdapter,
+    LLMConfigurationError,
+    LLMError,
+    OpenAIAdapter,
+    supports_temperature,
+)
 from chatbot.prompts import Prompt
 
 
@@ -64,6 +70,7 @@ def test_openai_adapter_omits_blank_reasoning_effort() -> None:
     assert call["max_output_tokens"] == 1200
     assert call["store"] is False
     assert "reasoning" not in call
+    assert call["temperature"] == 0.7
 
 
 def test_openai_adapter_passes_configured_reasoning_effort() -> None:
@@ -71,6 +78,32 @@ def test_openai_adapter_passes_configured_reasoning_effort() -> None:
     adapter = OpenAIAdapter(_settings(llm_reasoning_effort="low"), client=SimpleNamespace(responses=responses))
     adapter.generate(Prompt("지시", "입력"))
     assert responses.calls[0]["reasoning"] == {"effort": "low"}
+    assert "temperature" not in responses.calls[0]
+
+
+def test_openai_adapter_passes_configured_temperature_to_supported_model() -> None:
+    responses = Responses()
+    adapter = OpenAIAdapter(
+        _settings(llm_temperature=0.35), client=SimpleNamespace(responses=responses)
+    )
+    adapter.generate(Prompt("지시", "입력"))
+    assert responses.calls[0]["temperature"] == 0.35
+
+
+@pytest.mark.parametrize(
+    ("model", "reasoning_effort", "expected"),
+    [
+        ("gpt-4.1-mini", "", True),
+        ("gpt-5.6-luna", "", False),
+        ("gpt-5.6-luna", "low", False),
+        ("gpt-5.6-luna", "none", True),
+        ("o3-mini", "", False),
+    ],
+)
+def test_temperature_support_rule(
+    model: str, reasoning_effort: str, expected: bool
+) -> None:
+    assert supports_temperature(model=model, reasoning_effort=reasoning_effort) is expected
 
 
 def test_relevance_uses_fallback_model_and_yes_no() -> None:
@@ -78,9 +111,11 @@ def test_relevance_uses_fallback_model_and_yes_no() -> None:
     adapter = OpenAIAdapter(
         _settings(llm_relevance_model="gpt-relevance"), client=SimpleNamespace(responses=responses)
     )
-    assert adapter.judge_relevance(question="질문", current_term="분업") is True
+    assert adapter.judge_relevance(question="질문", current_term="분업", history=[]) is True
     assert responses.calls[0]["model"] == "gpt-relevance"
     assert responses.calls[0]["max_output_tokens"] == 128
+    assert "최근 대화" in responses.calls[0]["input"]
+    assert "temperature" not in responses.calls[0]
 
 
 def test_openai_adapter_wraps_external_and_empty_responses() -> None:
@@ -140,3 +175,19 @@ def test_openai_adapter_requires_key_and_provider() -> None:
             ),
             client=object(),
         )
+
+
+def test_fake_adapter_returns_deterministic_answer_without_external_client() -> None:
+    adapter = FakeLLMAdapter()
+    prompt = Prompt("지시", "입력")
+    answer = "개발용 가짜 답변이오. 실제 OpenAI 호출은 이루어지지 않았소."
+    assert adapter.generate(prompt) == answer
+    assert list(adapter.stream(prompt)) == [answer]
+    assert adapter.judge_relevance(
+        question="분업을 더 알려줘", current_term="분업", history=[]
+    ) is True
+    assert adapter.judge_relevance(
+        question="인플레이션을 알려줘", current_term="분업", history=[]
+    ) is False
+    modern = FakeLLMAdapter(_settings(chat_tone="modern"))
+    assert modern.generate(prompt).endswith("이루어지지 않았어요.")

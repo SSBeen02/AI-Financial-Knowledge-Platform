@@ -5,23 +5,38 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import inspect
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from chatbot.integrations import DevConceptStatusService
-from chatbot.store import ChatSessionRow, LearningContextRow, SqlChatStore
+from chatbot.integrations import SqlConceptStatusService
+from chatbot.config import Settings
+from chatbot.deps import get_cached_settings
+from chatbot.learning_management import DatabaseSchemaNotReadyError
+from chatbot.store import LearningSessionRow, LearningContextRow, SqlChatStore
 from tests.conftest import make_settings
 from tests.test_concepts import DIVISION, HEADERS, USER
 
 STAGE1 = "stage1"
-NOTICE = "현재 미통과인 분업/특화 개념 학습중입니다. 통과해야 다음 개념을 넘어갈 수 있습니다."
-QUIZ_NOTICE = "현재 분업/특화 개념의 퀴즈 결과를 기다리는 중입니다."
+NOTICE = "지금 분업/특화 개념을 학습 중이오. 이 개념을 통과해야 다음 개념으로 넘어갈 수 있소."
+ACTIVE_NOTICE = "지금 분업/특화 개념을 학습 중이오. 학습을 마치고 퀴즈를 통과하면 다음 개념을 고를 수 있소."
+QUIZ_NOTICE = "현재 분업/특화 개념의 퀴즈 결과를 기다리는 중이오."
 
 
-def _modes(client: TestClient, stage: str | None = None) -> tuple[dict, dict]:
-    params = {"stage": stage} if stage is not None else None
-    state = client.get("/chat/state", headers=HEADERS).json()
-    concepts = client.get("/chat/concepts", headers=HEADERS, params=params).json()
+def test_chat_store_requires_migration_when_auto_create_is_disabled(tmp_path) -> None:
+    settings = Settings(
+        _env_file=None,
+        llm_model="gpt-test",
+        chat_db_url=f"sqlite:///{(tmp_path / 'empty.db').as_posix()}",
+        db_auto_create=False,
+    )
+    with pytest.raises(DatabaseSchemaNotReadyError, match="001 → 002 → 003"):
+        SqlChatStore(settings)
+
+
+def _modes(client: TestClient) -> tuple[dict, dict]:
+    state = client.get("/learning/current", headers=HEADERS).json()
+    concepts = client.get("/learning/concepts", headers=HEADERS).json()
     return state, concepts
 
 
@@ -36,7 +51,7 @@ def _completed(
     record = store.create_session(
         user_id=user_id,
         stage=STAGE1,
-        doc_id=DIVISION,
+        concept_id=DIVISION,
         term="분업/특화",
         attempt=attempt,
         start_type=start_type,  # type: ignore[arg-type]
@@ -45,8 +60,8 @@ def _completed(
     store.save_learning_context(
         session_id=record.session_id,
         user_id=user_id,
-        doc_id=DIVISION,
-        payload={"doc_id": DIVISION},
+        concept_id=DIVISION,
+        payload={"concept_id": DIVISION},
         quiz_status=quiz_status,  # type: ignore[arg-type]
     )
     return record.session_id
@@ -54,59 +69,54 @@ def _completed(
 
 def test_mode_priority_is_pending_then_relearn_then_normal(
     client: TestClient,
-    dev_status: DevConceptStatusService,
+    dev_status: SqlConceptStatusService,
     chat_store: SqlChatStore,
 ) -> None:
     state, concepts = _modes(client)
     assert state["mode"] == concepts["mode"] == "normal"
-    assert state == {
-        "mode": "normal",
-        "active_session": None,
-        "locked_concept": None,
-        "notice": None,
-    }
-
-    dev_status.mark_failed(USER, DIVISION)
-    state, concepts = _modes(client)
-    assert state["mode"] == concepts["mode"] == "normal"
+    assert state["active_session"] is None
     assert state["locked_concept"] is None
     assert state["notice"] is None
-    assert concepts["concepts"][0]["doc_id"] == "sisa_1963"
+    assert state["complete_hint"] == (
+        "아직 배우고 있는 개념이 없소. 아래 키워드를 눌러 학습을 시작해 보시오."
+    )
+    assert state["learning_guide"].startswith("아래 키워드를 눌러")
+    assert state["status_labels"] == {
+        "not_started": "미학습",
+        "in_progress": "학습중",
+        "passed": "통과",
+    }
+    assert state["progress"]["stage_id"] == "stage1"
+    assert state["progress"]["total_count"] == 30
+
+    dev_status.mark_in_progress(USER, DIVISION, STAGE1)
+    state, concepts = _modes(client)
+    assert state["mode"] == concepts["mode"] == "normal"
+    assert state["locked_concept"]["concept_id"] == DIVISION
+    assert state["notice"] == concepts["notice"] == ACTIVE_NOTICE
+    assert state["quick_prompts"][0] == "분업/특화에 대해 더 자세히 알려줘"
+    assert concepts["concepts"][0]["concept_id"] == "sisa_1963"
 
     session_id = _completed(chat_store, quiz_status="failed")
     state, concepts = _modes(client)
     assert state["mode"] == concepts["mode"] == "relearn"
     assert state["locked_concept"] == concepts["locked_concept"]
-    assert state["locked_concept"]["doc_id"] == DIVISION
+    assert state["locked_concept"]["concept_id"] == DIVISION
     assert state["notice"] == concepts["notice"] == NOTICE
     assert concepts["suggested_message"] == "분업/특화에 대해 다시 알려줘"
     assert state["active_session"] is None
 
-    _, stage5 = _modes(client, "stage5")
-    assert stage5["mode"] == "relearn"
-    assert stage5["stage"]["id"] == "stage5"
-    assert stage5["locked_concept"]["doc_id"] == DIVISION
-    assert stage5["concepts"][0]["doc_id"] == "sisa_1552"
-    assert stage5["notice"] == NOTICE
-
     chat_store.set_quiz_status(USER, session_id, "pending")
     state, concepts = _modes(client)
     assert state["mode"] == concepts["mode"] == "quiz_pending"
-    assert state["locked_concept"]["doc_id"] == concepts["locked_concept"]["doc_id"] == DIVISION
+    assert state["locked_concept"]["concept_id"] == concepts["locked_concept"]["concept_id"] == DIVISION
     assert state["notice"] == concepts["notice"] == QUIZ_NOTICE
     assert concepts["suggested_message"] is None
-    assert concepts["concepts"][0]["doc_id"] == "sisa_1963"
+    assert concepts["concepts"][0]["concept_id"] == "sisa_1963"
     assert state["active_session"] is None
-    _, pending_stage5 = _modes(client, "stage5")
-    assert pending_stage5["mode"] == "quiz_pending"
-    assert pending_stage5["stage"]["id"] == "stage5"
-    assert pending_stage5["locked_concept"]["doc_id"] == DIVISION
-    assert pending_stage5["notice"] == QUIZ_NOTICE
-
     chat_store.set_quiz_status(USER, session_id, "passed")
-    dev_status.note_quiz_result(USER, DIVISION, passed=True)
     state, concepts = _modes(client)
-    assert dev_status.get_failed_concept(USER) is not None
+    assert dev_status.get_in_progress_concept(USER, STAGE1) is not None
     assert state["mode"] == concepts["mode"] == "quiz_pending"
     assert state["notice"] == QUIZ_NOTICE
     assert concepts["suggested_message"] is None
@@ -115,46 +125,75 @@ def test_mode_priority_is_pending_then_relearn_then_normal(
     state, concepts = _modes(client)
     assert state["mode"] == concepts["mode"] == "relearn"
     assert state["notice"] == NOTICE
-    _, failed_stage5 = _modes(client, "stage5")
-    assert failed_stage5["mode"] == "relearn"
-    assert failed_stage5["locked_concept"]["doc_id"] == DIVISION
+
+
+def test_modern_tone_is_used_for_relearn_notice(
+    client: TestClient,
+    dev_status: SqlConceptStatusService,
+    chat_store: SqlChatStore,
+) -> None:
+    client.app.dependency_overrides[get_cached_settings] = lambda: Settings(
+        _env_file=None, llm_model="gpt-test", chat_tone="modern"
+    )
+    dev_status.mark_in_progress(USER, DIVISION, STAGE1)
+    _completed(chat_store, quiz_status="failed")
+
+    state, concepts = _modes(client)
+
+    expected = "지금 분업/특화 개념을 학습 중이에요. 이 개념을 통과해야 다음 개념으로 넘어갈 수 있어요."
+    assert state["notice"] == concepts["notice"] == expected
+
+
+def test_in_progress_display_label_is_fixed_to_learning(
+    client: TestClient,
+    dev_status: SqlConceptStatusService,
+    chat_store: SqlChatStore,
+) -> None:
+    dev_status.mark_in_progress(USER, DIVISION, STAGE1)
+    _completed(chat_store, quiz_status="failed")
+
+    state, concepts = _modes(client)
+
+    assert state["notice"] == concepts["notice"] == NOTICE
+    assert state["status_labels"]["in_progress"] == "학습중"
 
 
 def test_state_includes_the_active_relearn_session(
     client: TestClient,
-    dev_status: DevConceptStatusService,
+    dev_status: SqlConceptStatusService,
     chat_store: SqlChatStore,
 ) -> None:
-    dev_status.mark_failed(USER, DIVISION)
+    dev_status.mark_in_progress(USER, DIVISION, STAGE1)
     _completed(chat_store, quiz_status="failed")
     record = chat_store.create_session(
         user_id=USER,
         stage=STAGE1,
-        doc_id=DIVISION,
+        concept_id=DIVISION,
         term="분업/특화",
         attempt=2,
         start_type="relearn",
     )
-    body = client.get("/chat/state", headers=HEADERS).json()
+    body = client.get("/learning/current", headers=HEADERS).json()
     assert body["mode"] == "relearn"
     assert body["active_session"]["session_id"] == record.session_id
     assert body["active_session"]["attempt"] == 2
     assert body["active_session"]["start_type"] == "relearn"
     assert body["active_session"]["status"] == "active"
     assert body["active_session"]["completed_at"] is None
+    assert body["complete_hint"] is None
     assert "user_id" not in body["active_session"]
 
 
 def test_learning_without_quiz_record_stays_normal(
     client: TestClient,
-    dev_status: DevConceptStatusService,
+    dev_status: SqlConceptStatusService,
     chat_store: SqlChatStore,
 ) -> None:
-    dev_status.mark_failed(USER, DIVISION)
+    dev_status.mark_in_progress(USER, DIVISION, STAGE1)
     record = chat_store.create_session(
         user_id=USER,
         stage=STAGE1,
-        doc_id=DIVISION,
+        concept_id=DIVISION,
         term="분업/특화",
         attempt=1,
         start_type="keyword",
@@ -162,50 +201,57 @@ def test_learning_without_quiz_record_stays_normal(
     state, concepts = _modes(client)
     assert state["mode"] == concepts["mode"] == "normal"
     assert state["active_session"]["session_id"] == record.session_id
-    assert state["locked_concept"] is None
-    assert state["notice"] is None
+    assert state["locked_concept"]["concept_id"] == DIVISION
+    assert state["notice"] == concepts["notice"] == ACTIVE_NOTICE
+    assert state["quick_prompts"] == [
+        "분업/특화에 대해 더 자세히 알려줘",
+        "분업/특화의 예시를 더 들어줘",
+        "분업/특화와 비슷한 개념은 뭐야?",
+    ]
 
 
 @pytest.mark.parametrize("quiz_status", ["pending", "passed"])
 def test_quiz_pending_cannot_have_active_session(
     client: TestClient,
-    dev_status: DevConceptStatusService,
+    dev_status: SqlConceptStatusService,
     chat_store: SqlChatStore,
     quiz_status: str,
 ) -> None:
-    dev_status.mark_failed(USER, DIVISION)
+    dev_status.mark_in_progress(USER, DIVISION, STAGE1)
     _completed(chat_store, quiz_status=quiz_status)
     chat_store.create_session(
         user_id=USER,
         stage=STAGE1,
-        doc_id=DIVISION,
+        concept_id=DIVISION,
         term="분업/특화",
         attempt=2,
         start_type="relearn",
     )
-    state = client.get("/chat/state", headers=HEADERS)
-    concepts = client.get("/chat/concepts", headers=HEADERS)
+    state = client.get("/learning/current", headers=HEADERS)
+    concepts = client.get("/learning/concepts", headers=HEADERS)
     assert state.status_code == 409
     assert concepts.status_code == 409
-    assert state.json() == concepts.json()
-    assert state.json()["detail"] == "퀴즈 대기 중에는 진행 중인 세션이 있을 수 없습니다."
+    assert state.json()["code"] == concepts.json()["code"] == "conflict"
+    assert state.json()["message"] == concepts.json()["message"]
+    assert state.json()["message"] == "퀴즈 대기 중에는 진행 중인 세션이 있을 수 없습니다."
+    assert state.headers["X-Request-ID"] == state.json()["request_id"]
 
 
 def test_other_user_session_is_not_found(client: TestClient, chat_store: SqlChatStore) -> None:
     record = chat_store.create_session(
         user_id=USER,
         stage=STAGE1,
-        doc_id=DIVISION,
+        concept_id=DIVISION,
         term="분업/특화",
         attempt=1,
         start_type="keyword",
     )
-    own = client.get(f"/chat/sessions/{record.session_id}", headers=HEADERS)
+    own = client.get(f"/learning/sessions/{record.session_id}", headers=HEADERS)
     assert own.status_code == 200
     body = own.json()
     assert body["session_id"] == record.session_id
-    assert body["stage"] == STAGE1
-    assert body["doc_id"] == DIVISION
+    assert body["stage_id"] == STAGE1
+    assert body["concept_id"] == DIVISION
     assert body["term"] == "분업/특화"
     assert body["attempt"] == 1
     assert body["start_type"] == "keyword"
@@ -213,47 +259,48 @@ def test_other_user_session_is_not_found(client: TestClient, chat_store: SqlChat
     assert body["completed_at"] is None
     assert "user_id" not in body
 
-    other = client.get(f"/chat/sessions/{record.session_id}", headers={"X-User-Id": "user-2"})
-    missing = client.get("/chat/sessions/missing-session", headers=HEADERS)
+    other = client.get(f"/learning/sessions/{record.session_id}", headers={"X-User-Id": "user-2"})
+    missing = client.get("/learning/sessions/missing-session", headers=HEADERS)
     assert other.status_code == 404
     assert missing.status_code == 404
-    assert other.json() == {"detail": "세션을 찾을 수 없습니다."}
-    assert missing.json() == other.json()
+    assert other.json()["code"] == missing.json()["code"] == "not_found"
+    assert other.json()["message"] == missing.json()["message"] == "세션을 찾을 수 없습니다."
+    assert other.headers["X-Request-ID"] == other.json()["request_id"]
 
 
 def test_state_and_session_require_user_header(client: TestClient) -> None:
-    assert client.get("/chat/state").status_code == 401
-    assert client.get("/chat/sessions/anything").status_code == 401
+    assert client.get("/learning/current").status_code == 401
+    assert client.get("/learning/sessions/anything").status_code == 401
 
 
 def test_another_users_pending_quiz_stays_hidden(
     client: TestClient,
-    dev_status: DevConceptStatusService,
+    dev_status: SqlConceptStatusService,
     chat_store: SqlChatStore,
 ) -> None:
-    dev_status.mark_failed(USER, DIVISION)
+    dev_status.mark_in_progress(USER, DIVISION, STAGE1)
     _completed(chat_store, quiz_status="pending")
-    body = client.get("/chat/state", headers={"X-User-Id": "user-2"}).json()
+    body = client.get("/learning/current", headers={"X-User-Id": "user-2"}).json()
     assert body["mode"] == "normal"
     assert body["locked_concept"] is None
 
 
-def test_two_active_sessions_are_conflict(client: TestClient, chat_store: SqlChatStore) -> None:
+def test_database_rejects_two_active_sessions(chat_store: SqlChatStore) -> None:
     chat_store.create_session(
         user_id=USER,
         stage=STAGE1,
-        doc_id=DIVISION,
+        concept_id=DIVISION,
         term="분업/특화",
         attempt=1,
         start_type="keyword",
     )
     with Session(chat_store._engine) as db:
         db.add(
-            ChatSessionRow(
+            LearningSessionRow(
                 session_id=str(uuid.uuid4()),
                 user_id=USER,
-                stage=STAGE1,
-                doc_id=DIVISION,
+                stage_id=STAGE1,
+                concept_id=DIVISION,
                 term="분업/특화",
                 attempt=2,
                 start_type="relearn",
@@ -262,17 +309,16 @@ def test_two_active_sessions_are_conflict(client: TestClient, chat_store: SqlCha
                 completed_at=None,
             )
         )
-        db.commit()
-    response = client.get("/chat/state", headers=HEADERS)
-    assert response.status_code == 409
+        with pytest.raises(IntegrityError):
+            db.commit()
 
 
 def test_newer_passed_quiz_overrides_older_failed(
     client: TestClient,
-    dev_status: DevConceptStatusService,
+    dev_status: SqlConceptStatusService,
     chat_store: SqlChatStore,
 ) -> None:
-    dev_status.mark_failed(USER, DIVISION)
+    dev_status.mark_in_progress(USER, DIVISION, STAGE1)
     older = _completed(chat_store, quiz_status="failed")
     newer = _completed(chat_store, quiz_status="passed", attempt=2)
     with Session(chat_store._engine) as db:
@@ -293,7 +339,7 @@ def test_session_and_pending_quiz_survive_reopen(status_db) -> None:
     record = first.create_session(
         user_id=USER,
         stage=STAGE1,
-        doc_id=DIVISION,
+        concept_id=DIVISION,
         term="분업/특화",
         attempt=1,
         start_type="detected",
@@ -302,8 +348,8 @@ def test_session_and_pending_quiz_survive_reopen(status_db) -> None:
     first.save_learning_context(
         session_id=record.session_id,
         user_id=USER,
-        doc_id=DIVISION,
-        payload={"doc_id": DIVISION},
+        concept_id=DIVISION,
+        payload={"concept_id": DIVISION},
         quiz_status="pending",
     )
     first.close()
@@ -314,13 +360,13 @@ def test_session_and_pending_quiz_survive_reopen(status_db) -> None:
         assert loaded == record
         pending = second.get_pending_quiz(USER)
         assert pending is not None
-        assert pending.doc_id == DIVISION
+        assert pending.concept_id == DIVISION
         assert pending.stage == STAGE1
         with Session(second._engine) as db:
             context = db.get(LearningContextRow, record.session_id)
             assert context is not None
             assert context.quiz_status == "pending"
-            assert context.payload == {"doc_id": DIVISION}
+            assert context.payload == {"concept_id": DIVISION}
             assert context.user_id == USER
     finally:
         second.close()
@@ -328,4 +374,102 @@ def test_session_and_pending_quiz_survive_reopen(status_db) -> None:
 
 def test_chat_tables_are_created(chat_store: SqlChatStore) -> None:
     names = set(inspect(chat_store._engine).get_table_names())
-    assert {"chat_sessions", "chat_messages", "learning_contexts"} <= names
+    assert {
+        "learning_sessions",
+        "learning_messages",
+        "learning_contexts",
+        "learning_completion_requests",
+    } <= names
+
+
+def test_legacy_chat_tables_and_doc_id_data_are_preserved(status_db) -> None:
+    settings = make_settings(status_db, simulate_quiz_status=False)
+    engine = create_engine(settings.chat_db_url)
+    with engine.begin() as connection:
+        connection.exec_driver_sql(
+            "CREATE TABLE chat_sessions ("
+            "session_id VARCHAR PRIMARY KEY, user_id VARCHAR NOT NULL, stage VARCHAR NOT NULL, "
+            "doc_id VARCHAR NOT NULL, term VARCHAR NOT NULL, attempt INTEGER NOT NULL, "
+            "start_type VARCHAR NOT NULL, status VARCHAR NOT NULL, created_at DATETIME NOT NULL, "
+            "completed_at DATETIME)"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE chat_messages ("
+            "message_id VARCHAR PRIMARY KEY, session_id VARCHAR, user_id VARCHAR NOT NULL, "
+            "role VARCHAR NOT NULL, content VARCHAR NOT NULL, is_related BOOLEAN, band VARCHAR, "
+            "top_score FLOAT, sources JSON, latency_ms INTEGER, created_at DATETIME NOT NULL)"
+        )
+        connection.exec_driver_sql(
+            "CREATE TABLE learning_contexts ("
+            "session_id VARCHAR PRIMARY KEY, user_id VARCHAR NOT NULL, doc_id VARCHAR NOT NULL, "
+            "quiz_status VARCHAR NOT NULL, payload JSON NOT NULL, created_at DATETIME NOT NULL)"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO chat_sessions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "legacy-session",
+                USER,
+                STAGE1,
+                DIVISION,
+                "분업/특화",
+                1,
+                "keyword",
+                "completed",
+                "2026-01-01 00:00:00",
+                "2026-01-01 00:01:00",
+            ),
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO chat_messages VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "legacy-message",
+                "legacy-session",
+                USER,
+                "assistant",
+                "설명",
+                1,
+                "high",
+                0.7,
+                '[{"doc_id":"sisa_1281","term":"분업/특화","score":0.7,"collection":"sisa_terms","label":"사전"}]',
+                10,
+                "2026-01-01 00:00:30",
+            ),
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO learning_contexts VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "legacy-session",
+                USER,
+                DIVISION,
+                "pending",
+                '{"concept":{"doc_id":"sisa_1281","status":"in_progress"}}',
+                "2026-01-01 00:01:00",
+            ),
+        )
+    engine.dispose()
+
+    store = SqlChatStore(settings)
+    try:
+        names = set(inspect(store._engine).get_table_names())
+        assert "chat_sessions" not in names
+        assert "chat_messages" not in names
+        assert {"learning_sessions", "learning_messages"} <= names
+        columns = {
+            column["name"]
+            for column in inspect(store._engine).get_columns("learning_sessions")
+        }
+        assert "stage_id" in columns
+        assert "stage" not in columns
+        assert store.get_session(USER, "legacy-session").concept_id == DIVISION  # type: ignore[union-attr]
+        message = store.get_session_messages(USER, "legacy-session")[0]
+        assert message.sources is not None
+        assert message.sources[0]["concept_id"] == DIVISION
+        context = store.get_learning_context(USER, "legacy-session")
+        assert context is not None
+        assert context.concept_id == DIVISION
+        assert context.payload["concept"] == {
+            "concept_id": DIVISION,
+            "status": "in_progress",
+        }
+    finally:
+        store.close()

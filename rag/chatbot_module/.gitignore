@@ -1,6 +1,9 @@
 .env
-chat.db
+*.db
+.venv/
 __pycache__/
 .pytest_cache/
-*.pyc
-.venv/
+.pytest_tmp*/
+.pytest-temp*/
+.tmp_*
+.docx_render_*/

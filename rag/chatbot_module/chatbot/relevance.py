@@ -6,6 +6,7 @@ from collections.abc import Iterable, Sequence
 
 from chatbot.concepts import ConceptRef
 from chatbot.llm import LLMAdapter, LLMError
+from chatbot.prompts import HistoryTurn
 from chatbot.retrieval import CachedConcept, ConceptCache, RetrievalResult
 
 
@@ -21,16 +22,16 @@ def detect_concept(
     retrieval: RetrievalResult,
     band_high: float,
 ) -> ConceptRef | None:
-    """현재 스테이지 미학습 후보에서 명시 언급 또는 고신뢰 검색 1위를 고른다."""
-    by_doc = {candidate.doc_id: candidate for candidate in candidates}
-    exact = [candidate for candidate in candidates if _mentions(question, candidate, cache.get(candidate.doc_id))]
+    """현재 스테이지 not_started 후보에서 명시 언급 또는 고신뢰 검색 1위를 고른다."""
+    by_concept = {candidate.concept_id: candidate for candidate in candidates}
+    exact = [candidate for candidate in candidates if _mentions(question, candidate, cache.get(candidate.concept_id))]
     if exact:
-        rank = {hit.doc_id: index for index, hit in enumerate(retrieval.concept_hits)}
-        return min(exact, key=lambda item: (rank.get(item.doc_id, len(rank)), item.order))
+        rank = {hit.concept_id: index for index, hit in enumerate(retrieval.concept_hits)}
+        return min(exact, key=lambda item: (rank.get(item.concept_id, len(rank)), item.order))
     if retrieval.concept_hits:
         top = retrieval.concept_hits[0]
-        if top.score >= band_high and top.doc_id in by_doc:
-            return by_doc[top.doc_id]
+        if top.score >= band_high and top.concept_id in by_concept:
+            return by_concept[top.concept_id]
     return None
 
 
@@ -41,22 +42,28 @@ def is_question_related(
     cache: ConceptCache,
     retrieval: RetrievalResult,
     llm: LLMAdapter,
+    history: Sequence[HistoryTurn],
     force_true: bool = False,
 ) -> bool:
     if force_true:
         return True
     if _contains_any(question, (current.term, *current.aliases)):
         return True
-    if any(
-        concept.doc_id != current.doc_id
+    mentions_other = any(
+        concept.concept_id != current.concept_id
         and _contains_any(question, (concept.term, *concept.aliases))
         for concept in cache.values()
+    )
+    if not mentions_other and any(
+        hit.concept_id == current.concept_id for hit in retrieval.concept_hits[:5]
     ):
-        return False
-    if any(hit.doc_id == current.doc_id for hit in retrieval.concept_hits[:5]):
         return True
     try:
-        return llm.judge_relevance(question=question, current_term=current.term)
+        return llm.judge_relevance(
+            question=question,
+            current_term=current.term,
+            history=list(history[-2:]),
+        )
     except LLMError:
         return False
 
@@ -65,12 +72,12 @@ def mentioned_concepts(
     question: str,
     concepts: Iterable[CachedConcept],
     *,
-    exclude_doc_id: str,
+    exclude_concept_id: str,
 ) -> list[CachedConcept]:
     return [
         concept
         for concept in concepts
-        if concept.doc_id != exclude_doc_id
+        if concept.concept_id != exclude_concept_id
         and _contains_any(question, (concept.term, *concept.aliases))
     ]
 

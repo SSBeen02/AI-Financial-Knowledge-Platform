@@ -1,9 +1,0 @@
-.env
-*.db
-.venv/
-__pycache__/
-.pytest_cache/
-.pytest_tmp*/
-.pytest-temp*/
-.tmp_*
-.docx_render_*/

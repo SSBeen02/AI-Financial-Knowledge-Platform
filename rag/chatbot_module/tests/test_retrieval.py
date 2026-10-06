@@ -32,10 +32,10 @@ def _settings() -> Settings:
 
 
 class Point:
-    def __init__(self, doc_id: str, score: float, payload: dict | None = None, point_id: str | None = None):
-        self.id = point_id or concept_point_id(doc_id)
+    def __init__(self, concept_id: str, score: float, payload: dict | None = None, point_id: str | None = None):
+        self.id = point_id or concept_point_id(concept_id)
         self.score = score
-        self.payload = {"doc_id": doc_id, "term": doc_id, "text": f"{doc_id} 설명"} if payload is None else payload
+        self.payload = {"concept_id": concept_id, "term": concept_id, "text": f"{concept_id} 설명"} if payload is None else payload
 
 
 def _search_factory(catalog: dict[str, list[Point]]):
@@ -61,7 +61,7 @@ def test_single_source_keeps_slot_count_and_dense_band() -> None:
     search, calls = _search_factory({"sisa_terms": points})
     result = Retriever(object(), object(), _settings(), profiles={"sisa_terms": SISA}, search_fn=search).search("기회비용")
     assert calls == [("sisa_terms", "dense", 5)]
-    assert [item.doc_id for item in result.sources] == ["sisa_1", "sisa_2", "sisa_3"]
+    assert [item.concept_id for item in result.sources] == ["sisa_1", "sisa_2", "sisa_3"]
     assert result.top_score == 0.71
     assert result.band == "high"
     dumped = to_source_out(result.sources[0]).model_dump()
@@ -73,9 +73,9 @@ def test_images_are_kept_only_when_payload_has_them() -> None:
     with_images = Point(
         "sisa_1",
         0.8,
-        {"doc_id": "sisa_1", "term": "용어", "text": "본문", "images": ["https://example.com/a.png"]},
+        {"concept_id": "sisa_1", "term": "용어", "text": "본문", "images": ["https://example.com/a.png"]},
     )
-    without = Point("sisa_2", 0.6, {"doc_id": "sisa_2", "term": "다른용어", "text": "본문"})
+    without = Point("sisa_2", 0.6, {"concept_id": "sisa_2", "term": "다른용어", "text": "본문"})
     search, _calls = _search_factory({"sisa_terms": [with_images, without]})
     profile = {**SISA, "slots": 2, "k": 2}
     result = Retriever(object(), object(), _settings(), profiles={"sisa_terms": profile}, search_fn=search).search("질문")
@@ -92,7 +92,7 @@ def test_profiles_merge_by_slots_and_band_ignores_other_sources() -> None:
     )
     profiles = {"sisa_terms": {**SISA, "slots": 1, "k": 2}, "textbook": {**TEXTBOOK, "slots": 2, "k": 3}}
     result = Retriever(object(), object(), _settings(), profiles=profiles, search_fn=search).search("질문")
-    assert [item.doc_id for item in result.sources] == ["sisa_mid", "book_high", "book_next"]
+    assert [item.concept_id for item in result.sources] == ["sisa_mid", "book_high", "book_next"]
     assert [item.label for item in result.sources] == ["시사경제용어사전", "교재", "교재"]
     assert result.top_score == 0.46
     assert result.band == "mid"
@@ -116,7 +116,7 @@ def test_low_band_hides_sources_but_keeps_concept_hits() -> None:
     assert result.band == "low"
     assert result.top_score == 0.20
     assert result.sources == []
-    assert [item.doc_id for item in result.concept_hits] == ["sisa_low"]
+    assert [item.concept_id for item in result.concept_hits] == ["sisa_low"]
 
 
 def test_non_dense_profile_without_sparse_encoder_is_rejected() -> None:
@@ -149,7 +149,7 @@ def test_concept_cache_reads_payload_by_point_id() -> None:
     point = Point(
         "sisa_745",
         0.0,
-        {"doc_id": "sisa_745", "term": "기회비용", "aliases": ["Opportunity Cost"], "text": "설명: 포기한 가치"},
+        {"concept_id": "sisa_745", "term": "기회비용", "aliases": ["Opportunity Cost"], "text": "설명: 포기한 가치"},
     )
     cache = ConceptCache(Store([point]), "sisa_terms", ["sisa_745"])
     loaded = cache.get("sisa_745")
@@ -159,15 +159,48 @@ def test_concept_cache_reads_payload_by_point_id() -> None:
     assert loaded.text == "설명: 포기한 가치"
     assert loaded.images is None
     assert cache.get("sisa_missing") is None
-    assert [item.doc_id for item in cache.values()] == ["sisa_745"]
+    assert [item.concept_id for item in cache.values()] == ["sisa_745"]
 
 
-def test_concept_cache_falls_back_to_doc_id_filter() -> None:
+def test_concept_cache_keeps_legacy_qdrant_doc_id_compatibility() -> None:
     point = Point("sisa_745", 0.0, {"doc_id": "sisa_745", "term": "기회비용", "aliases": [], "text": "본문"})
     cache = ConceptCache(Store([], scroll_points=[point]), "sisa_terms", ["sisa_745"])
     loaded = cache.get("sisa_745")
     assert loaded is not None
     assert loaded.term == "기회비용"
+
+
+def test_retrieved_document_accepts_legacy_qdrant_doc_id() -> None:
+    point = Point("sisa_745", 0.72, {"doc_id": "sisa_745", "term": "기회비용", "text": "본문"})
+    search, _calls = _search_factory({"sisa_terms": [point]})
+    result = Retriever(object(), object(), _settings(), search_fn=search).search("기회비용")
+    assert result.concept_hits[0].concept_id == "sisa_745"
+
+
+def test_retrieved_document_keeps_aliases_for_explicit_notice_matching() -> None:
+    point = Point(
+        "extra_1",
+        0.72,
+        {
+            "concept_id": "extra_1",
+            "term": "부가경제용어",
+            "aliases": ["경제상식별칭"],
+            "stages": ["extra"],
+            "text": "설명",
+        },
+    )
+    settings = Settings(_env_file=None, llm_model="gpt-test")
+    retriever = Retriever(
+        object(),
+        object(),
+        settings,
+        search_fn=lambda *args, **kwargs: [point],
+        dense_score_fn=lambda *args, **kwargs: 0.72,
+    )
+
+    result = retriever.search("경제상식별칭")
+
+    assert result.concept_hits[0].aliases == ("경제상식별칭",)
 
 
 def test_concept_cache_reports_missing_documents() -> None:

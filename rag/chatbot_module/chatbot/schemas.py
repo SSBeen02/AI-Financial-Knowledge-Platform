@@ -5,14 +5,22 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_serializer, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_serializer,
+)
 
-ConceptProgress = Literal["미학습", "미통과", "통과"]
-QuizStatus = Literal["pending", "passed", "failed"]
+ConceptProgress = Literal["not_started", "in_progress", "passed"]
+QuizStatus = Literal["pending", "passed", "failed", "generation_failed"]
 Band = Literal["high", "mid", "low"]
-ChatMode = Literal["normal", "relearn", "quiz_pending"]
-SessionStartType = Literal["keyword", "detected", "relearn"]
+ChatMode = Literal["normal", "relearn", "quiz_pending", "quiz_generation_failed"]
+SessionStartType = Literal["keyword", "detected", "relearn", "quiz_retry"]
 SessionStatus = Literal["active", "completed"]
+StageId = Literal["stage1", "stage2", "stage3", "stage4", "stage5"]
 
 
 class _OmitAbsentImages(BaseModel):
@@ -29,21 +37,17 @@ class _OmitAbsentImages(BaseModel):
 
 
 class ConceptOut(BaseModel):
-    doc_id: str
+    concept_id: str
     term: str
     term_full: str
     subcategory: str
     order: int
 
 
-class StageOut(BaseModel):
-    id: str
-    name_ko: str
-
-
 class ConceptsResponse(BaseModel):
     mode: ChatMode
-    stage: StageOut
+    stage_id: StageId
+    stage_name_ko: str
     concepts: list[ConceptOut]
     next_offset: int | None
     has_more: bool
@@ -56,8 +60,7 @@ class MessageIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     message: str
-    selected_doc_id: str | None = None
-    stage: Literal["stage5"] | None = None
+    concept_id: str | None = None
 
     @field_validator("message")
     @classmethod
@@ -67,23 +70,16 @@ class MessageIn(BaseModel):
             raise ValueError("메시지를 입력해 주세요.")
         return text
 
-    @field_validator("selected_doc_id")
+    @field_validator("concept_id")
     @classmethod
-    def _blank_doc_id_is_absent(cls, value: str | None) -> str | None:
+    def _blank_concept_id_is_absent(cls, value: str | None) -> str | None:
         if value is None:
             return None
         text = value.strip()
         return text or None
 
-    @model_validator(mode="after")
-    def _stage_requires_selected_concept(self) -> MessageIn:
-        if self.stage is not None and self.selected_doc_id is None:
-            raise ValueError("stage는 selected_doc_id와 함께 보내야 합니다.")
-        return self
-
-
 class SourceOut(_OmitAbsentImages):
-    doc_id: str
+    concept_id: str
     term: str
     score: float
     collection: str
@@ -91,11 +87,16 @@ class SourceOut(_OmitAbsentImages):
 
 
 class ConceptStateOut(BaseModel):
-    doc_id: str
+    concept_id: str
     term: str
-    stage: str
+    stage_id: StageId
     status: ConceptProgress
     attempt: int
+
+
+class SuggestedConceptOut(BaseModel):
+    concept_id: str
+    term: str
 
 
 class MessageResponse(BaseModel):
@@ -109,12 +110,14 @@ class MessageResponse(BaseModel):
     sources: list[SourceOut]
     display_sources: list[SourceOut]
     message_id: str
+    notice: str | None = None
+    suggested_concept: SuggestedConceptOut | None = None
 
 
 class SessionOut(BaseModel):
     session_id: str
-    stage: str
-    doc_id: str
+    stage_id: StageId
+    concept_id: str
     term: str
     attempt: int
     start_type: SessionStartType
@@ -123,28 +126,110 @@ class SessionOut(BaseModel):
     completed_at: datetime | None = None
 
 
+class CurrentStageProgressOut(BaseModel):
+    stage_id: str
+    name_ko: str
+    total_count: int
+    passed_count: int
+    in_progress_count: int
+    not_started_count: int
+    remaining_count: int
+    percent: int
+
+
+class StageProgressOut(CurrentStageProgressOut):
+    unlocked: bool
+    completed: bool
+
+
+class ProgressResponse(BaseModel):
+    current: CurrentStageProgressOut
+    stages: list[StageProgressOut]
+
+
+class ConceptStatusLabelsOut(BaseModel):
+    """화면 표시용 문구. 저장·연동 값은 ConceptProgress 영문 코드를 사용한다."""
+
+    not_started: str
+    in_progress: str
+    passed: str
+
+
 class StateResponse(BaseModel):
     mode: ChatMode
     active_session: SessionOut | None
     locked_concept: ConceptOut | None = None
     notice: str | None = None
+    complete_hint: str | None = None
+    learning_guide: str
+    status_labels: ConceptStatusLabelsOut
+    progress: CurrentStageProgressOut
+    quick_prompts: list[str] = Field(default_factory=list)
+
+
+class ErrorResponse(BaseModel):
+    code: str
+    message: str
+    request_id: str
+
+
+class GameEventOut(BaseModel):
+    """게임 모듈이 소비하는 평면 학습 이벤트."""
+
+    event_id: str
+    event_type: Literal["concept_passed", "stage_completed"]
+    user_id: str
+    stage_id: StageId
+    concept_id: str | None = None
+    first_pass: bool | None = None
+    passed_count: int
+    total_count: int
+    stage_completed: bool
+    next_stage_id: StageId | None = None
+    occurred_at: datetime
 
 
 class QuizResultIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    submission_id: str = Field(min_length=1)
+    concept_id: str = Field(min_length=1)
+    stage_id: StageId
+    correct_count: int = Field(ge=0, le=3)
     passed: bool
 
 
+class QuizResultReportIn(QuizResultIn):
+    """퀴즈 모듈이 학습 관리 내부 함수에 전달하는 전체 계약."""
+
+    session_id: str = Field(min_length=1)
+
+
+class QuizResultOut(BaseModel):
+    submission_id: str
+    session_id: str
+    concept_id: str
+    stage_id: StageId
+    correct_count: int
+    passed: bool
+    concept_status: ConceptProgress
+    quiz_status: Literal["passed", "failed"]
+    passed_count: int
+    total_count: int
+    stage_completed: bool
+    next_stage_id: StageId | None
+    event_ids: list[str]
+
+
 class MentionedConceptOut(BaseModel):
-    doc_id: str
+    concept_id: str
     term: str
 
 
 class ContextSourceOut(_OmitAbsentImages):
     """학습 맥락 근거. 컬렉션명과 출처 라벨을 함께 남긴다."""
 
-    doc_id: str
+    concept_id: str
     collection: str
     label: str
 
@@ -152,14 +237,17 @@ class ContextSourceOut(_OmitAbsentImages):
 class LearningTurnOut(BaseModel):
     question: str
     answer: str
+    is_related: bool = True
     sources: list[ContextSourceOut]
     created_at: datetime
 
 
 class LearningConceptOut(BaseModel):
-    doc_id: str
+    concept_id: str
     term: str
-    stage: str
+    stage_id: StageId = Field(
+        validation_alias=AliasChoices("stage_id", "stage")
+    )
     status: ConceptProgress
     attempt: int
     definition: str
@@ -173,12 +261,31 @@ class LearningContextOut(BaseModel):
     concept: LearningConceptOut
     turns: list[LearningTurnOut]
     mentioned_concepts: list[MentionedConceptOut]
+    reference_chunk_ids: list[str] = Field(default_factory=list)
     completed_at: datetime
+
+
+class QuizSetOut(BaseModel):
+    quiz_set_id: str
+    status: Literal["pending", "processing", "completed", "failed"]
+
+
+class LearningCompletionOut(LearningContextOut):
+    quiz: QuizSetOut
+
+
+class QuizRetryOut(BaseModel):
+    session_id: str
+    original_session_id: str
+    concept_id: str
+    stage_id: StageId
+    attempt: int
+    quiz: QuizSetOut
 
 
 class LearningContextListItem(BaseModel):
     session_id: str
-    doc_id: str
+    concept_id: str
     term: str
     status: Literal["completed"]
     quiz_status: QuizStatus
@@ -188,11 +295,12 @@ class LearningContextListItem(BaseModel):
 class MessageListItem(BaseModel):
     message_id: str
     session_id: str | None
+    attempt: int | None = None
+    concept_id: str | None = None
+    start_type: SessionStartType | None = None
     role: Literal["user", "assistant"]
     content: str
     is_related: bool | None = None
     band: Band | None = None
-    top_score: float | None = None
-    sources: list[SourceOut] | None = None
-    latency_ms: int | None = None
+    display_sources: list[SourceOut]
     created_at: datetime
