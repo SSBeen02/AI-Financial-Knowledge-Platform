@@ -38,6 +38,7 @@ def build_answer_prompt(
     attempt: int | None,
     chat_tone: ChatTone,
     knowledge_mode: AnswerKnowledgeMode,
+    chat_emoji: bool = True,
 ) -> Prompt:
     current_term = current_concept.term if current_concept is not None else "없음"
     band_instruction = {
@@ -72,6 +73,14 @@ def build_answer_prompt(
         if stage == "stage5"
         else ""
     )
+    emoji_instruction = (
+        "핵심 정의나 꼭 기억할 포인트 1~2곳에만 ⭐️, 🕯, 💡 같은 이모지나 이모티콘을 "
+        "사용하세요. 답변 전체의 이모지·이모티콘은 합계 3개를 넘기지 마세요. 중요한 문구만 "
+        "필요 최소한으로 굵게 표시하고 볼드체를 남발하지 마세요. 이 강조 지시 때문에 사전 "
+        "근거의 핵심 정의 문장 내용 자체를 바꾸지 마세요."
+        if chat_emoji
+        else ""
+    )
     instructions = "\n".join(
         part
         for part in (
@@ -83,6 +92,7 @@ def build_answer_prompt(
             repeat_instruction,
             relearn_instruction,
             advanced_instruction,
+            emoji_instruction,
             band_instruction,
             source_instruction,
         )

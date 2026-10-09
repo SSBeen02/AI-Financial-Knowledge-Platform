@@ -18,6 +18,7 @@ from tests.conftest import make_settings
 from tests.test_concepts import DIVISION, HEADERS, USER
 
 STAGE1 = "stage1"
+EIGHTY_EIGHT = "sisa_15"
 NOTICE = "지금 분업/특화 개념을 학습 중이오. 이 개념을 통과해야 다음 개념으로 넘어갈 수 있소."
 ACTIVE_NOTICE = "지금 분업/특화 개념을 학습 중이오. 학습을 마치고 퀴즈를 통과하면 다음 개념을 고를 수 있소."
 QUIZ_NOTICE = "현재 분업/특화 개념의 퀴즈 결과를 기다리는 중이오."
@@ -207,6 +208,30 @@ def test_learning_without_quiz_record_stays_normal(
         "분업/특화에 대해 더 자세히 알려줘",
         "분업/특화의 예시를 더 들어줘",
         "분업/특화와 비슷한 개념은 뭐야?",
+    ]
+
+
+def test_quick_prompts_use_particle_selector_for_number_ending_term(
+    client: TestClient,
+    dev_status: SqlConceptStatusService,
+    chat_store: SqlChatStore,
+) -> None:
+    dev_status.mark_in_progress(USER, EIGHTY_EIGHT, STAGE1)
+    chat_store.create_session(
+        user_id=USER,
+        stage=STAGE1,
+        concept_id=EIGHTY_EIGHT,
+        term="88만원세대",
+        attempt=1,
+        start_type="keyword",
+    )
+
+    state = client.get("/learning/current", headers=HEADERS).json()
+
+    assert state["quick_prompts"] == [
+        "88만원세대에 대해 더 자세히 알려줘",
+        "88만원세대의 예시를 더 들어줘",
+        "88만원세대와 비슷한 개념은 뭐야?",
     ]
 
 

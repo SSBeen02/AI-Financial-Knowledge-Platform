@@ -418,6 +418,7 @@ def prepare_message(
         attempt=plan.attempt,
         chat_tone=settings.chat_tone,
         knowledge_mode=settings.answer_knowledge_mode,
+        chat_emoji=settings.chat_emoji,
     )
     return PreparedMessage(
         user_id=user_id,
@@ -1298,12 +1299,12 @@ def _quick_prompts(screen: Screen) -> list[str]:
         return [
             f"{term}에 대해 다시 알려줘",
             f"{term}의 다른 예시를 들어줘",
-            f"{with_korean_particle(term, with_final='과', without_final='와')} 비슷한 개념은 뭐야?",
+            f"{with_korean_particle(term, '와/과')} 비슷한 개념은 뭐야?",
         ]
     return [
         f"{term}에 대해 더 자세히 알려줘",
         f"{term}의 예시를 더 들어줘",
-        f"{with_korean_particle(term, with_final='과', without_final='와')} 비슷한 개념은 뭐야?",
+        f"{with_korean_particle(term, '와/과')} 비슷한 개념은 뭐야?",
     ]
 
 

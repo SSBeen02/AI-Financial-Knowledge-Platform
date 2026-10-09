@@ -25,6 +25,7 @@ def test_defaults(clean_env: None) -> None:
     assert settings.llm_max_output_tokens == 1200
     assert settings.llm_temperature == 0.7
     assert settings.chat_tone == "hao"
+    assert settings.chat_emoji is True
     assert settings.answer_knowledge_mode == "dictionary_plus"
     assert settings.free_question_auto_start is False
     assert settings.cors_origins == ["http://localhost:5173", "http://localhost:3000"]
@@ -42,6 +43,15 @@ def test_chat_tone_accepts_only_supported_values(clean_env: None) -> None:
     assert Settings(_env_file=None, llm_model="gpt-test", chat_tone="modern").chat_tone == "modern"
     with pytest.raises(ValidationError):
         Settings(_env_file=None, llm_model="gpt-test", chat_tone="formal")
+
+
+def test_chat_emoji_can_be_disabled(
+    clean_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHAT_EMOJI", "false")
+    settings = Settings(_env_file=None, llm_model="gpt-test")
+    assert settings.chat_emoji is False
 
 
 def test_answer_knowledge_mode_accepts_only_supported_values(clean_env: None) -> None:
