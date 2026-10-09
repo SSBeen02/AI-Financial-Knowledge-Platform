@@ -32,6 +32,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
     #quickPrompts { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
     #quickPrompts button { background: #f0e8ff; color: #59349a; font-size: 12px; }
     #learningChip { display: none; margin-top: 8px; background: #7a4d19; }
+    #selectedConceptChip { display: none; margin: 0 0 8px; background: #fff3cc; color: #654600; border: 1px solid #dfbd58; }
     #chat { min-height: 340px; max-height: 58vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
     .message { max-width: 82%; border-radius: 12px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
     .user { align-self: flex-end; background: #2457d6; color: white; }
@@ -86,6 +87,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
   </section>
 
   <section class="panel">
+    <button id="selectedConceptChip" type="button" aria-label="선택한 학습 개념 해제"></button>
     <div class="composer">
       <textarea id="message" placeholder="경제 개념을 질문해 보세요."></textarea>
       <button id="send">보내기</button>
@@ -108,7 +110,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
 (() => {
   const $ = (id) => document.getElementById(id);
   const state = {
-    mode: "normal", selectedConceptId: null, lockedConceptId: null,
+    mode: "normal", selectedConceptId: null, selectedConceptTerm: null, lockedConceptId: null,
     conceptOffset: 0, nextOffset: null,
     activeSessionId: null, quizSessionId: null, streaming: false, completeHint: null,
     completionKeys: {}, retryKeys: {}, quizMeta: null,
@@ -133,6 +135,31 @@ DEV_CHAT_HTML = r"""<!doctype html>
   function setBusy(busy) {
     state.streaming = busy;
     $("send").disabled = busy;
+    $("selectedConceptChip").disabled = busy;
+  }
+  function canSelectConcept() {
+    return state.mode === "normal" && !state.activeSessionId && !state.lockedConceptId;
+  }
+  function renderSelectedConcept() {
+    const chip = $("selectedConceptChip");
+    if (state.selectedConceptId && state.selectedConceptTerm && canSelectConcept()) {
+      chip.style.display = "inline-block";
+      chip.textContent = `📌 ${state.selectedConceptTerm} ×`;
+      return;
+    }
+    chip.style.display = "none";
+    chip.textContent = "";
+  }
+  function selectConcept(concept) {
+    if (!canSelectConcept()) return;
+    state.selectedConceptId = concept.concept_id;
+    state.selectedConceptTerm = concept.term;
+    renderSelectedConcept();
+  }
+  function clearSelectedConcept() {
+    state.selectedConceptId = null;
+    state.selectedConceptTerm = null;
+    renderSelectedConcept();
   }
   function sourceText(sources) {
     return (sources || []).map((source) => `${source.term} · ${source.label} · ${Number(source.score).toFixed(3)}`).join("\n");
@@ -172,8 +199,9 @@ DEV_CHAT_HTML = r"""<!doctype html>
     const button = document.createElement("button");
     button.className = "suggestion";
     button.textContent = `${suggestion.term} 학습 시작하기`;
+    button.disabled = !canSelectConcept();
     button.addEventListener("click", () => {
-      state.selectedConceptId = suggestion.concept_id;
+      selectConcept(suggestion);
       $("message").value = `${suggestion.term}에 대해 알려줘`;
       $("message").focus();
     });
@@ -222,6 +250,8 @@ DEV_CHAT_HTML = r"""<!doctype html>
     state.activeSessionId = chatState.active_session?.session_id || null;
     state.lockedConceptId = chatState.locked_concept?.concept_id || null;
     state.completeHint = chatState.complete_hint || null;
+    if (!canSelectConcept()) clearSelectedConcept();
+    else renderSelectedConcept();
     const active = chatState.active_session ? ` · active=${chatState.active_session.term} (attempt ${chatState.active_session.attempt})` : "";
     $("statusLine").textContent = `mode=${chatState.mode}${active}${chatState.notice ? ` · ${chatState.notice}` : ""}`;
     $("learningGuide").textContent = chatState.learning_guide;
@@ -265,7 +295,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
       button.disabled = state.mode !== "normal" || Boolean(state.lockedConceptId);
       button.addEventListener("click", () => {
         $("message").value = `${concept.term}에 대해 알려줘`;
-        state.selectedConceptId = concept.concept_id;
+        selectConcept(concept);
         $("message").focus();
       });
       box.appendChild(button);
@@ -297,7 +327,6 @@ DEV_CHAT_HTML = r"""<!doctype html>
     const body = {message};
     if (state.selectedConceptId) body.concept_id = state.selectedConceptId;
     if (!body.concept_id && state.mode === "relearn") body.concept_id = state.lockedConceptId;
-    state.selectedConceptId = null;
     $("message").value = "";
     const user = addMessage("user", message);
     const assistant = addMessage("assistant", "");
@@ -330,6 +359,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
         if (chunk.done) break;
       }
       if (!doneMetadata) throw new Error("done 이벤트 없이 스트림이 종료되었습니다.");
+      clearSelectedConcept();
       applyLearningBoundary(doneMetadata, user.item);
       const meta = document.createElement("div");
       meta.className = "meta";
@@ -402,7 +432,6 @@ DEV_CHAT_HTML = r"""<!doctype html>
     await refreshState();
   }
 
-  $("message").addEventListener("input", () => { state.selectedConceptId = null; });
   $("message").addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendMessage(); }
   });
@@ -414,7 +443,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
   $("changeStage").addEventListener("click", async () => {
     try {
       await api("/learning/dev/stage", {method: "POST", body: JSON.stringify({stage: $("stage").value})});
-      state.selectedConceptId = null;
+      clearSelectedConcept();
       await refreshAll();
     } catch (e) { show(e.message); }
   });
@@ -422,7 +451,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
     if (!confirm("현재 스테이지의 모든 개념을 통과 처리할까요?")) return;
     try {
       const result = await api("/learning/dev/pass-all", {method: "POST"});
-      state.selectedConceptId = null;
+      clearSelectedConcept();
       show(`전체 통과 처리했습니다. 현재 스테이지: ${result.stage_id}`);
       await refreshAll();
     } catch (e) { show(e.message); }
@@ -431,7 +460,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
     if (!confirm(`${userId()} 사용자의 채팅·학습 상태를 초기화할까요?`)) return;
     try {
       await api("/learning/dev/reset", {method: "POST"});
-      state.selectedConceptId = null;
+      clearSelectedConcept();
       state.renderedSessionId = null;
       state.renderedAttempt = null;
       $("chat").replaceChildren();
@@ -447,6 +476,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
     const first = $("quickPrompts").querySelector("button");
     if (first) { $("message").value = first.textContent; $("message").focus(); }
   });
+  $("selectedConceptChip").addEventListener("click", clearSelectedConcept);
   $("viewContext").addEventListener("click", async () => {
     try { show(await api(`/learning/sessions/${state.quizSessionId}/learning-context`)); }
     catch (e) { show(e.message); }

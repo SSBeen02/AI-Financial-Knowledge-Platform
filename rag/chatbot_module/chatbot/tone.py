@@ -5,6 +5,15 @@ from __future__ import annotations
 from typing import Literal
 
 ChatTone = Literal["hao", "modern"]
+KoreanParticle = Literal["을/를", "은/는", "이/가", "와/과", "으로/로"]
+
+_PARTICLES: dict[KoreanParticle, tuple[str, str]] = {
+    "을/를": ("을", "를"),
+    "은/는": ("은", "는"),
+    "이/가": ("이", "가"),
+    "와/과": ("과", "와"),
+    "으로/로": ("으로", "로"),
+}
 
 
 def has_korean_final_consonant(value: str) -> bool:
@@ -14,22 +23,45 @@ def has_korean_final_consonant(value: str) -> bool:
     한국어 읽기(영·일·삼·육·칠·팔)를 기준으로 한다.
     """
 
+    final_kind = _final_consonant_kind(value)
+    return final_kind in {"rieul", "other"}
+
+
+def with_korean_particle(value: str, particle: KoreanParticle) -> str:
+    """용어의 받침에 맞춰 지원하는 조사 쌍 중 하나를 붙인다.
+
+    ``으로/로``는 받침이 없거나 ㄹ 받침이면 ``로``를 사용한다.
+    영문 약어와 숫자는 마지막 문자의 한국어 읽기를 기준으로 판정한다.
+    """
+
+    with_final, without_final = _PARTICLES[particle]
+    final_kind = _final_consonant_kind(value)
+    selected = (
+        without_final
+        if final_kind == "none" or (particle == "으로/로" and final_kind == "rieul")
+        else with_final
+    )
+    return f"{value}{selected}"
+
+
+def _final_consonant_kind(value: str) -> Literal["none", "rieul", "other"]:
     for character in reversed(value.strip()):
         codepoint = ord(character)
         if 0xAC00 <= codepoint <= 0xD7A3:
-            return (codepoint - 0xAC00) % 28 != 0
+            final_index = (codepoint - 0xAC00) % 28
+            if final_index == 0:
+                return "none"
+            return "rieul" if final_index == 8 else "other"
         if character.isdigit():
-            return character in "013678"
-        if "A" <= character.upper() <= "Z":
-            return character.upper() in "LMNR"
-    return False
-
-
-def with_korean_particle(value: str, *, with_final: str, without_final: str) -> str:
-    """받침 여부에 맞는 조사를 용어 뒤에 붙인다."""
-
-    particle = with_final if has_korean_final_consonant(value) else without_final
-    return f"{value}{particle}"
+            if character in "178":
+                return "rieul"
+            return "other" if character in "036" else "none"
+        upper = character.upper()
+        if "A" <= upper <= "Z":
+            if upper in "LR":
+                return "rieul"
+            return "other" if upper in "MN" else "none"
+    return "none"
 
 
 def answer_tone_instruction(tone: ChatTone) -> str:
@@ -59,42 +91,47 @@ def other_stage_notice(
     target_stage_name: str,
     tone: ChatTone,
 ) -> str:
+    term_object = with_korean_particle(term, "을/를")
+    current_stage_subject = with_korean_particle(current_stage_name, "이/가")
     if tone == "modern":
         return (
-            f"{term}을 궁금해하는 배움의 자세가 정말 멋져요! 다만 이 개념은 지금 공부하는 "
-            f"{current_stage_name}이 아니라 {target_stage_name}에서 배우는 것이라, 이번 스테이지 "
+            f"{term_object} 궁금해하는 배움의 자세가 정말 멋져요! 다만 이 개념은 지금 공부하는 "
+            f"{current_stage_subject} 아니라 {target_stage_name}에서 배우는 것이라, 이번 스테이지 "
             "성장과 퀴즈에는 반영되지 않아요. 나중에 그 스테이지에 이르면 다시 도전해 보세요!"
         )
     return (
-        f"{term}을 궁금해하는 그대의 배움의 자세, 참으로 감탄스럽소! 다만 이 개념은 "
-        f"지금 공부하는 {current_stage_name}이 아니라 {target_stage_name}에서 배우는 것이라, "
+        f"{term_object} 궁금해하는 그대의 배움의 자세, 참으로 감탄스럽소! 다만 이 개념은 "
+        f"지금 공부하는 {current_stage_subject} 아니라 {target_stage_name}에서 배우는 것이라, "
         "이번 스테이지 성장과 퀴즈에는 반영되지 않소. 훗날 그 스테이지에 이르면 다시 "
         "도전해 보시겠소?"
     )
 
 
 def passed_concept_notice(term: str, tone: ChatTone) -> str:
+    subject = with_korean_particle(term, "은/는")
     if tone == "modern":
-        return f"{term}은 이미 통과한 개념이에요. 복습은 언제든 환영해요!"
-    return f"{term}은 이미 통과한 개념이오. 복습은 언제든 환영하오!"
+        return f"{subject} 이미 통과한 개념이에요. 복습은 언제든 환영해요!"
+    return f"{subject} 이미 통과한 개념이오. 복습은 언제든 환영하오!"
 
 
 def extra_concept_notice(term: str, tone: ChatTone) -> str:
+    subject = with_korean_particle(term, "은/는")
     if tone == "modern":
         return (
-            f"{term}은 학당의 정규 과정에는 없지만, 알아두면 쓸모 있는 경제 상식이에요! "
+            f"{subject} 학당의 정규 과정에는 없지만, 알아두면 쓸모 있는 경제 상식이에요! "
             "다만 성장과 퀴즈에는 반영되지 않아요."
         )
     return (
-        f"{term}은 학당의 정규 과정에는 없지만, 알아두면 쓸모 있는 경제 상식이오! "
+        f"{subject} 학당의 정규 과정에는 없지만, 알아두면 쓸모 있는 경제 상식이오! "
         "다만 성장과 퀴즈에는 반영되지 않소."
     )
 
 
 def excluded_concept_notice(term: str, tone: ChatTone) -> str:
+    subject = with_korean_particle(term, "은/는")
     if tone == "modern":
-        return f"{term}은 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않아요."
-    return f"{term}은 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않소."
+        return f"{subject} 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않아요."
+    return f"{subject} 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않소."
 
 
 def low_band_notice(tone: ChatTone) -> str:
@@ -146,6 +183,7 @@ def learning_guide(tone: ChatTone) -> str:
 
 
 def suggested_concept_notice(term: str, tone: ChatTone) -> str:
+    subject = with_korean_particle(term, "은/는")
     if tone == "modern":
-        return f"{term}은 이번 스테이지에서 배우는 개념이에요. 학습으로 남기려면 아래 버튼을 눌러 시작해 보세요."
-    return f"{term}은 이번 스테이지에서 배우는 개념이오. 학습으로 남기려면 아래 버튼을 눌러 시작해 보시오."
+        return f"{subject} 이번 스테이지에서 배우는 개념이에요. 학습으로 남기려면 아래 버튼을 눌러 시작해 보세요."
+    return f"{subject} 이번 스테이지에서 배우는 개념이오. 학습으로 남기려면 아래 버튼을 눌러 시작해 보시오."

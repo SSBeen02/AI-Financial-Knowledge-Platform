@@ -349,7 +349,7 @@ def test_free_question_detects_current_stage_concept(message_env: MessageEnv) ->
         "term": "워킹푸어",
     }
     assert body["notice"] == (
-        "워킹푸어은 이번 스테이지에서 배우는 개념이오. "
+        "워킹푸어는 이번 스테이지에서 배우는 개념이오. "
         "학습으로 남기려면 아래 버튼을 눌러 시작해 보시오."
     )
     assert message_env.status.get_statuses(USER, "stage1")[WORKING_POOR] == STATUS_NOT_STARTED
@@ -696,6 +696,26 @@ def test_modern_tone_uses_haeyo_prompt_and_notice(message_env: MessageEnv) -> No
     assert "~입니다와 해요체를 섞지 마세요" in message_env.llm.prompts[-1].instructions
 
 
+def test_chat_emoji_controls_limited_emphasis_prompt(message_env: MessageEnv) -> None:
+    message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": "오늘 날씨 어때?"}
+    )
+    enabled_prompt = message_env.llm.prompts[-1].instructions
+    assert "핵심 정의나 꼭 기억할 포인트 1~2곳" in enabled_prompt
+    assert "합계 3개를 넘기지" in enabled_prompt
+    assert "볼드체를 남발하지" in enabled_prompt
+    assert "핵심 정의 문장 내용 자체를 바꾸지" in enabled_prompt
+
+    disabled = message_env.settings.model_copy(update={"chat_emoji": False})
+    message_env.client.app.dependency_overrides[get_cached_settings] = lambda: disabled
+    message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": "오늘 날씨는?"}
+    )
+    disabled_prompt = message_env.llm.prompts[-1].instructions
+    assert "핵심 정의나 꼭 기억할 포인트 1~2곳" not in disabled_prompt
+    assert "볼드체를 남발하지" not in disabled_prompt
+
+
 def test_notice_for_other_stage_is_returned_inside_active_session(
     message_env: MessageEnv,
 ) -> None:
@@ -727,7 +747,7 @@ def test_notice_for_passed_current_stage_concept(scenario_env: MessageEnv) -> No
     ).json()
 
     assert body["session_id"] is None
-    assert body["notice"] == "분업/특화은 이미 통과한 개념이오. 복습은 언제든 환영하오!"
+    assert body["notice"] == "분업/특화는 이미 통과한 개념이오. 복습은 언제든 환영하오!"
     assert scenario_env.status.get_statuses(USER, "stage1")[DIVISION] == STATUS_PASSED
 
 
@@ -745,11 +765,11 @@ def test_extra_and_excluded_notice_require_explicit_term_or_alias(
     ).json()
 
     assert extra["notice"] == (
-        "부가경제용어은 학당의 정규 과정에는 없지만, 알아두면 쓸모 있는 경제 상식이오! "
+        "부가경제용어는 학당의 정규 과정에는 없지만, 알아두면 쓸모 있는 경제 상식이오! "
         "다만 성장과 퀴즈에는 반영되지 않소."
     )
     assert excluded["notice"] == (
-        "비경제용어은 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않소."
+        "비경제용어는 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않소."
     )
     assert "경제 학습 범위 밖 용어" not in excluded["answer"]
     assert incidental["notice"] is None

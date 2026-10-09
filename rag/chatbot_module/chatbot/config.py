@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     llm_max_output_tokens: int = Field(default=1200, ge=1)
     llm_temperature: float = Field(default=0.7, ge=0, le=2)
     chat_tone: Literal["hao", "modern"] = "hao"
+    chat_emoji: bool = True
     answer_knowledge_mode: AnswerKnowledgeMode = "dictionary_plus"
     free_question_auto_start: bool = False
     cors_allow_origins: str = "http://localhost:5173,http://localhost:3000"

@@ -180,6 +180,7 @@ Qdrant 실제 연결 테스트는 `.env`에 연결 정보가 있을 때 실행�
 | `LLM_MAX_OUTPUT_TOKENS` | 선택 | `1200` | 답변 생성의 최대 출력 토큰 수. Upstage Chat Completions에는 `max_tokens`로 전달한다. |
 | `LLM_TEMPERATURE` | 선택 | `0.7` | 답변 생성의 무작위성(0~2). 지원 모델에만 보낸다. `reasoning.effort`가 `none`이 아니거나 지원 여부가 불명확한 추론 모델에는 자동으로 생략하며, 관련성 yes/no 판정에도 사용하지 않는다. |
 | `CHAT_TONE` | 선택 | `hao` | `hao`는 읽기 쉬운 학당 훈장 하오체, `modern`은 현대 해요체. 답변과 범위 밖·재학습·퀴즈 대기 안내에 함께 적용한다. |
+| `CHAT_EMOJI` | 선택 | `true` | `true`면 답변 프롬프트가 핵심 정의·기억할 포인트 1~2곳에만 이모지 강조를 허용한다. 전체 이모지·이모티콘은 최대 3개이며 서버 생성 notice에는 적용하지 않는다. |
 | `ANSWER_KNOWLEDGE_MODE` | 선택 | `dictionary_plus` | `dictionary_only`는 사전 중심 방식, `dictionary_plus`는 핵심 정의를 지키며 일반 경제 상식을 보충, `free`는 사전을 참고하되 핵심 정의와 충돌하지 않게 자유 설명한다. |
 | `FREE_QUESTION_AUTO_START` | 선택 | `false` | `false`면 자유 질문은 학습 상태를 바꾸지 않고 `suggested_concept`만 반환한다. 이전 자동 시작 동작이 필요할 때만 `true`로 둔다. |
 | `CORS_ALLOW_ORIGINS` | 선택 | `http://localhost:5173,http://localhost:3000` | 브라우저 접근을 허용할 origin의 쉼표 구분 목록 |
@@ -726,6 +727,13 @@ for event in events:
 말고 입력창에 `{term}에 대해 알려줘`를 채운다. 사용자가 전송할 때 다음처럼 `concept_id`를
 함께 보낸다.
 
+`concept_id`는 입력 문구에서 다시 추출하지 않고 **키워드 선택 상태**로 관리한다. 키워드를 클릭하면
+`concept_id`와 `term`을 함께 보관하고 입력창 위에 `📌 {term} ×` 칩을 표시한다. 사용자가 질문 문구를
+수정하거나 `?`를 덧붙여도 칩이 남아 있으면 같은 `concept_id`를 전송한다. 다른 키워드를 누르면 선택
+상태와 칩을 새 개념으로 교체하고, 칩의 `×`를 누르면 선택을 해제한다. 전송이 정상 완료되면 선택을
+해제하되 전송 오류가 나면 재시도할 수 있도록 유지한다. active session, `relearn`, `quiz_pending`,
+`quiz_generation_failed`에서는 기존 규칙대로 새 키워드 선택을 허용하지 않는다.
+
 개념 목록의 현재 스테이지는 `stage_id`와 `stage_name_ko`로 반환된다. 메시지의 `concept`, 세션 조회,
 학습 맥락의 `concept`도 스테이지 식별자 필드 이름을 `stage_id`로 통일한다.
 
@@ -741,7 +749,8 @@ Stage 5도 별도 파라미터 없이 동일하게 전송한다. 서버는 항�
 `concept_id`를 넣지 않으며 기본 설정에서는 세션이나 상태가 바뀌지 않는다. 서버가 현재 스테이지의
 `not_started` 개념을 감지하면 `suggested_concept: {concept_id, term}`과 안내 `notice`를 반환한다.
 프론트는 `{term} 학습 시작하기` 버튼을 표시하고, 클릭할 때 키워드 버튼과 같은 `concept_id` 포함
-요청을 보내야 한다. 학습 시작은 키워드·제안 버튼·재학습처럼 `concept_id`가 명시된 요청에서만 일어난다.
+선택 상태와 칩을 설정해야 한다. 이후 입력 문구를 수정해도 전송 시 선택된 `concept_id`를 포함한다.
+학습 시작은 키워드·제안 버튼·재학습처럼 `concept_id`가 명시된 요청에서만 일어난다.
 
 ### 6.2 POST SSE 스트리밍
 

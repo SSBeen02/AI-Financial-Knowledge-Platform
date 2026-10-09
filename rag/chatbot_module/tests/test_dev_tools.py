@@ -59,6 +59,13 @@ def test_dev_routes_and_page_are_registered_only_for_local_status(status_db) -> 
     assert "doneMetadata.notice" in response.text
     assert "quick_prompts" in response.text
     assert "learningChip" in response.text
+    assert "selectedConceptChip" in response.text
+    assert "selectedConceptTerm" in response.text
+    assert "selectConcept(concept)" in response.text
+    assert "selectConcept(suggestion)" in response.text
+    assert 'if (state.selectedConceptId) body.concept_id = state.selectedConceptId' in response.text
+    assert '$("message").addEventListener("input"' not in response.text
+    assert '$("selectedConceptChip").addEventListener("click", clearSelectedConcept)' in response.text
     assert "/quiz-retry" in response.text
     assert "applyLearningBoundary(message)" in response.text
     assert "applyLearningBoundary(doneMetadata, user.item)" in response.text
