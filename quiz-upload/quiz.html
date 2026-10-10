@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>개념 확인</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", sans-serif;
+      background: #f4f1ea;
+      color: #1d1a16;
+    }
+    body {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 28px 20px 72px;
+    }
+    h1, h2 { margin: 0 0 8px; }
+    p { margin: 0; }
+    a { color: #0b5f4a; }
+    header p { color: #5c564e; }
+    .question, .result, .notes {
+      background: white;
+      border: 1px solid #e4ddd2;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+    }
+    .meta { color: #5c564e; font-size: 14px; margin-bottom: 8px; }
+    .choices { display: grid; gap: 8px; margin-top: 12px; }
+    .choice {
+      text-align: left;
+      border: 1px solid #e4ddd2;
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: #fff;
+      color: #1d1a16;
+      font: inherit;
+      cursor: pointer;
+    }
+    .choice.selected { border-color: #0b5f4a; background: #e7f3ef; }
+    .choice.right { border-color: #0b5f4a; background: #e7f3ef; }
+    .choice.wrong { border-color: #9d1c1c; background: #fbeeee; }
+    .choice:disabled { cursor: default; }
+    button.submit {
+      margin-top: 16px;
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 16px;
+      background: #0b5f4a;
+      color: white;
+      font: inherit;
+      cursor: pointer;
+    }
+    button.submit:disabled { background: #c8c2b8; color: #6d675f; cursor: not-allowed; }
+    .result.pass { border-color: #0b5f4a; }
+    .result.fail { border-color: #9d1c1c; }
+    .explain { margin-top: 8px; color: #3d4a57; }
+    .correct-label { color: #0b5f4a; font-weight: 700; }
+    .incorrect-label { color: #9d1c1c; font-weight: 700; }
+    .answer-detail { margin-top: 14px; line-height: 1.6; }
+    .explain { background: #f4f1ea; border-radius: 8px; padding: 12px; line-height: 1.7; }
+    .result-action { display: inline-block; margin-top: 24px; padding: 14px 24px; border-radius: 8px; background: #0b5f4a; color: white; text-decoration: none; }
+    #status { min-height: 1.4em; margin-top: 12px; color: #5c564e; }
+    #status.error { color: #9d1c1c; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>개념 확인</h1>
+    <p>배운 내용을 세 문제로 확인합니다. 두 문제 이상 맞으면 이 개념을 통과합니다.</p>
+  </header>
+  <p id="status">문제를 불러오는 중입니다.</p>
+  <section id="outcome"></section>
+  <main id="quiz"></main>
+
+
+  <script>
+    const QUIZ_ID = new URLSearchParams(location.search).get("quiz_set_id") || "91862c9e-1780-4395-9b62-f92eddec113d";
+    const answers = {};
+    let quiz = null;
+    let submitted = false;
+    let currentIndex = 0;
+    const submissionKey = "page-" + crypto.randomUUID();
+
+    const statusEl = document.querySelector("#status");
+    const quizEl = document.querySelector("#quiz");
+    const outcomeEl = document.querySelector("#outcome");
+
+    function setStatus(message, isError) {
+      statusEl.textContent = message;
+      statusEl.className = isError ? "error" : "";
+    }
+
+    function typeLabel(questionType) {
+      return questionType === "ox" ? "참·거짓" : "상황 선택";
+    }
+
+    function renderQuiz() {
+      quizEl.innerHTML = "";
+      [quiz.questions[currentIndex]].forEach((question) => {
+        const card = document.createElement("article");
+        card.className = "question";
+        const meta = document.createElement("p");
+        meta.className = "meta";
+        meta.textContent = (currentIndex + 1) + " / " + quiz.questions.length + " · " + typeLabel(question.question_type);
+        const prompt = document.createElement("h2");
+        prompt.textContent = question.prompt;
+        const choices = document.createElement("div");
+        choices.className = "choices";
+        question.choices.forEach((choice) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "choice";
+          button.dataset.key = choice.key;
+          button.classList.toggle("selected", answers[question.question_index] === choice.key);
+          button.setAttribute("aria-pressed", answers[question.question_index] === choice.key ? "true" : "false");
+          button.textContent = choice.key + ". " + choice.text;
+          button.addEventListener("click", () => selectAnswer(question.question_index, choice.key));
+          choices.appendChild(button);
+        });
+        card.append(meta, prompt, choices);
+        quizEl.appendChild(card);
+      });
+      const submit = document.createElement("button");
+      submit.type = "button";
+      submit.className = "submit";
+      submit.id = "submit";
+      const last = currentIndex === quiz.questions.length - 1;
+      submit.textContent = last ? "채점 결과 보기" : "다음 문제 →";
+      submit.disabled = !answers[quiz.questions[currentIndex].question_index];
+      submit.addEventListener("click", () => {
+        if (last) {
+          submitAnswers();
+        } else {
+          currentIndex += 1;
+          renderQuiz();
+        }
+      });
+      quizEl.appendChild(submit);
+    }
+
+    function selectAnswer(questionIndex, key) {
+      if (submitted) return;
+      answers[questionIndex] = key;
+      document.querySelectorAll(".question").forEach((card) => {
+        const question = quiz.questions[currentIndex];
+        card.querySelectorAll(".choice").forEach((button) => {
+          const selected = button.dataset.key === answers[question.question_index];
+          button.classList.toggle("selected", selected);
+          button.setAttribute("aria-pressed", selected ? "true" : "false");
+        });
+      });
+      document.querySelector("#submit").disabled = false;
+    }
+
+    function renderResults(body) {
+      document.querySelector("header h1").textContent = "퀴즈 결과";
+      document.querySelector("header p").textContent = "문제별 정오답과 해설을 확인하세요.";
+      quizEl.innerHTML = "";
+      body.results.forEach((item) => {
+        const card = document.createElement("article");
+        card.className = "question";
+        const meta = document.createElement("p");
+        meta.className = "meta " + (item.is_correct ? "correct-label" : "incorrect-label");
+        meta.textContent = item.question_index + "번 · " + (item.is_correct ? "정답" : "오답");
+        const prompt = document.createElement("h2");
+        prompt.textContent = item.prompt;
+        const question = quiz.questions.find((q) => q.question_index === item.question_index);
+        const choiceLabel = (key) => {
+          const choice = question.choices.find((c) => c.key === key);
+          return choice ? key + ". " + choice.text : key;
+        };
+        const answer = document.createElement("p");
+        answer.className = "answer-detail";
+        answer.textContent = "내 답: " + choiceLabel(item.submitted_answer) + " / 정답: " + choiceLabel(item.answer);
+        const explanation = document.createElement("p");
+        explanation.className = "explain";
+        explanation.textContent = "해설 · " + item.explanation;
+        card.append(meta, prompt, answer, explanation);
+        quizEl.appendChild(card);
+      });
+      const action = document.createElement("a");
+      action.className = "result-action";
+      action.textContent = body.is_passed ? "다음 개념 배우기" : "재학습하러 가기";
+      action.href = "/?mode=" + (body.is_passed ? "next" : "relearn");
+      quizEl.appendChild(action);
+      window.scrollTo({top: 0, behavior: "smooth"});
+    }
+
+    async function submitAnswers() {
+      submitted = true;
+      document.querySelector("#submit").disabled = true;
+      setStatus("채점하는 중입니다.");
+      const response = await fetch("/api/v1/quiz-sets/" + QUIZ_ID + "/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submitted_answers: quiz.questions.map((question) => ({
+            question_index: question.question_index,
+            answer: answers[question.question_index]
+          })),
+          idempotency_key: submissionKey
+        })
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        submitted = false;
+        document.querySelector("#submit").disabled = false;
+        setStatus(body.message || "제출하지 못했습니다.", true);
+        return;
+      }
+      const headline = body.is_passed ? "이 개념을 통과했습니다." : "아직 통과하지 못했습니다.";
+      outcomeEl.innerHTML = "";
+      const result = document.createElement("section");
+      result.className = "result " + (body.is_passed ? "pass" : "fail");
+      const title = document.createElement("h2");
+      title.textContent = headline;
+      const detail = document.createElement("p");
+      detail.textContent = "3문제 중 " + body.correct_count + "문제를 맞혔습니다.";
+      result.append(title, detail);
+      outcomeEl.appendChild(result);
+      renderResults(body);
+      setStatus("");
+    }
+
+    async function loadQuiz() {
+      const response = await fetch("/api/v1/quiz-sets/" + QUIZ_ID);
+      const body = await response.json();
+      if (!response.ok) {
+        setStatus(body.message || "퀴즈를 불러오지 못했습니다.", true);
+        return;
+      }
+      quiz = body;
+      setStatus(quiz.concept_id + " 개념입니다. 보기를 고른 뒤 제출하세요.");
+      renderQuiz();
+    }
+
+    loadQuiz();
+  </script>
+</body>
+</html>
