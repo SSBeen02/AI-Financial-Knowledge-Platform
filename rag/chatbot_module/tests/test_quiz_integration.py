@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from chatbot.integrations import SqlConceptStatusService
-from chatbot.quiz import DevQuizService
+from chatbot.quiz import DevQuizService, QuizService, QuizSetResult
 from chatbot.retrieval import CachedConcept
 from chatbot.service import (
+    SessionNotFound,
     complete_learning_session,
     report_quiz_generation_failed,
     retry_quiz_generation,
@@ -18,6 +21,31 @@ from tests.conftest import STAGES_PATH, make_settings
 USER = "quiz-user"
 CONCEPT = "sisa_1281"
 STAGE = "stage1"
+
+
+class OrderedFailureQuizService(QuizService):
+    def __init__(
+        self,
+        *,
+        store: SqlChatStore,
+        callback_before_return: bool,
+        return_failed: bool,
+    ) -> None:
+        self.store = store
+        self.callback_before_return = callback_before_return
+        self.return_failed = return_failed
+
+    def create_quiz_set(self, **kwargs: object) -> QuizSetResult:
+        if self.callback_before_return:
+            report_quiz_generation_failed(
+                store=self.store,
+                user_id=str(kwargs["user_id"]),
+                session_id=str(kwargs["session_id"]),
+            )
+        return QuizSetResult(
+            quiz_set_id="ordered-failure",
+            status="failed" if self.return_failed else "pending",
+        )
 
 
 class Cache:
@@ -162,6 +190,86 @@ def test_generation_failure_and_retry_use_new_completed_session(tmp_path: Path) 
         assert get_chat_state(
             load_stage_catalog(STAGES_PATH), service, store, USER
         ).mode == "quiz_pending"
+    finally:
+        service.close()
+        store.close()
+
+
+@pytest.mark.parametrize(
+    ("callback_timing", "return_failed"),
+    [
+        pytest.param("before", True, id="callback-before-failed-return"),
+        pytest.param("after", True, id="failed-return-before-callback"),
+        pytest.param("before", False, id="callback-only"),
+        pytest.param("none", True, id="failed-return-only"),
+    ],
+)
+def test_generation_failure_order_always_reaches_one_final_state(
+    tmp_path: Path,
+    callback_timing: str,
+    return_failed: bool,
+) -> None:
+    settings = make_settings(
+        tmp_path / f"failure-order-{callback_timing}-{return_failed}.db",
+        simulate_quiz_status=False,
+    )
+    store = SqlChatStore(settings)
+    service = SqlConceptStatusService(settings)
+    quiz = OrderedFailureQuizService(
+        store=store,
+        callback_before_return=callback_timing == "before",
+        return_failed=return_failed,
+    )
+    try:
+        session_id = _active_attempt(service, store)
+        completion = complete_learning_session(
+            status_service=service,
+            store=store,
+            cache=Cache(),
+            quiz_service=quiz,
+            user_id=USER,
+            session_id=session_id,
+            idempotency_key=f"failure-order-{callback_timing}-{return_failed}",
+        )
+        if callback_timing == "after":
+            report_quiz_generation_failed(
+                store=store,
+                user_id=USER,
+                session_id=session_id,
+            )
+
+        context = store.get_learning_context(USER, session_id)
+        assert context is not None
+        assert context.quiz_status == "generation_failed"
+        assert completion.quiz.status == ("failed" if return_failed else "pending")
+        assert get_chat_state(
+            load_stage_catalog(STAGES_PATH), service, store, USER
+        ).mode == "quiz_generation_failed"
+    finally:
+        service.close()
+        store.close()
+
+
+def test_generation_failure_callback_still_rejects_wrong_or_missing_owner(
+    tmp_path: Path,
+) -> None:
+    settings = make_settings(tmp_path / "failure-owner.db", simulate_quiz_status=False)
+    store = SqlChatStore(settings)
+    service = SqlConceptStatusService(settings)
+    try:
+        session_id = _active_attempt(service, store)
+        with pytest.raises(SessionNotFound):
+            report_quiz_generation_failed(
+                store=store,
+                user_id="another-user",
+                session_id=session_id,
+            )
+        with pytest.raises(SessionNotFound):
+            report_quiz_generation_failed(
+                store=store,
+                user_id=USER,
+                session_id="missing-session",
+            )
     finally:
         service.close()
         store.close()
