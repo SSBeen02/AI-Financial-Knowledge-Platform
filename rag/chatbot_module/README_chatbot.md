@@ -621,6 +621,8 @@ status = get_concept_status(status_service, user_id, concept_id, stage_id)
 `create_quiz_set`이 `status=failed`를 반환하거나 퀴즈 모듈이
 `report_quiz_generation_failed(session_id)`를 호출하면 `quiz_status=generation_failed`가 된다. 개념은
 `in_progress` 그대로이며 `/learning/current.mode=quiz_generation_failed`다. 같은 실패 알림은 멱등이다.
+`create_quiz_set`이 반환하기 전에 같은 호출 흐름에서 실패 알림을 보내도 완료 중 상태에 기록되며,
+반환값과 알림의 선후에 관계없이 최종 실패 상태는 한 번만 반영된다.
 
 비동기 생성 실패나 시간 초과를 알릴 때도 같은 provider에서 저장소를 얻어 내부 함수를 호출한다.
 

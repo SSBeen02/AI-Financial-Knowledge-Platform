@@ -13,6 +13,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from threading import RLock
 from time import perf_counter
 
 from chatbot.concepts import (
@@ -78,6 +79,18 @@ from chatbot.tone import (
     suggested_concept_notice,
     with_korean_particle,
 )
+
+
+@dataclass
+class _CompletionInProgress:
+    """QuizService의 동기 콜백과 완료 저장 사이를 연결하는 요청 범위 상태."""
+
+    context: LearningContextOut
+    generation_failed: bool = False
+
+
+_completion_lock = RLock()
+_completions_in_progress: dict[tuple[int, str, str], _CompletionInProgress] = {}
 
 
 class SessionNotFound(Exception):
@@ -655,40 +668,55 @@ def complete_learning_session(
         completed_at=completed_at,
     )
     context_payload = context.model_dump(mode="json")
+    completion_key = (id(store), user_id, session.session_id)
+    pending_completion = _CompletionInProgress(context=context)
+    with _completion_lock:
+        if completion_key in _completions_in_progress:
+            raise LearningCompletionError("학습 완료 처리가 이미 진행 중입니다.", status_code=409)
+        _completions_in_progress[completion_key] = pending_completion
     try:
-        quiz_result = quiz_service.create_quiz_set(
-            user_id=user_id,
-            session_id=session.session_id,
-            concept_id=session.concept_id,
-            stage_id=session.stage,
-            learning_context=context_payload,
-            reference_chunk_ids=context.reference_chunk_ids,
+        try:
+            quiz_result = quiz_service.create_quiz_set(
+                user_id=user_id,
+                session_id=session.session_id,
+                concept_id=session.concept_id,
+                stage_id=session.stage,
+                learning_context=context_payload,
+                reference_chunk_ids=context.reference_chunk_ids,
+            )
+        except QuizServiceError as exc:
+            raise ExternalServiceError("퀴즈 생성 요청에 실패했습니다.") from exc
+        quiz = QuizSetOut(
+            quiz_set_id=quiz_result.quiz_set_id,
+            status=quiz_result.status,
         )
-    except QuizServiceError as exc:
-        raise ExternalServiceError("퀴즈 생성 요청에 실패했습니다.") from exc
-    quiz = QuizSetOut(
-        quiz_set_id=quiz_result.quiz_set_id,
-        status=quiz_result.status,
-    )
-    if quiz.status == "failed":
-        context.quiz_status = "generation_failed"
-        context_payload = context.model_dump(mode="json")
-    completion = LearningCompletionOut(
-        **context.model_dump(),
-        quiz=quiz,
-    )
-    record = store.complete_session_with_context(
-        session_id=session.session_id,
-        user_id=user_id,
-        concept_id=session.concept_id,
-        idempotency_key=idempotency_key,
-        payload=context_payload,
-        completion_payload=completion.model_dump(mode="json"),
-        quiz_status=context.quiz_status,
-        completed_at=completed_at,
-    )
-    del record
-    return completion
+        # 잠금을 잡은 채 최종 저장하면 이 시점과 DB commit 사이에 들어온 콜백도
+        # 저장 전 플래그 또는 저장 후 DB 갱신 중 정확히 한 경로로 처리된다.
+        with _completion_lock:
+            if pending_completion.generation_failed or quiz.status == "failed":
+                context.quiz_status = "generation_failed"
+                context_payload = context.model_dump(mode="json")
+            completion = LearningCompletionOut(
+                **context.model_dump(),
+                quiz=quiz,
+            )
+            record = store.complete_session_with_context(
+                session_id=session.session_id,
+                user_id=user_id,
+                concept_id=session.concept_id,
+                idempotency_key=idempotency_key,
+                payload=context_payload,
+                completion_payload=completion.model_dump(mode="json"),
+                quiz_status=context.quiz_status,
+                completed_at=completed_at,
+            )
+            del record
+            _completions_in_progress.pop(completion_key, None)
+        return completion
+    finally:
+        with _completion_lock:
+            if _completions_in_progress.get(completion_key) is pending_completion:
+                _completions_in_progress.pop(completion_key, None)
 
 
 def report_quiz_generation_failed(
@@ -700,7 +728,18 @@ def report_quiz_generation_failed(
         raise SessionNotFound()
     record = store.get_learning_context(user_id, session_id)
     if record is None:
-        raise QuizResultConflictError("완료된 세션의 학습 맥락을 찾을 수 없습니다.")
+        completion_key = (id(store), user_id, session_id)
+        with _completion_lock:
+            pending_completion = _completions_in_progress.get(completion_key)
+            if pending_completion is not None:
+                pending_completion.generation_failed = True
+                return pending_completion.context.model_copy(
+                    update={"quiz_status": "generation_failed"}
+                )
+        # 완료 commit과의 경계에서 대기 상태가 먼저 제거됐을 수 있으므로 재조회한다.
+        record = store.get_learning_context(user_id, session_id)
+        if record is None:
+            raise QuizResultConflictError("완료된 세션의 학습 맥락을 찾을 수 없습니다.")
     if record.quiz_status == "pending":
         store.set_quiz_status(user_id, session_id, "generation_failed")
     return get_learning_context(store, user_id, session_id)
