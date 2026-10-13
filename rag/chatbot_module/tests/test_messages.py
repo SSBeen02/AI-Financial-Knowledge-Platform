@@ -25,7 +25,7 @@ from chatbot.deps import (
 from chatbot.integrations import SqlConceptStatusService
 from chatbot.errors import install_learning_error_handlers
 from chatbot.llm import LLMAdapter, LLMError
-from chatbot.quiz import DevQuizService
+from chatbot.quiz import DevQuizService, QuizServiceError
 from chatbot.prompts import HistoryTurn, Prompt
 from chatbot.retrieval import CachedConcept, RetrievedDoc, RetrievalResult
 from chatbot.router import router
@@ -382,6 +382,26 @@ def test_stage5_selection_uses_current_stage(message_env: MessageEnv) -> None:
     assert "Stage 5 심화 학습" in message_env.llm.prompts[-1].instructions
 
 
+@pytest.mark.parametrize("concept_id", [DEMAND, DIVISION], ids=["other-stage", "passed"])
+def test_invalid_selected_concept_returns_409_without_starting_learning(
+    message_env: MessageEnv, concept_id: str
+) -> None:
+    if concept_id == DIVISION:
+        force_concept_status(message_env.status, USER, DIVISION, "stage1", STATUS_PASSED)
+
+    response = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "개념을 알려줘", "concept_id": concept_id},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "conflict"
+    assert message_env.store.get_active_session(USER) is None
+    assert _messages(message_env.store) == []
+    assert message_env.retriever.calls == []
+
+
 def test_non_current_stage_is_not_auto_detected(message_env: MessageEnv) -> None:
     body = message_env.client.post(
         "/learning/messages", headers=HEADERS, json={"message": "수요의 법칙을 알려줘"}
@@ -654,6 +674,82 @@ def test_complete_is_idempotent_and_requires_key(message_env: MessageEnv) -> Non
     assert first.json()["completed_at"].endswith(("Z", "+00:00"))
 
 
+def test_complete_missing_session_returns_404(message_env: MessageEnv) -> None:
+    response = message_env.client.post(
+        "/learning/sessions/missing/complete",
+        headers=_complete_headers("missing-session"),
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "not_found"
+
+
+def test_complete_already_completed_session_returns_409(message_env: MessageEnv) -> None:
+    started = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "분업/특화를 알려줘", "concept_id": DIVISION},
+    ).json()
+    path = f"/learning/sessions/{started['session_id']}/complete"
+    first = message_env.client.post(path, headers=_complete_headers("first-completion"))
+    repeated = message_env.client.post(path, headers=_complete_headers("new-completion-key"))
+
+    assert first.status_code == 200
+    assert repeated.status_code == 409
+    assert repeated.json()["code"] == "conflict"
+
+
+def test_complete_rejects_another_session_while_quiz_is_pending(
+    message_env: MessageEnv,
+) -> None:
+    _record_completed_quiz(message_env, "pending")
+    active = message_env.store.create_session(
+        user_id=USER,
+        stage="stage1",
+        concept_id=WORKING_POOR,
+        term="워킹푸어",
+        attempt=1,
+        start_type="keyword",
+    )
+
+    response = message_env.client.post(
+        f"/learning/sessions/{active.session_id}/complete",
+        headers=_complete_headers("other-session-pending-quiz"),
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "conflict"
+    assert message_env.store.get_session(USER, active.session_id).status == "active"
+    assert message_env.store.get_learning_context(USER, active.session_id) is None
+
+
+def test_quiz_service_error_keeps_completion_unstored(message_env: MessageEnv) -> None:
+    class FailingQuizService(DevQuizService):
+        def create_quiz_set(self, **kwargs):
+            raise QuizServiceError("quiz unavailable")
+
+    message_env.client.app.dependency_overrides[get_quiz_service] = lambda: FailingQuizService(
+        message_env.settings
+    )
+    started = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "분업/특화를 알려줘", "concept_id": DIVISION},
+    ).json()
+    session_id = started["session_id"]
+
+    response = message_env.client.post(
+        f"/learning/sessions/{session_id}/complete",
+        headers=_complete_headers("quiz-service-error"),
+    )
+
+    assert response.status_code == 502
+    assert response.json()["code"] == "external_service_error"
+    assert message_env.store.get_session(USER, session_id).status == "active"
+    assert message_env.store.get_learning_context(USER, session_id) is None
+    assert len(_messages(message_env.store)) == 2
+
+
 def test_error_response_has_request_id_and_stable_shape(message_env: MessageEnv) -> None:
     response = message_env.client.get(
         "/learning/sessions/missing", headers={**HEADERS, "X-Request-ID": "request-123"}
@@ -784,6 +880,36 @@ def test_retrieval_failure_returns_502_without_writes(message_env: MessageEnv) -
     )
     assert response.status_code == 502
     assert message_env.status.get_in_progress_concept(USER, "stage1") is None
+    assert message_env.store.get_active_session(USER) is None
+    assert _messages(message_env.store) == []
+
+
+def test_blank_free_question_returns_validation_error(message_env: MessageEnv) -> None:
+    response = message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": "   "}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"
+    assert message_env.retriever.calls == []
+    assert _messages(message_env.store) == []
+
+
+@pytest.mark.parametrize("failure", ["search", "llm"])
+def test_free_question_external_failure_returns_502_without_writes(
+    message_env: MessageEnv, failure: str
+) -> None:
+    if failure == "search":
+        message_env.retriever.fail = True
+    else:
+        message_env.llm.fail_generate = True
+
+    response = message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": "오늘 날씨 어때?"}
+    )
+
+    assert response.status_code == 502
+    assert response.json()["code"] == "external_service_error"
     assert message_env.store.get_active_session(USER) is None
     assert _messages(message_env.store) == []
 
