@@ -84,6 +84,16 @@
     let currentIndex = 0;
     const submissionKey = "page-" + crypto.randomUUID();
 
+    async function quizFetch(url, options = {}) {
+      const headers = new Headers(options.headers || {});
+      if (typeof window.quizAccessTokenProvider === "function") {
+        const token = await window.quizAccessTokenProvider();
+        if (!token) throw new Error("로그인이 필요합니다.");
+        headers.set("Authorization", "Bearer " + token);
+      }
+      return fetch(url, { ...options, headers });
+    }
+
     const statusEl = document.querySelector("#status");
     const quizEl = document.querySelector("#quiz");
     const outcomeEl = document.querySelector("#outcome");
@@ -193,7 +203,8 @@
       submitted = true;
       document.querySelector("#submit").disabled = true;
       setStatus("채점하는 중입니다.");
-      const response = await fetch("/api/v1/quiz-sets/" + QUIZ_ID + "/submit", {
+      try {
+      const response = await quizFetch("/api/v1/quiz-sets/" + QUIZ_ID + "/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -223,10 +234,16 @@
       outcomeEl.appendChild(result);
       renderResults(body);
       setStatus("");
+      } catch (error) {
+        submitted = false;
+        document.querySelector("#submit").disabled = false;
+        setStatus("제출하지 못했습니다. 로그인과 연결 상태를 확인한 뒤 다시 시도하세요.", true);
+      }
     }
 
     async function loadQuiz() {
-      const response = await fetch("/api/v1/quiz-sets/" + QUIZ_ID);
+      try {
+      const response = await quizFetch("/api/v1/quiz-sets/" + QUIZ_ID);
       const body = await response.json();
       if (!response.ok) {
         setStatus(body.message || "퀴즈를 불러오지 못했습니다.", true);
@@ -235,6 +252,9 @@
       quiz = body;
       setStatus(quiz.concept_id + " 개념입니다. 보기를 고른 뒤 제출하세요.");
       renderQuiz();
+      } catch (error) {
+        setStatus("문제를 불러오지 못했습니다. 로그인과 연결 상태를 확인하세요.", true);
+      }
     }
 
     loadQuiz();
