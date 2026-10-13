@@ -429,14 +429,13 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(rejected.json()["code"], "VALIDATION_ERROR")
         self.assertNotIn("detail", rejected.json())
 
-    async def test_bearer_subject_identifies_the_user(self):
+    async def test_forged_bearer_cannot_impersonate_owner(self):
         created = await self._create(user_id="auth-user")
         response = await self.client.get(
             f"/api/v1/quiz-sets/{created.id}",
             headers={"Authorization": _bearer("auth-user")},
         )
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["concept_id"], "compound-interest")
+        self.assertEqual(response.status_code, 404, response.text)
 
     async def test_processing_quiz_does_not_leak_a_stored_answer(self):
         async with session_scope() as session:
@@ -508,6 +507,25 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
                     concept_id="compound-interest", learning_session_id="session-9", learning_context="복리 설명",
                 )
             factory.assert_not_called()
+
+    async def test_production_rejects_unverified_header_and_token(self):
+        with patch.dict(os.environ, {"DEV_MODE": "false"}):
+            response = await self.client.get("/api/v1/quiz-sets/any", headers={"X-User-Id": "owner", "Authorization": _bearer("owner")})
+        self.assertEqual(response.status_code, 401)
+
+    async def test_verified_provider_and_foreign_submission(self):
+        from dependencies import get_current_user_id
+        created = await self._create(user_id="verified-owner")
+        app.dependency_overrides[get_current_user_id] = lambda: "verified-owner"
+        try:
+            with patch.dict(os.environ, {"DEV_MODE": "false"}):
+                response = await self.client.get(f"/api/v1/quiz-sets/{created.id}", headers={"X-User-Id": "forged-user"})
+                self.assertEqual(response.status_code, 200)
+                app.dependency_overrides[get_current_user_id] = lambda: "foreign-user"
+                rejected = await self.client.post(f"/api/v1/quiz-sets/{created.id}/submit", json={"submitted_answers": _answers(), "idempotency_key": "foreign-attempt"})
+                self.assertEqual(rejected.status_code, 404)
+        finally:
+            app.dependency_overrides.pop(get_current_user_id, None)
 
 
 if __name__ == "__main__":
