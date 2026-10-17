@@ -1,0 +1,2942 @@
+[
+  {
+    "concept_id": "sisa_1552",
+    "concept_name": "수요의 법칙(Law of Demand)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "다른 모든 조건이 일정할 때, 어떤 재화의 가격이 상승하면 수요량은 감소한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "수요의 법칙에 따르면 가격과 수요량은 역(-)의 관계를 가집니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "수요의 법칙에 따르면 가격이 하락하면 수요곡선 자체가 오른쪽으로 이동한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "가격 변화는 수요곡선 위에서의 이동(수요량의 변화)을 가져올 뿐이며, 수요곡선 자체의 이동(수요의 변화)은 소득·선호 등 가격 이외 요인이 바뀔 때 발생합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "카페를 운영하는 김 사장은 원두 가격 상승으로 아메리카노 가격을 10% 인상했으나, 판매량이 20% 감소하였습니다. 이 제품의 수요 상태 및 총수입 변화 분석으로 가장 올바른 것은?",
+        "options": [
+          "수요의 가격탄력성이 1보다 크며(탄력적), 가격 인상 후 총수입은 감소했다.",
+          "수요의 가격탄력성이 1보다 작으며(비탄력적), 가격 인상 후 총수입은 증가했다.",
+          "수요의 가격탄력성이 1보다 크며(탄력적), 가격 인상 후 총수입은 증가했다.",
+          "수요의 가격탄력성이 0에 가까우며, 가격 인상 후 총수입 변화는 없다."
+        ],
+        "answer": "A",
+        "explanation": "가격 변화율(10%) 대비 수요량 변화율(20%)이 크므로 탄력성은 2로 1보다 큽니다. 탄력적인 재화는 가격 인상 시 총수입이 감소합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1550",
+    "concept_name": "수요의 가격탄력성(Price Elasticity of Demand)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "수요의 가격탄력성이 1보다 큰 재화는 가격을 올리면 판매자의 총수입이 감소한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "탄력적인 재화는 가격 상승률보다 수요량 감소율이 더 크므로 가격 인상 시 총수입이 줄어듭니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "일반적으로 생활필수품은 대체재가 많아 사치품보다 수요의 가격탄력성이 크다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "생활필수품은 대체재가 적고 꼭 필요하므로 가격이 변해도 수요량이 크게 변하지 않아 비탄력적인 경우가 일반적입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "어느 분식점이 김밥 가격을 20% 인하했더니 판매량이 10% 증가했습니다. 이에 대한 분석으로 가장 올바른 것은?",
+        "options": [
+          "탄력성은 2로 탄력적이며, 가격 인하로 총수입이 증가했다.",
+          "탄력성은 1로 단위탄력적이며, 가격 인하 후에도 총수입은 변하지 않았다.",
+          "탄력성은 0.5로 비탄력적이며, 가격 인하로 총수입이 감소했다.",
+          "탄력성은 0.5로 비탄력적이며, 가격 인하로 총수입이 증가했다."
+        ],
+        "answer": "C",
+        "explanation": "탄력성 = 수요량 변화율(10%) ÷ 가격 변화율(20%) = 0.5로 1보다 작아 비탄력적입니다. 비탄력적인 재화는 가격을 내리면 총수입이 감소합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_617",
+    "concept_name": "균형가격",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "시장에서 초과공급이 발생하면 가격은 하락 압력을 받아 균형가격에 가까워진다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "공급량이 수요량보다 많으면 판매자들이 재고를 줄이기 위해 가격을 내리고, 그 결과 가격이 균형가격으로 수렴합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "균형가격에서는 수요량이 공급량보다 항상 크다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "균형가격은 수요량과 공급량이 일치하는 가격으로, 초과수요나 초과공급이 존재하지 않습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "어떤 재화의 수요곡선은 Qd = 100 - 2P, 공급곡선은 Qs = -20 + 4P입니다. 정부가 가격을 25로 고정했을 때의 시장 상황으로 옳은 것은?",
+        "options": [
+          "초과수요 30이 발생하여 가격 상승 압력이 생긴다.",
+          "초과공급 10이 발생하여 가격 하락 압력이 생긴다.",
+          "수요량과 공급량이 일치하여 시장이 균형을 이룬다.",
+          "초과공급 30이 발생하여 가격 하락 압력이 생긴다."
+        ],
+        "answer": "D",
+        "explanation": "균형은 100-2P = -20+4P에서 P=20, Q=60입니다. P=25이면 Qd=50, Qs=80으로 초과공급이 30 발생하며, 가격 하락 압력이 작용합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1923",
+    "concept_name": "완전경쟁시장(Perfect Competitive Market)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "완전경쟁시장에서 개별 기업은 시장가격을 그대로 받아들이는 가격수용자이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "수많은 판매자와 구매자가 동질적인 재화를 거래하므로 개별 기업은 시장가격에 영향을 줄 수 없습니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "완전경쟁시장의 장기균형에서 기업은 지속적으로 초과이윤을 얻는다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "진입과 퇴출이 자유로워 초과이윤이 있으면 신규 기업이 진입하고, 장기에는 초과이윤이 0(정상이윤만 존재)이 됩니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "다수의 영세 농가가 품질이 동일한 쌀을 판매하고 누구나 자유롭게 진입·퇴출할 수 있는 시장이 있습니다. 한 농가가 시장가격보다 10% 높은 가격에 쌀을 내놓았을 때 나타날 결과로 가장 적절한 것은?",
+        "options": [
+          "소비자 대부분이 이 농가의 쌀을 계속 구매하여 시장가격이 상승한다.",
+          "다른 농가들도 모두 가격을 10% 올려 시장가격이 상승한다.",
+          "이 농가의 쌀 판매량이 거의 0에 가깝게 줄어든다.",
+          "이 농가의 쌀이 고급품으로 인식되어 수요가 증가한다."
+        ],
+        "answer": "C",
+        "explanation": "완전경쟁시장은 동질적 재화와 완전한 정보를 전제하므로, 시장가격보다 높게 팔면 소비자들이 다른 농가로 옮겨가 판매량이 거의 없어집니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_928",
+    "concept_name": "독점",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "독점기업은 이윤을 극대화하기 위해 한계수입(MR)과 한계비용(MC)이 같아지는 수준에서 생산량을 결정한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "독점기업을 포함한 모든 기업의 이윤극대화 조건은 MR=MC이며, 독점기업은 그 생산량에 대응하는 수요곡선상의 가격을 설정합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "독점시장은 완전경쟁시장보다 균형 생산량이 많고 가격이 낮다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "독점기업은 가격을 한계비용보다 높게 설정하므로 완전경쟁시장에 비해 생산량은 적고 가격은 높아 사중손실이 발생합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "규모의 경제가 매우 커서 한 기업이 생산하는 것이 가장 효율적인 지역 상수도 사업자(자연독점)에 대해 정부가 가격을 한계비용과 같게(P=MC) 규제하려 합니다. 이때 발생할 수 있는 문제로 가장 적절한 것은?",
+        "options": [
+          "평균비용이 한계비용보다 높아 기업이 손실을 보게 되므로 보조금 등이 필요하다.",
+          "기업이 초과이윤을 과도하게 얻어 소득분배가 악화된다.",
+          "생산량이 사회적 최적 수준보다 줄어들어 사중손실이 커진다.",
+          "신규 기업의 진입이 폭증하여 과잉 경쟁이 발생한다."
+        ],
+        "answer": "A",
+        "explanation": "자연독점 산업은 평균비용이 계속 하락하는 구간에서 생산하므로 한계비용이 평균비용보다 낮습니다. P=MC로 규제하면 P<AC가 되어 손실이 발생하므로 보조금이나 이부가격제 등이 필요합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_500",
+    "concept_name": "과점시장",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "과점시장에서는 소수의 기업이 서로의 가격·생산량 결정에 영향을 주고받는 상호의존성이 나타난다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "소수 기업만 존재하므로 한 기업의 결정이 경쟁기업의 반응을 불러일으켜 전략적 상호의존이 발생합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "굴절수요곡선 모형에 따르면 한 기업이 가격을 올리면 경쟁기업들도 모두 따라 올려 수요 감소가 크지 않다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "굴절수요곡선 모형에서는 가격을 올릴 때 경쟁기업이 따라 올리지 않아 수요가 크게 줄고, 가격을 내릴 때는 따라 내리므로 가격이 경직적입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "국내 이동통신 시장에서 한 회사가 요금을 올려도 경쟁사들이 따라 올리지 않아 고객을 잃게 되고, 요금을 내리면 경쟁사들이 즉각 따라 내려 이익이 없기 때문에 요금이 오랫동안 변하지 않고 있습니다. 이 현상을 가장 잘 설명하는 모형은?",
+        "options": [
+          "완전경쟁시장의 가격수용자 모형",
+          "독점적 경쟁시장의 장기균형 모형",
+          "굴절수요곡선 모형",
+          "자연독점의 평균비용 가격설정 모형"
+        ],
+        "answer": "C",
+        "explanation": "가격 인상에는 추종하지 않고 인하에는 추종하는 과점기업들의 행태는 굴절수요곡선 모형으로 설명되며, 이로 인해 과점시장의 가격은 경직적이 됩니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_929",
+    "concept_name": "독점적 경쟁시장(Monopolistic Competitive Market)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "독점적 경쟁시장에서는 제품 차별화가 이루어지며 기업의 진입과 퇴출이 자유롭다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "다수의 기업이 서로 약간씩 차별화된 제품을 팔고 진입·퇴출이 자유로운 것이 독점적 경쟁시장의 특징입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "독점적 경쟁시장의 장기균형에서 개별 기업은 지속적인 초과이윤을 얻는다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "초과이윤이 있으면 새로운 기업이 진입해 개별 기업의 수요곡선이 왼쪽으로 이동하므로 장기에는 초과이윤이 0이 됩니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "한 동네에서 치킨 전문점들이 맛과 브랜드로 차별화해 영업하던 중, 한 가게가 큰 이익을 내는 것이 알려지자 신규 가게가 계속 문을 열었습니다. 장기적으로 나타날 현상으로 가장 적절한 것은?",
+        "options": [
+          "진입이 불가능해져 기존 가게의 초과이윤이 유지된다.",
+          "모든 가게의 제품이 완전히 같아져 완전경쟁시장이 된다.",
+          "가게 수가 줄어들고 한 곳이 시장을 독점한다.",
+          "신규 진입으로 각 가게의 수요가 줄어 초과이윤이 사라진다."
+        ],
+        "answer": "D",
+        "explanation": "독점적 경쟁시장은 진입이 자유로워 초과이윤이 있으면 새 기업이 진입하고, 각 기업의 수요곡선이 왼쪽으로 이동해 장기에는 초과이윤이 0이 됩니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2338",
+    "concept_name": "죄수의 딜레마(Prisoner's Dilemma)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "죄수의 딜레마에서 각자가 합리적으로 선택한 결과는 서로 협조했을 때보다 모두에게 나쁜 결과가 될 수 있다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "각자 우월전략(배신)을 택하면 내시균형에 도달하지만, 이는 서로 협조했을 때보다 낮은 보수를 가져옵니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "죄수의 딜레마에서 모든 참가자가 우월전략을 선택하면 항상 사회적으로 가장 바람직한 결과가 나타난다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "우월전략의 조합인 내시균형이 협조할 때의 결과보다 못한 것이 죄수의 딜레마의 핵심입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "두 편의점 A, B가 가격을 '유지'할지 '인하'할지 선택합니다. 둘 다 유지하면 각각 이익 100, 둘 다 인하하면 각각 60입니다. 한쪽만 인하하면 인하한 쪽은 150, 유지한 쪽은 40의 이익을 얻습니다. 두 편의점이 서로 협상할 수 없을 때 예상되는 결과는?",
+        "options": [
+          "둘 다 가격을 유지하여 각각 100의 이익을 얻는다.",
+          "둘 다 가격을 인하하여 각각 60의 이익을 얻는다.",
+          "A만 인하하여 A가 150, B가 40의 이익을 얻는다.",
+          "B만 인하하여 B가 150, A가 40의 이익을 얻는다."
+        ],
+        "answer": "B",
+        "explanation": "상대가 유지하든 인하하든 '인하'가 더 높은 이익을 주므로 인하가 우월전략입니다. 따라서 둘 다 인하하는 (60, 60)이 내시균형이며, 둘 다 유지하는 (100, 100)보다 나쁜 결과입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1642",
+    "concept_name": "시장실패",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "공공재, 외부효과, 독점, 정보의 비대칭은 시장실패의 대표적인 원인이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "이들 요인 때문에 시장 기구가 자원을 효율적으로 배분하지 못하는 시장실패가 발생합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "시장실패가 발생하면 정부가 개입하는 것이 항상 사회후생을 증가시킨다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "정부의 개입도 정보 부족, 비효율 등으로 실패할 수 있으며 이를 정부실패라고 합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "한 공장이 하천에 오염물질을 방류하여 주민들이 피해를 입고 있으나 공장은 이 비용을 부담하지 않습니다. 이 상황에 해당하는 시장실패의 유형과 대표적인 해결책을 짝지은 것으로 옳은 것은?",
+        "options": [
+          "공공재의 무임승차 문제 - 사용자에게 입장료를 부과",
+          "독점에 따른 비효율 - 가격상한제 도입",
+          "부정적 외부효과 - 오염 배출에 대한 환경세(피구세) 부과",
+          "정보의 비대칭 - 품질 인증제 도입"
+        ],
+        "answer": "C",
+        "explanation": "생산 과정에서 제3자에게 비용을 전가하는 것은 부정적 외부효과입니다. 환경세 등으로 외부비용을 내부화하면 사회적 최적 생산량에 가깝게 조정할 수 있습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_745",
+    "concept_name": "기회비용",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "기회비용은 어떤 선택을 하기 위해 포기해야 하는 차선책의 가치를 말한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "기회비용은 선택으로 인해 포기한 여러 대안 중 가장 가치가 큰 것의 가치입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "이미 지출하여 회수할 수 없는 매몰비용도 합리적 의사결정에서는 기회비용에 포함해야 한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "매몰비용은 어떤 선택을 하든 회수할 수 없으므로 합리적 의사결정에서 고려하지 않습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "연봉 4,000만 원의 직장을 그만둔 김 씨는 자기 자금 5,000만 원(은행에 넣으면 연 4% 이자 가능)으로 카페를 열었습니다. 1년 매출은 8,000만 원이고 재료비·임대료 등 명시적 비용은 5,000만 원입니다. 김 씨의 1년간 회계적 이윤과 경제적 이윤은?",
+        "options": [
+          "회계적 이윤 3,000만 원, 경제적 이윤 -1,200만 원",
+          "회계적 이윤 3,000만 원, 경제적 이윤 3,000만 원",
+          "회계적 이윤 3,000만 원, 경제적 이윤 -1,000만 원",
+          "회계적 이윤 -1,200만 원, 경제적 이윤 3,000만 원"
+        ],
+        "answer": "A",
+        "explanation": "회계적 이윤은 8,000-5,000=3,000만 원입니다. 경제적 이윤은 포기한 연봉 4,000만 원과 포기한 이자 200만 원(암묵적 비용)을 모두 빼야 하므로 3,000-4,200=-1,200만 원입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2883",
+    "concept_name": "한계효용체감의 법칙(Diminishing Marginal Utility)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "한계효용체감의 법칙은 같은 재화를 계속 소비할수록 추가 1단위 소비로 얻는 만족이 점점 줄어드는 현상을 말한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "소비량이 늘어날수록 추가 한 단위에서 얻는 효용(한계효용)이 감소합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "한계효용이 체감하더라도 양(+)의 값이면 총효용은 감소한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "한계효용이 체감하더라도 0보다 크다면 총효용은 계속 증가하며, 한계효용이 0일 때 총효용이 극대가 됩니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "뷔페에서 접시를 하나씩 추가로 먹을 때 얻는 만족도(한계효용)가 첫 접시 20, 둘째 14, 셋째 8, 넷째 2, 다섯째 -4라고 합니다. 총효용을 극대화하는 접시 수는?",
+        "options": [
+          "2접시",
+          "3접시",
+          "4접시",
+          "5접시"
+        ],
+        "answer": "C",
+        "explanation": "넷째 접시까지는 한계효용이 양(+)이므로 총효용이 증가(20→34→42→44)하고, 다섯째 접시는 -4로 총효용이 40으로 줄어듭니다. 따라서 4접시에서 총효용이 극대입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1932",
+    "concept_name": "외부효과(External Effect, Externalities)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "과수원 옆 양봉업자가 대가 없이 더 많은 꿀을 얻는 것은 긍정적 외부효과의 사례이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "타인에게 대가 없이 이익을 주는 경제활동을 긍정적 외부효과(외부경제)라고 합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "부정적 외부효과가 있는 재화는 사회적 최적 수준보다 과소 생산된다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "외부비용이 생산자의 비용에 반영되지 않아 사회적 최적 수준보다 과다 생산됩니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "공장 주변의 양식장이 공장 폐수로 피해를 보고 있습니다. 재산권이 명확히 정해져 있고 협상 비용이 거의 없다면, 코즈 정리에 따라 기대할 수 있는 결과는?",
+        "options": [
+          "정부의 개입 없이도 당사자 간 협상을 통해 효율적인 자원배분이 가능하다.",
+          "어떤 경우에도 정부가 피구세를 부과해야만 문제가 해결된다.",
+          "재산권이 누구에게 있느냐에 따라 효율성이 크게 달라진다.",
+          "공장은 폐수 배출을 무조건 중단해야 한다."
+        ],
+        "answer": "A",
+        "explanation": "코즈 정리는 거래비용이 없고 재산권이 명확하면 누구에게 재산권이 있든 당사자 간 협상으로 효율적 결과에 이를 수 있다는 이론입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_445",
+    "concept_name": "공공재(Public Goods)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "공공재는 비배제성과 비경합성의 특성을 가진다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "공공재는 대가를 내지 않은 사람을 소비에서 배제하기 어렵고(비배제성), 한 사람의 소비가 다른 사람의 소비를 줄이지 않습니다(비경합성)."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "공공재는 무임승차 문제가 없어 민간 시장이 사회적 최적 수준으로 공급한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "비배제성 때문에 무임승차 문제가 발생해 민간이 공급하면 과소 공급되므로 정부가 공급하거나 지원하는 것이 일반적입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "한 마을에서 주민들이 비용을 나누어 가로등을 설치하려 하지만, 대부분 비용은 내지 않고 불빛만 이용하려 해서 설치가 이루어지지 않고 있습니다. 이 문제의 이름과 원인으로 가장 적절한 것은?",
+        "options": [
+          "역선택 - 판매자와 구매자 간의 정보 비대칭",
+          "공유지의 비극 - 경합적이면서 배제 불가능한 자원의 남용",
+          "규모의 경제 - 생산량 증가에 따른 평균비용 하락",
+          "무임승차 문제 - 대가를 내지 않은 사람을 이용에서 배제하기 어려운 비배제성"
+        ],
+        "answer": "D",
+        "explanation": "가로등은 대가를 내지 않은 사람도 빛을 이용할 수 있는 비배제성이 있어 무임승차가 발생하고, 이로 인해 민간 공급이 이뤄지지 않는 시장실패가 나타납니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1836",
+    "concept_name": "역선택(Adverse Selection)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "역선택은 거래 이전에 정보의 비대칭으로 인해 바람직하지 못한 상대방과 거래하게 되는 현상이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "거래 전에 한쪽이 상대보다 정보가 적으면 불리한 조건의 상대가 선택될 가능성이 커지는데, 이를 역선택이라 합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "중고차 시장에서 판매자가 품질을 더 잘 알아 불량 차량이 많이 거래되는 현상은 도덕적 해이의 사례이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "거래 전의 정보 비대칭으로 품질이 낮은 차가 시장을 채우는 '레몬시장' 현상은 역선택의 대표적인 사례입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "보험회사가 모든 가입자에게 동일한 보험료를 책정하자 건강이 나쁜 사람들의 가입이 늘고 건강한 사람은 이탈하여 보험료가 계속 오르고 있습니다. 이 문제를 완화하기 위한 방안으로 가장 적절한 것은?",
+        "options": [
+          "보험료를 모든 가입자에게 일괄 인하한다.",
+          "보험 보장 범위를 무제한으로 확대한다.",
+          "가입 전 건강검진을 실시하고 위험도에 따라 보험료를 차등화한다.",
+          "보험 광고를 확대하여 가입자 수를 늘린다."
+        ],
+        "answer": "C",
+        "explanation": "가입자의 건강 상태를 사전에 파악하고 위험도에 따라 보험료를 달리하면 정보 비대칭에 의한 역선택을 줄일 수 있습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_918",
+    "concept_name": "도덕적 해이(Moral Hazard)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "화재보험에 가입한 뒤 화재 예방에 소홀해지는 것은 도덕적 해이의 사례이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "계약 후 위험을 부담하지 않게 된 쪽이 주의를 덜 기울이는 행동 변화가 도덕적 해이입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "도덕적 해이는 계약 체결 이전의 정보 비대칭에서 발생하는 문제이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "도덕적 해이는 계약 체결 이후 한쪽의 행동을 상대방이 관찰하기 어려울 때 발생하며, 계약 이전의 문제는 역선택입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "자동차 보험에 가입한 뒤 일부 운전자가 사고 위험이 큰 난폭 운전을 더 자주 하게 되었습니다. 보험회사가 이를 줄이기 위해 도입할 수 있는 방안으로 가장 적절한 것은?",
+        "options": [
+          "자기부담금 제도와 사고 이력에 따른 보험료 할증",
+          "모든 가입자의 보험료 일괄 인하",
+          "보상 한도를 무제한으로 확대",
+          "가입 심사 절차의 폐지"
+        ],
+        "answer": "A",
+        "explanation": "자기부담금과 보험료 할증은 가입자가 사고 비용 일부를 부담하게 하여 위험 회피 유인을 높이므로 도덕적 해이를 줄입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_566",
+    "concept_name": "국내총생산(GDP)/국민총생산(GNP)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "GDP는 일정 기간 한 나라의 영토 안에서 생산된 최종 재화와 서비스의 시장가치를 합한 것이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "GDP는 생산 주체의 국적과 상관없이 국내에서 생산된 최종 생산물의 가치를 집계합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "국내에 거주하는 외국인이 국내에서 벌어들인 소득은 GNP에는 포함되지만 GDP에는 포함되지 않는다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "외국인이 국내에서 번 소득은 영토 기준인 GDP에는 포함되고, 국민 기준인 GNP에는 포함되지 않습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "올해 한국 국민이 미국 공장에서 100억 원의 소득을 벌었고, 미국인이 한국 내 공장에서 200억 원의 소득을 벌었습니다. 다른 조건은 동일하다고 할 때 옳은 설명은?",
+        "options": [
+          "한국 GDP에는 100억 원, GNP에는 200억 원이 포함된다.",
+          "한국 GDP에는 200억 원, GNP에는 100억 원이 포함된다.",
+          "한국 GDP와 GNP 모두에 300억 원이 포함된다.",
+          "한국 GDP에는 포함되는 금액이 없고, GNP에는 100억 원이 포함된다."
+        ],
+        "answer": "B",
+        "explanation": "GDP는 영토 기준이므로 한국 내에서 번 200억 원이 포함되고, GNP는 국민 기준이므로 한국인이 번 100억 원이 포함됩니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1514",
+    "concept_name": "소비자물가지수(CPI: Consumer Price Index)ㆍ생활물가지수",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "소비자물가지수는 소비자가 구입하는 대표 상품과 서비스의 가격 변동을 종합해 지수로 나타낸 것이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "소비자물가지수(CPI)는 가계가 일상적으로 구입하는 품목의 가격을 가중평균해 생활 물가의 변동을 보여줍니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "소비자물가지수는 기업이 구입하는 원자재 가격 변동을 중심으로 측정한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "기업 간 거래 가격을 반영하는 지표는 생산자물가지수이며, 소비자물가지수는 소비자 구입 품목을 대상으로 합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "작년 소비자물가지수(CPI)가 120이었고 올해는 126입니다. 올해의 물가상승률은?",
+        "options": [
+          "6%",
+          "26%",
+          "5%",
+          "4.8%"
+        ],
+        "answer": "C",
+        "explanation": "물가상승률 = (126 - 120) ÷ 120 × 100 = 5%입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2091",
+    "concept_name": "인플레이션(Inflation)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "인플레이션이 발생하면 화폐의 구매력은 하락한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "물가가 지속적으로 오르면 같은 금액으로 살 수 있는 재화와 서비스의 양이 줄어듭니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "예상하지 못한 인플레이션은 채권자에게 유리하고 채무자에게 불리하다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "물가가 오르면 화폐가치가 떨어져 갚아야 할 실질 부채가 줄어들므로 채무자에게 유리하고 채권자에게 불리합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "국제 원자재 가격이 급등하여 기업의 생산비가 오르고, 이에 따라 제품 가격이 전반적으로 상승했습니다. 이러한 물가 상승의 유형은?",
+        "options": [
+          "비용인상 인플레이션",
+          "수요견인 인플레이션",
+          "디플레이션",
+          "디스인플레이션"
+        ],
+        "answer": "A",
+        "explanation": "생산비 상승이 물가를 끌어올리는 경우를 비용인상(비용 push) 인플레이션이라고 하며, 총공급 감소로 설명됩니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1610",
+    "concept_name": "스태그플레이션",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "스태그플레이션은 경기침체와 물가상승이 동시에 나타나는 현상이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "스태그네이션(침체)과 인플레이션의 합성어로, 저성장·고실업 속에서 물가가 오르는 상황입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "1970년대 석유파동 당시의 스태그플레이션은 총수요의 급증이 주된 원인이었다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "석유 가격 급등이라는 공급 충격으로 생산비가 오르고 생산이 줄어든 것이 주된 원인입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "국제 유가가 급등하여 물가는 오르는데 경제성장률은 하락하고 실업이 늘고 있습니다. 이때 중앙은행이 겪게 되는 정책 딜레마로 가장 적절한 것은?",
+        "options": [
+          "금리를 인하하면 물가가 안정되고 경기도 살아난다.",
+          "금리를 인상하면 물가와 경기가 모두 개선된다.",
+          "금리를 인상하면 물가는 잡히나 경기침체가 심화되고, 인하하면 경기는 살아나나 물가 상승이 심화된다.",
+          "어떤 정책을 써도 물가와 경기에 영향을 주지 못한다."
+        ],
+        "answer": "C",
+        "explanation": "스태그플레이션에서는 물가 안정을 위한 긴축과 경기 부양을 위한 완화가 서로 충돌하므로 정책 선택이 어렵습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_369",
+    "concept_name": "경기순환",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "경기순환은 확장, 정점, 수축, 저점의 국면이 반복되는 현상이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "경제활동 수준이 장기 추세를 중심으로 오르내리는 과정이 일정한 국면으로 반복됩니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "경기 수축 국면에서는 일반적으로 고용과 생산이 증가한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "수축 국면에서는 생산, 소비, 투자가 줄고 실업이 늘어나는 것이 일반적입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "경기가 정점을 지나 수축 국면에 들어선 경제에서 나타나기 쉬운 현상으로 가장 적절한 것은?",
+        "options": [
+          "소비가 급증하고 기업의 설비투자가 크게 늘어난다.",
+          "주가가 급등하고 기업이익이 급증한다.",
+          "물가가 급등하면서 고용이 빠르게 늘어난다.",
+          "기업의 재고가 쌓이고 설비투자가 줄며 실업률이 상승한다."
+        ],
+        "answer": "D",
+        "explanation": "수축 국면에서는 수요 감소로 재고가 늘고 투자와 생산이 위축되며 고용 사정이 나빠집니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1703",
+    "concept_name": "실업률",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "실업률은 경제활동인구 중 실업자가 차지하는 비율이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "실업률 = 실업자 ÷ 경제활동인구(취업자+실업자) × 100입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "일할 의사는 있으나 구직을 단념한 구직단념자는 실업률 계산에서 실업자에 포함된다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "구직활동을 하지 않는 구직단념자는 비경제활동인구로 분류되어 공식 실업률에 포함되지 않습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "15세 이상 인구가 1,000만 명, 이 중 비경제활동인구가 400만 명, 취업자가 540만 명입니다. 이 경제의 실업률은?",
+        "options": [
+          "6%",
+          "10%",
+          "11.1%",
+          "40%"
+        ],
+        "answer": "B",
+        "explanation": "경제활동인구는 1,000-400=600만 명이고 실업자는 600-540=60만 명이므로 실업률은 60 ÷ 600 × 100 = 10%입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_540",
+    "concept_name": "구조적 실업",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "구조적 실업은 산업구조의 변화로 일자리와 노동자의 기술 간 불일치가 생겨 발생한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "산업구조 변화나 기술 변화로 노동의 수요와 공급 구성이 맞지 않아 발생하는 실업입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "구조적 실업은 경기가 회복되면 자연스럽게 모두 해소된다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "구조적 실업은 경기 변동이 아니라 구조적 요인에서 비롯되므로 경기 회복만으로는 해소되기 어렵고 재교육·훈련 등이 필요합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "공장 자동화로 제조업 일자리가 줄어든 지역에서 실직자들이 새로 늘어난 IT 직무의 요건을 충족하지 못해 장기간 실업 상태에 있습니다. 이 문제를 해결하는 정책으로 가장 적절한 것은?",
+        "options": [
+          "총수요 확대를 위한 대규모 재정지출만 시행한다.",
+          "직업 재교육과 직업훈련 프로그램을 확대한다.",
+          "구직 정보를 제공하는 사이트만 확충한다.",
+          "최저임금을 대폭 인하한다."
+        ],
+        "answer": "B",
+        "explanation": "기술 불일치에서 비롯된 구조적 실업은 새로운 기술을 익히도록 돕는 재교육·직업훈련이 가장 직접적인 해결책입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2863",
+    "concept_name": "필립스곡선",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "단기 필립스곡선은 실업률과 물가상승률 사이에 역(-)의 관계가 있음을 나타낸다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "단기적으로 실업률이 낮아지면 물가상승률이 높아지는 상충관계(trade-off)가 나타납니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "장기 필립스곡선은 우하향하는 형태로 나타난다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "장기에는 기대인플레이션이 조정되어 실업률이 자연실업률에 머무르므로 장기 필립스곡선은 수직입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "중앙은행이 금리를 인하해 총수요를 확대했습니다. 필립스곡선 관점에서 나타날 변화로 가장 옳은 것은?",
+        "options": [
+          "단기에는 실업률과 물가상승률이 모두 하락한다.",
+          "단기에는 실업률이 상승하고 물가상승률이 하락한다.",
+          "단기에는 실업률이 하락하고 물가상승률이 상승하지만, 장기에는 자연실업률로 복귀한다.",
+          "장기에도 실업률은 계속 하락한다."
+        ],
+        "answer": "C",
+        "explanation": "단기 필립스곡선 상에서 총수요 확대는 실업률 하락과 물가상승률 상승을 가져오나, 기대인플레이션이 조정되면 실업률은 자연실업률로 돌아옵니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2162",
+    "concept_name": "잠재성장률",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "잠재성장률은 물가 상승을 유발하지 않으면서 달성할 수 있는 최대 경제성장률을 말한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "한 나라가 보유한 노동·자본·기술을 모두 활용하여 인플레이션 없이 달성할 수 있는 성장률입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "저출산·고령화로 노동력이 감소하면 잠재성장률은 일반적으로 상승한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "생산가능인구가 줄어 노동 투입이 감소하면 잠재성장률은 하락 요인이 됩니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "저출산·고령화로 잠재성장률이 하락하고 있는 국가가 이를 완화하기 위해 선택할 방안으로 가장 적절한 것은?",
+        "options": [
+          "물가 상승을 용인하며 단기 경기부양을 지속한다.",
+          "근로시간을 대폭 단축하여 노동 투입을 줄인다.",
+          "외국인 투자 유입을 강력히 규제한다.",
+          "R&D 투자 확대와 규제 개혁으로 총요소생산성을 높인다."
+        ],
+        "answer": "D",
+        "explanation": "잠재성장률은 노동, 자본, 총요소생산성에 의해 결정되므로 노동 감소를 생산성 향상으로 보완하는 것이 효과적입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_735",
+    "concept_name": "기준금리",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "한국은행이 기준금리를 인상하면 일반적으로 시중금리도 상승 압력을 받는다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "기준금리는 단기금융시장 금리의 기준이 되어 예금·대출금리 등 시중금리에 영향을 줍니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "기준금리 인하는 일반적으로 자본 유출을 줄여 원화 가치를 상승시키는 요인이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "기준금리 인하는 다른 조건이 같다면 외국 자본의 수익률을 낮춰 자본 유출을 늘리고 원화 가치를 하락시키는 요인입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "물가 상승 압력이 커지자 한국은행이 기준금리를 인상했습니다. 예상되는 효과로 가장 적절한 것은?",
+        "options": [
+          "시중 통화량이 늘어나 소비와 투자가 확대된다.",
+          "대출 이자 부담이 줄어 주택 구입 수요가 급증한다.",
+          "수출기업의 가격경쟁력이 크게 강화된다.",
+          "대출 이자 부담이 늘어 소비·투자가 위축되고 물가 상승 압력이 완화된다."
+        ],
+        "answer": "D",
+        "explanation": "기준금리 인상은 대출금리 상승과 저축 유인 증가를 통해 소비와 투자를 줄여 총수요와 물가 상승 압력을 낮춥니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2701",
+    "concept_name": "통화정책",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "통화정책은 중앙은행이 통화량이나 금리를 조절하여 물가 안정과 경제 안정을 도모하는 정책이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "중앙은행은 기준금리, 공개시장운영, 지급준비제도 등을 통해 통화정책을 수행합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "중앙은행이 공개시장운영으로 국채를 매입하면 시중 통화량은 감소한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "국채를 매입하면 그 대가로 화폐가 시중에 공급되므로 통화량이 증가합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "경기가 과열되고 물가가 빠르게 오르고 있습니다. 중앙은행이 선택할 통화정책 조합으로 가장 적절한 것은?",
+        "options": [
+          "기준금리 인하와 국채 매입",
+          "기준금리 인상, 지급준비율 인상, 국채 매도",
+          "지급준비율 인하와 재할인율 인하",
+          "기준금리 인하와 국채 매도"
+        ],
+        "answer": "B",
+        "explanation": "경기 과열 시에는 기준금리와 지급준비율을 올리고 국채를 매도해 시중 유동성을 흡수하는 긴축적 통화정책이 적절합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1784",
+    "concept_name": "양적완화(QE: Quantitative Easing)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "양적완화는 중앙은행이 국채 등 자산을 매입하여 시중에 유동성을 직접 공급하는 정책이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "중앙은행이 자산을 대규모로 사들이며 본원통화를 공급해 장기금리를 낮추고 경기를 부양합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "양적완화는 기준금리가 충분히 높은 상황에서 쓰는 전통적인 통화정책 수단이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "양적완화는 기준금리가 제로 수준에 가까워 더 이상 금리 인하가 어려울 때 사용하는 비전통적 통화정책입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "기준금리가 0%에 가까운 상태에서 경기침체가 지속되자 중앙은행이 장기 국채를 대규모로 매입하기로 했습니다. 기대 효과와 부작용을 짝지은 것으로 가장 적절한 것은?",
+        "options": [
+          "기대 효과: 통화량 감소로 물가 안정 / 부작용: 경기 과열",
+          "기대 효과: 재정 흑자 확대 / 부작용: 환율 하락",
+          "기대 효과: 정부 부채 감소 / 부작용: 실업률 상승",
+          "기대 효과: 장기금리 하락에 따른 투자·소비 촉진 / 부작용: 자산 가격 거품과 인플레이션 우려"
+        ],
+        "answer": "D",
+        "explanation": "양적완화는 장기금리를 낮춰 경기를 부양하지만 과도한 유동성 공급은 자산 거품과 인플레이션을 유발할 수 있습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1998",
+    "concept_name": "유동성 함정(Liquidity Trap)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "유동성 함정에서는 금리를 낮춰도 투자와 소비가 늘지 않아 통화정책의 효과가 약하다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "금리가 매우 낮아 사람들이 화폐를 보유하려는 선호가 무한히 커지면 통화량을 늘려도 경기 부양 효과가 거의 없습니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "유동성 함정 상황에서는 재정정책보다 통화정책이 더 효과적이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "유동성 함정에서는 통화정책이 무력해지므로 재정정책이 상대적으로 더 효과적입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "기준금리가 0%에 근접했고 통화량을 늘려도 가계는 현금을 쌓아두고 기업은 투자하지 않습니다. 이 경제에서 가장 효과적인 정책 대안은?",
+        "options": [
+          "추가적인 금리 인하만 계속한다.",
+          "정부지출 확대 등 재정정책을 시행한다.",
+          "지급준비율을 더 낮춘다.",
+          "세금을 인상하여 재정을 건전화한다."
+        ],
+        "answer": "B",
+        "explanation": "유동성 함정에서는 금리 인하와 통화 공급 확대가 효과가 없으므로 정부지출 확대 같은 재정정책이 총수요를 직접 늘릴 수 있습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1631",
+    "concept_name": "승수효과(Multiplier Effect)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "정부지출이 증가하면 소비의 연쇄적 증가로 국민소득이 처음 증가분보다 더 크게 늘어나는 현상이 승수효과이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "지출 증가가 소득 증가로 이어지고 다시 소비 증가를 일으키는 과정이 반복되어 소득이 몇 배로 늘어납니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "한계소비성향이 낮을수록 승수효과는 더 커진다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "승수는 1 ÷ (1 - 한계소비성향)이므로 한계소비성향이 높을수록 승수효과가 커집니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "한계소비성향이 0.8인 경제에서 정부지출이 10조 원 늘었습니다. 조세와 해외부문을 무시할 때 국민소득의 증가분은?",
+        "options": [
+          "10조 원",
+          "40조 원",
+          "50조 원",
+          "80조 원"
+        ],
+        "answer": "C",
+        "explanation": "승수는 1 ÷ (1 - 0.8) = 5이므로 국민소득은 10조 원 × 5 = 50조 원 증가합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_546",
+    "concept_name": "구축효과(Crowd-out Effect)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "정부가 국채 발행으로 지출을 늘려 이자율이 오르고 민간투자가 줄어드는 현상을 구축효과라 한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "정부의 자금 수요 증가가 이자율을 높여 민간의 투자와 소비를 위축시키는 현상입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "구축효과는 정부지출 증가가 민간투자를 오히려 증가시키는 현상이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "정부지출이 민간투자를 증가시키는 것은 구인효과이며, 구축효과는 민간투자를 감소시키는 현상입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "정부가 재정적자를 메우기 위해 국채를 대규모로 발행했습니다. 구축효과가 나타나는 과정을 올바르게 연결한 것은?",
+        "options": [
+          "국채 발행 증가 → 이자율 하락 → 민간투자 증가",
+          "국채 발행 증가 → 자금 수요 증가 → 이자율 상승 → 민간투자 감소",
+          "국채 발행 증가 → 통화량 감소 → 물가 하락 → 소비 증가",
+          "국채 발행 증가 → 환율 상승 → 수출 증가"
+        ],
+        "answer": "B",
+        "explanation": "국채 발행으로 시중 자금에 대한 수요가 커지면 이자율이 상승하고, 이에 따라 민간 투자가 감소하는 것이 구축효과입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2401",
+    "concept_name": "지니계수",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "지니계수는 0과 1 사이의 값을 가지며 값이 클수록 소득분배가 불평등하다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "지니계수가 0이면 완전 평등, 1이면 완전 불평등을 의미합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "지니계수가 0이면 모든 소득이 한 사람에게 집중되어 있다는 뜻이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "지니계수 0은 모든 사람의 소득이 같은 완전 평등 상태를 의미합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "어떤 나라의 지니계수가 0.30에서 0.40으로 상승했습니다. 이에 대한 해석으로 가장 적절한 것은?",
+        "options": [
+          "소득분배가 개선되어 로렌츠곡선이 대각선에 가까워졌다.",
+          "소득분배가 개선되었으나 로렌츠곡선은 대각선에서 멀어졌다.",
+          "소득분배가 악화되어 로렌츠곡선이 균등분포선(대각선)에서 멀어졌다.",
+          "소득분배에는 변화가 없고 평균소득만 늘었다."
+        ],
+        "answer": "C",
+        "explanation": "지니계수 상승은 소득 불평등이 심해졌음을 뜻하며, 로렌츠곡선이 완전평등선에서 더 멀어집니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1323",
+    "concept_name": "비교우위(Comparative Advantage)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "비교우위는 기회비용이 상대적으로 낮은 재화를 특화하여 생산하는 것을 의미한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "각국이 기회비용이 낮은 재화에 특화하고 교역하면 모두 이득을 볼 수 있습니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "모든 재화에서 절대우위를 가진 나라는 무역을 해도 이익을 얻을 수 없다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "절대우위와 상관없이 비교우위가 있는 재화에 특화해 교역하면 양국 모두 이익을 얻을 수 있습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "A국은 쌀 1단위를 생산하려면 옷 2단위를 포기해야 하고, B국은 쌀 1단위를 생산하려면 옷 3단위를 포기해야 합니다. 두 나라가 무역할 때 올바른 특화 방향은?",
+        "options": [
+          "A국은 옷, B국은 쌀에 특화한다.",
+          "A국은 두 재화 모두 특화한다.",
+          "두 나라 모두 무역으로 이익을 얻지 못한다.",
+          "A국은 쌀, B국은 옷에 특화한다."
+        ],
+        "answer": "D",
+        "explanation": "쌀의 기회비용은 A국 2, B국 3으로 A국이 낮아 쌀에 비교우위가 있고, 옷의 기회비용은 A국 0.5, B국 1/3으로 B국이 낮아 옷에 비교우위가 있습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1234",
+    "concept_name": "보호무역주의",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "관세 부과와 수입할당, 수출보조금은 보호무역주의의 대표적 수단이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "보호무역은 자국 산업을 보호하기 위해 관세·비관세 장벽을 활용하는 정책입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "보호무역정책은 일반적으로 국내 소비자의 후생을 증가시킨다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "수입품 가격이 오르고 선택의 폭이 좁아져 국내 소비자의 후생은 일반적으로 감소합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "정부가 수입 철강에 25%의 관세를 부과했습니다. 이에 따른 영향으로 가장 적절한 것은?",
+        "options": [
+          "국내 철강 가격 하락으로 소비자 후생이 증가한다.",
+          "수입 철강 수요가 증가하고 국내 철강업체의 이익이 감소한다.",
+          "국내 철강업체는 이익을 얻지만 철강을 쓰는 기업과 소비자는 비용 부담이 늘어난다.",
+          "관세 부과가 국내 모든 산업의 수출경쟁력을 높인다."
+        ],
+        "answer": "C",
+        "explanation": "관세는 국내 철강업체를 보호하지만 국내 철강 가격 상승으로 철강 사용 기업과 소비자의 부담이 커집니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_104",
+    "concept_name": "FTA(Free Trade Agreement, 자유무역협정)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "FTA는 가입국 간에 관세와 비관세 장벽을 철폐하여 상품·서비스 교역을 자유화하는 협정이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "FTA(자유무역협정)는 협정 체결국 간 무역 장벽을 낮추거나 없애는 협정입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "FTA 체결국은 비회원국에 대해서도 동일하게 관세를 철폐해야 한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "FTA는 회원국 사이에서만 특혜를 주며, 비회원국에는 각국이 자율적으로 관세를 유지합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "A국이 FTA를 체결하자, 비회원국 B(저비용 생산국)에서 수입하던 제품을 관세가 철폐된 회원국 C(고비용 생산국)에서 수입하게 되었습니다. 이 현상을 가리키는 용어는?",
+        "options": [
+          "무역창출효과",
+          "무역전환효과",
+          "승수효과",
+          "구축효과"
+        ],
+        "answer": "B",
+        "explanation": "비회원국의 저비용 수입이 회원국의 고비용 수입으로 대체되는 것은 무역전환효과이며, 자원배분의 효율성을 떨어뜨릴 수 있습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_590",
+    "concept_name": "국제수지",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "국제수지는 일정 기간 한 나라의 거주자와 비거주자 간에 이루어진 모든 경제적 거래를 체계적으로 기록한 것이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "국제수지표는 상품·서비스 거래뿐 아니라 자본 거래까지 포함하는 대외 거래의 종합 기록입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "외국인 투자자가 국내 주식을 매입한 거래는 국제수지표에서 경상수지로 기록된다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "증권투자 등 자본 거래는 금융계정에 기록되며, 경상수지는 상품·서비스·소득 거래를 기록합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "한국의 자동차 수출 증가, 한국인의 해외여행 지출 증가, 외국인의 국내 채권 투자 증가를 국제수지표에 올바르게 분류한 것은?",
+        "options": [
+          "자동차 수출 - 금융계정, 해외여행 지출 - 서비스수지, 채권 투자 - 상품수지",
+          "자동차 수출 - 상품수지, 해외여행 지출 - 본원소득수지, 채권 투자 - 서비스수지",
+          "자동차 수출 - 상품수지, 해외여행 지출 - 서비스수지, 채권 투자 - 금융계정",
+          "자동차 수출 - 서비스수지, 해외여행 지출 - 상품수지, 채권 투자 - 금융계정"
+        ],
+        "answer": "C",
+        "explanation": "자동차 수출은 상품수지, 해외여행 지출은 서비스수지(여행), 외국인의 채권 투자는 금융계정으로 기록됩니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_377",
+    "concept_name": "경상수지",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "경상수지는 상품수지, 서비스수지, 본원소득수지, 이전소득수지로 구성된다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "경상수지는 실물 거래와 소득 거래에서 발생한 수입과 지급의 차이를 보여줍니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "외국인에게 지급한 국내 기업의 배당금은 경상수지 중 서비스수지에 기록된다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "배당금과 이자 등 투자소득은 본원소득수지에 기록됩니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "어느 해 한 나라의 상품수지가 +500억 달러, 서비스수지가 -150억 달러, 본원소득수지가 +30억 달러, 이전소득수지가 -10억 달러였습니다. 이 해의 경상수지는?",
+        "options": [
+          "390억 달러 흑자",
+          "370억 달러 흑자",
+          "500억 달러 흑자",
+          "130억 달러 적자"
+        ],
+        "answer": "B",
+        "explanation": "경상수지 = 500 - 150 + 30 - 10 = 370억 달러 흑자입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1214",
+    "concept_name": "변동환율제도",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "변동환율제도에서는 외환시장의 수요와 공급에 의해 환율이 결정된다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "변동환율제도는 정부가 환율을 고정하지 않고 외환의 수급에 따라 환율이 자유롭게 변동하도록 하는 제도입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "변동환율제도에서는 중앙은행이 환율을 일정하게 유지하기 위해 항상 외환을 사고팔아야 한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "환율을 일정 수준에 유지하기 위해 외환시장에 상시 개입해야 하는 것은 고정환율제도의 특징입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "변동환율제도를 채택한 한국에서 수입업체들의 달러 수요가 갑자기 크게 늘었습니다. 다른 조건이 같다면 나타날 변화는?",
+        "options": [
+          "원/달러 환율이 하락하고 원화 가치가 상승한다.",
+          "환율은 변하지 않고 외환보유액만 감소한다.",
+          "원/달러 환율이 상승하고 원화 가치가 하락한다.",
+          "정부가 즉시 환율을 고정하여 변동이 없다."
+        ],
+        "answer": "C",
+        "explanation": "달러 수요 증가는 달러 가격(원/달러 환율)을 끌어올리고, 이는 원화 가치 하락을 의미합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2794",
+    "concept_name": "평가절하/절상",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "원화 가치가 상승하는 평가절상은 수입품의 원화 가격을 낮추는 요인이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "원화 가치가 오르면 같은 외화로 지불해야 하는 원화가 줄어 수입품 가격이 하락합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "자국 통화의 평가절하는 일반적으로 수출품의 해외 가격경쟁력을 약화시킨다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "자국 통화 가치가 떨어지면 수출품의 외화 표시 가격이 낮아져 수출 경쟁력이 높아지는 효과가 있습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "원/달러 환율이 1달러=1,200원에서 1,000원으로 변동했습니다. 이에 대한 설명으로 가장 적절한 것은?",
+        "options": [
+          "원화 절하로 수출기업의 가격경쟁력이 높아진다.",
+          "원화 절상으로 수출기업의 채산성이 악화되고 해외여행 비용은 줄어든다.",
+          "원화 절상으로 수입품의 원화 가격이 상승한다.",
+          "원화 절하로 수입업자가 유리해진다."
+        ],
+        "answer": "B",
+        "explanation": "환율 하락은 원화 가치 상승(절상)을 의미하며, 수출품의 달러 수취액이 원화로 줄어 수출기업에는 불리하고 해외여행·수입에는 유리합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_144",
+    "concept_name": "J커브 효과(J-curve Effect)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "J커브 효과란 자국 통화 평가절하 후 단기에는 경상수지가 오히려 악화되다가 시간이 지나 개선되는 현상이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "환율 변화 후 물량이 조정되는 데 시간이 걸려 경상수지가 J자 모양으로 움직입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "J커브 효과는 평가절하 직후 경상수지가 곧바로 크게 개선되는 현상을 뜻한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "평가절하 직후에는 수입대금 부담이 커져 경상수지가 오히려 일시적으로 악화될 수 있습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "원/달러 환율이 급등한 직후 한국의 경상수지가 오히려 악화되었다가 몇 달 뒤 개선되었습니다. 초기 악화의 이유로 가장 적절한 것은?",
+        "options": [
+          "수출 물량이 즉시 급증하여 무역 흑자가 줄었기 때문이다.",
+          "정부가 수입을 전면 금지했기 때문이다.",
+          "환율 상승으로 외국인의 투자가 급증했기 때문이다.",
+          "수출입 물량은 단기에 쉽게 조정되지 않는데 수입대금의 원화 부담이 늘었기 때문이다."
+        ],
+        "answer": "D",
+        "explanation": "단기에는 계약 등으로 수출입 물량이 거의 변하지 않으나 수입품의 원화 가격이 올라 경상수지가 악화되고, 이후 물량이 조정되며 개선됩니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_519",
+    "concept_name": "교역조건",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "순상품교역조건은 수출가격지수를 수입가격지수로 나누어 100을 곱한 값으로 나타낸다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "수출품 한 단위로 수입할 수 있는 수입품의 양을 나타내는 지표입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "교역조건이 개선되면 같은 수출량으로 수입할 수 있는 상품의 양이 줄어든다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "교역조건 개선은 수출가격이 수입가격에 비해 상대적으로 높아져 같은 수출로 더 많은 수입이 가능해짐을 뜻합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "수출가격지수가 120이고 수입가격지수가 150일 때, 순상품교역조건 값과 그 의미로 올바른 것은?",
+        "options": [
+          "125이며 교역조건이 개선되었다.",
+          "125이며 교역조건이 악화되었다.",
+          "80이며 교역조건이 악화되었다.",
+          "80이며 교역조건이 개선되었다."
+        ],
+        "answer": "C",
+        "explanation": "순상품교역조건 = 120 ÷ 150 × 100 = 80으로 기준(100)보다 낮아 교역조건이 악화되었습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_10",
+    "concept_name": "4Ps",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "마케팅믹스의 4Ps는 제품(Product), 가격(Price), 유통(Place), 촉진(Promotion)을 말한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "기업이 표적시장에서 마케팅 목표를 달성하기 위해 통제 가능한 네 가지 수단을 조합한 것입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "4Ps 중 촉진(Promotion)은 제품의 가격 수준을 결정하는 활동이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "가격 수준을 결정하는 것은 가격(Price)이며, 촉진은 광고·판촉·홍보 등으로 제품을 알리는 활동입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "한 프리미엄 화장품 브랜드가 아래와 같은 전략을 펼치고 있습니다. 이 중 4Ps의 유통(Place) 전략에 해당하는 것은?",
+        "options": [
+          "경쟁 제품보다 3배 높은 가격을 책정한다.",
+          "고급 백화점 매장에만 입점하여 판매한다.",
+          "유명 배우를 모델로 TV 광고를 집행한다.",
+          "고급 소재의 포장 용기를 개발한다."
+        ],
+        "answer": "B",
+        "explanation": "판매 장소와 경로를 정하는 것이 유통(Place) 전략이며, 가격은 Price, 광고는 Promotion, 포장은 Product 전략에 해당합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_233",
+    "concept_name": "SWOT분석",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "SWOT 분석에서 강점과 약점은 내부 환경 요인이고, 기회와 위협은 외부 환경 요인이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "강점(S)·약점(W)은 기업 내부, 기회(O)·위협(T)은 기업 외부 요인에서 찾습니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "경쟁사의 신제품 출시는 SWOT 분석에서 약점에 해당한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "경쟁사의 움직임은 기업 외부 요인이므로 위협에 해당합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "한 식품기업의 상황을 다음과 같이 정리했습니다. 이 중 외부 환경 요인(기회·위협)만 올바르게 묶은 것은? (가) 건강식 트렌드 확산 (나) 자체 연구개발 인력의 우수성 (다) 원재료의 수입 의존도 (라) 대형 유통업체의 가격 인하 압박",
+        "options": [
+          "(가), (다)",
+          "(가), (라)",
+          "(나), (다)",
+          "(나), (라)"
+        ],
+        "answer": "B",
+        "explanation": "(가)는 기회, (라)는 위협으로 외부 요인이며, (나)는 강점, (다)는 약점으로 내부 요인입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2919",
+    "concept_name": "핵심역량",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "핵심역량은 경쟁기업이 쉽게 모방하기 어려운 기업 고유의 능력이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "핵심역량은 고객에게 가치를 주며 경쟁자가 따라 하기 어렵고 다양한 분야로 확장 가능한 능력입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "핵심역량은 시장에서 누구나 쉽게 구입하여 곧바로 확보할 수 있는 자원이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "시장에서 누구나 구할 수 있는 자원은 경쟁우위의 원천이 되기 어려우며, 핵심역량은 축적된 독자적 능력입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "다음 중 핵심역량의 사례로 가장 적절한 것은?",
+        "options": [
+          "일시적인 가격 할인 행사",
+          "임대료가 저렴한 사무실 위치",
+          "여러 사업 분야에 응용 가능하고 경쟁사가 모방하기 어려운 독자 기술력",
+          "시장에서 누구나 구매할 수 있는 범용 부품"
+        ],
+        "answer": "C",
+        "explanation": "핵심역량은 고객가치 창출, 경쟁사의 모방 곤란, 다양한 시장으로의 확장성을 갖춘 독자적 능력이어야 합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1312",
+    "concept_name": "블루오션(Blue Ocean)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "블루오션 전략은 경쟁이 없는 새로운 시장 공간을 창출하여 차별화와 저비용을 동시에 추구하는 전략이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "가치혁신을 통해 경쟁자가 없는 새로운 시장을 만드는 것이 블루오션 전략의 핵심입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "블루오션은 기존 시장에서 경쟁자와 치열하게 싸우는 포화 시장을 뜻한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "경쟁이 치열한 기존 시장은 레드오션이며, 블루오션은 경쟁이 없는 새로운 시장입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "서커스 기업이 동물쇼와 스타 연기자 같은 고비용 요소를 없애고 예술성과 극적인 구성을 새로 도입하여 새로운 고객층을 창출했습니다. 이러한 블루오션 전략의 핵심 방법으로 가장 적절한 것은?",
+        "options": [
+          "제거·감소·증가·창조의 틀로 가치혁신을 추구한다.",
+          "경쟁사의 가격 인하를 신속히 따라간다.",
+          "기존 산업의 모든 요소를 동일하게 강화한다.",
+          "기존 시장의 점유율 경쟁에 집중한다."
+        ],
+        "answer": "A",
+        "explanation": "블루오션 전략은 기존 요소를 제거·감소시키고 새로운 요소를 증가·창조하여 차별화와 저비용을 함께 달성하는 가치혁신을 추구합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1964",
+    "concept_name": "원가우위(cost leadership)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "원가우위 전략은 경쟁기업보다 낮은 비용으로 생산하여 낮은 가격으로 경쟁하는 전략이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "마이클 포터의 본원적 경쟁전략 중 하나로, 비용 절감을 통해 경쟁우위를 얻는 방식입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "원가우위 전략의 핵심은 제품 차별화를 통한 프리미엄 가격 책정이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "프리미엄 가격을 위한 제품 차별화는 차별화 전략이며, 원가우위 전략은 낮은 비용을 핵심으로 합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "가전제품 제조업체가 원가우위 전략을 추진하려 합니다. 가장 적절한 행동은?",
+        "options": [
+          "한정판 고가 제품을 소량 생산한다.",
+          "고객 맞춤형 제품을 소량 주문 생산한다.",
+          "브랜드 이미지 제고를 위해 광고비를 대폭 늘린다.",
+          "표준화된 제품을 대량 생산하고 공정을 자동화하여 단위당 비용을 낮춘다."
+        ],
+        "answer": "D",
+        "explanation": "대량 생산과 공정 효율화는 규모의 경제와 경험곡선 효과로 단위당 비용을 낮춰 원가우위를 달성하는 방법입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_610",
+    "concept_name": "규모의 경제(Economies of Scale)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "규모의 경제는 생산량이 증가함에 따라 평균비용이 감소하는 현상이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "고정비가 많은 산업에서 생산량이 늘면 단위당 고정비가 줄어 평균비용이 하락합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "규모의 경제는 생산량이 증가함에 따라 평균비용이 증가하는 현상이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "생산량이 늘어날수록 평균비용이 증가하는 현상은 규모의 불경제입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "고정비가 1억 원이고 개당 변동비가 5,000원인 제품이 있습니다. 생산량을 1만 개에서 5만 개로 늘릴 때 개당 평균비용의 변화는?",
+        "options": [
+          "7,000원에서 15,000원으로 증가",
+          "15,000원에서 5,000원으로 감소",
+          "15,000원에서 7,000원으로 감소",
+          "10,000원에서 7,000원으로 감소"
+        ],
+        "answer": "C",
+        "explanation": "1만 개일 때 평균비용은 10,000+5,000=15,000원, 5만 개일 때는 2,000+5,000=7,000원으로 감소하여 규모의 경제가 나타납니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2082",
+    "concept_name": "인수합병(Merger and Acquisition; M&A)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "인수합병(M&A)은 기업의 인수(Acquisition)와 합병(Merger)을 합쳐 부르는 말이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "M&A는 다른 기업의 경영권을 취득하거나 둘 이상의 기업을 하나로 합치는 행위를 포함합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "합병은 한 기업이 다른 기업의 주식 일부를 취득해 경영권만 확보하며 두 기업의 법인격이 각각 유지되는 것을 말한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "그러한 방식은 인수에 가깝고, 합병은 둘 이상의 기업이 법적으로 하나의 기업이 되는 것입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "자동차 제조업체가 부품을 공급하던 업체를 인수했습니다. 이러한 M&A의 유형은?",
+        "options": [
+          "수평적 M&A",
+          "수직적 M&A",
+          "다각적(혼합) M&A",
+          "적대적 M&A"
+        ],
+        "answer": "B",
+        "explanation": "생산 단계상 전·후방에 위치한 기업을 인수하는 것은 수직적 M&A이며, 공급망 통제와 비용 절감을 목적으로 합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2187",
+    "concept_name": "재무제표",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "재무제표는 기업의 재무상태와 경영성과를 이해관계자에게 알리기 위한 회계 보고서이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "재무제표는 투자자, 채권자 등이 기업의 상태를 판단하는 데 쓰이는 핵심 정보입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "손익계산서는 특정 시점의 재무상태를 나타내는 재무제표이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "특정 시점의 재무상태는 재무상태표(대차대조표)가 나타내며, 손익계산서는 일정 기간의 경영성과를 나타냅니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "투자자가 어떤 기업이 영업활동으로 실제 현금을 얼마나 창출했는지 확인하려 합니다. 가장 적절한 재무제표는?",
+        "options": [
+          "재무상태표",
+          "손익계산서",
+          "자본변동표",
+          "현금흐름표"
+        ],
+        "answer": "D",
+        "explanation": "현금흐름표는 일정 기간 영업·투자·재무활동에 따른 현금의 유입과 유출을 보여주므로 실제 현금 창출력을 확인할 수 있습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_899",
+    "concept_name": "대차대조표",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "대차대조표(재무상태표)에서는 자산이 부채와 자본의 합과 같다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "회계등식 '자산 = 부채 + 자본'에 따라 대차대조표의 차변 합계와 대변 합계는 항상 일치합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "대차대조표는 일정 기간 동안의 수익과 비용을 보여주는 재무제표이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "일정 기간의 수익과 비용을 보여주는 것은 손익계산서이며, 대차대조표는 특정 시점의 재무상태를 보여줍니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "어느 기업의 자산이 500억 원, 부채가 300억 원입니다. 이 기업의 자본과 부채비율(부채 ÷ 자본)은?",
+        "options": [
+          "자본 200억 원, 부채비율 60%",
+          "자본 800억 원, 부채비율 150%",
+          "자본 200억 원, 부채비율 150%",
+          "자본 300억 원, 부채비율 100%"
+        ],
+        "answer": "C",
+        "explanation": "자본 = 자산 - 부채 = 500 - 300 = 200억 원이고, 부채비율 = 300 ÷ 200 × 100 = 150%입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1848",
+    "concept_name": "연결재무제표",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "연결재무제표는 지배기업과 종속기업을 하나의 경제적 실체로 보고 작성하는 재무제표이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "모회사와 자회사를 하나의 기업집단으로 보고 재무상태와 경영성과를 통합하여 보여줍니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "연결재무제표를 작성할 때 지배기업과 종속기업 간 내부거래는 그대로 합산한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "기업집단 내부의 거래는 외부와의 거래가 아니므로 연결 과정에서 상계 제거합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "모회사의 매출이 400억 원(이 중 자회사에 판매한 금액 100억 원 포함), 자회사의 매출이 200억 원(전부 외부 판매)입니다. 연결재무제표상의 매출액은?",
+        "options": [
+          "600억 원",
+          "500억 원",
+          "400억 원",
+          "300억 원"
+        ],
+        "answer": "B",
+        "explanation": "내부거래 100억 원을 제거하면 연결 매출액은 400 + 200 - 100 = 500억 원입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1869",
+    "concept_name": "영업이익",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "영업이익은 매출총이익에서 판매비와 관리비를 뺀 이익이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "영업이익 = 매출액 - 매출원가 - 판매비와관리비로, 기업의 본업에서 벌어들인 이익입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "영업이익은 이자비용과 법인세를 모두 차감한 후의 이익이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "이자비용과 법인세는 영업이익 산출 이후 단계에서 차감되며, 영업이익에는 반영되지 않습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "어느 기업의 매출액이 1,000억 원, 매출원가가 600억 원, 판매비와관리비가 250억 원, 이자비용이 50억 원입니다. 이 기업의 영업이익은?",
+        "options": [
+          "400억 원",
+          "350억 원",
+          "100억 원",
+          "150억 원"
+        ],
+        "answer": "D",
+        "explanation": "영업이익 = 1,000 - 600 - 250 = 150억 원이며, 이자비용은 영업이익 이후 단계에서 반영됩니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1539",
+    "concept_name": "손익분기점",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "손익분기점은 총수익과 총비용이 같아 이익도 손실도 발생하지 않는 판매량 또는 매출액이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "손익분기점(BEP)을 넘어서는 판매부터 이익이 발생합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "다른 조건이 일정할 때 고정비가 증가하면 손익분기점 판매량은 감소한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "고정비가 늘어나면 이를 회수하는 데 더 많은 판매량이 필요하므로 손익분기점은 상승합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "개당 판매가격이 5,000원, 개당 변동비가 3,000원, 고정비가 1,000만 원인 제품의 손익분기점 판매량은?",
+        "options": [
+          "5,000개",
+          "3,333개",
+          "2,000개",
+          "10,000개"
+        ],
+        "answer": "A",
+        "explanation": "개당 공헌이익은 5,000 - 3,000 = 2,000원이므로 손익분기점 판매량은 10,000,000 ÷ 2,000 = 5,000개입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_315",
+    "concept_name": "감가상각",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "감가상각은 유형자산의 취득원가를 사용 가능한 기간에 걸쳐 비용으로 배분하는 회계 절차이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "건물, 기계 등의 가치 감소를 내용연수에 걸쳐 비용으로 인식합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "감가상각비는 해당 연도에 현금이 실제로 지출되는 비용이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "감가상각비는 비현금 비용으로, 자산 취득 시 이미 현금이 지출되었고 이후에는 비용으로만 배분됩니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "취득원가 5,000만 원, 잔존가치 500만 원, 내용연수 5년인 기계를 정액법으로 감가상각할 때 연간 감가상각비는?",
+        "options": [
+          "1,000만 원",
+          "900만 원",
+          "1,100만 원",
+          "450만 원"
+        ],
+        "answer": "B",
+        "explanation": "정액법 감가상각비 = (5,000 - 500) ÷ 5 = 900만 원입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_82",
+    "concept_name": "EBITDA",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "EBITDA는 이자, 세금, 감가상각비 및 무형자산상각비를 차감하기 전의 이익을 의미한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "EBITDA는 Earnings Before Interest, Taxes, Depreciation and Amortization의 약자로 영업 현금 창출력을 간접적으로 보여줍니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "EBITDA는 감가상각비를 차감한 이후의 이익이므로 영업이익보다 항상 작다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "EBITDA는 감가상각비 등을 더해 산출하므로 일반적으로 영업이익보다 크거나 같습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "어느 기업의 영업이익이 200억 원, 감가상각비가 80억 원, 무형자산상각비가 20억 원입니다. 이 기업의 EBITDA는?",
+        "options": [
+          "300억 원",
+          "200억 원",
+          "280억 원",
+          "100억 원"
+        ],
+        "answer": "A",
+        "explanation": "EBITDA = 영업이익 + 감가상각비 + 무형자산상각비 = 200 + 80 + 20 = 300억 원입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_211",
+    "concept_name": "ROE/ROI",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "ROE는 당기순이익을 자기자본으로 나눈 비율로 주주 자본의 수익성을 나타낸다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "ROE(자기자본이익률) = 당기순이익 ÷ 자기자본 × 100입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "투자액이 같을 때 투자로부터 얻은 이익이 클수록 ROI는 낮아진다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "ROI(투자수익률) = 투자이익 ÷ 투자액이므로 이익이 클수록 ROI는 높아집니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "어느 기업의 당기순이익이 20억 원, 자기자본이 200억 원, 총자산이 500억 원입니다. 이 기업의 ROE는?",
+        "options": [
+          "4%",
+          "2.5%",
+          "10%",
+          "40%"
+        ],
+        "answer": "C",
+        "explanation": "ROE = 20 ÷ 200 × 100 = 10%입니다. 4%는 총자산이익률(ROA)에 해당합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_177",
+    "concept_name": "Net Present Value(순현재가치)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "순현재가치(NPV)가 0보다 크면 일반적으로 해당 투자안은 채택할 만하다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "NPV가 양(+)이면 투자로 얻는 현재가치가 투자비용보다 커서 기업가치가 증가합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "NPV를 계산할 때 미래의 현금흐름은 할인하지 않고 명목 금액 그대로 합산한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "화폐의 시간가치를 반영하기 위해 미래 현금흐름을 적절한 할인율로 현재가치로 환산합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "초기 투자금이 100억 원이고 1년 후 121억 원의 현금이 유입되는 사업이 있습니다. 할인율이 10%일 때 NPV는?",
+        "options": [
+          "21억 원",
+          "10억 원",
+          "0원",
+          "-10억 원"
+        ],
+        "answer": "B",
+        "explanation": "NPV = 121 ÷ 1.1 - 100 = 110 - 100 = 10억 원으로 양(+)이므로 투자 타당성이 있습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2349",
+    "concept_name": "주인-대리인 문제(Principal-Agent Problem)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "주인-대리인 문제는 정보 비대칭과 이해상충으로 대리인이 주인의 이익이 아닌 자신의 이익을 추구할 수 있는 문제이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "주주(주인)와 경영자(대리인) 사이에서 흔히 나타나는 문제입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "주인-대리인 문제는 계약 이전에 대리인의 유형을 알지 못해 발생하는 역선택 문제만을 의미한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "주인-대리인 문제는 주로 계약 후 대리인의 행동을 관찰하기 어려워 발생하는 도덕적 해이를 포함하는 개념입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "경영자가 주주의 이익보다 자신의 사익을 위해 호화 사옥을 짓고 무리한 사업 확장을 추진하고 있습니다. 이 문제를 완화할 방안으로 가장 적절한 것은?",
+        "options": [
+          "경영자의 보수를 성과와 무관한 고정급으로 확대한다.",
+          "경영 정보의 공개를 최소화한다.",
+          "이사회와 외부 감시 기능을 폐지한다.",
+          "성과연동 보수 제도를 도입하고 사외이사 등 외부 감시를 강화한다."
+        ],
+        "answer": "D",
+        "explanation": "경영자와 주주의 이해를 일치시키는 성과연동 보수(스톡옵션 등)와 감시 장치가 대리인 문제를 줄입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_729",
+    "concept_name": "기업지배구조",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "기업지배구조는 경영진을 감시·견제하고 이해관계자의 이익을 보호하는 제도와 관행을 말한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "이사회, 감사제도, 주주권 보호 등이 기업지배구조의 구성 요소입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "기업지배구조가 우수한 기업은 일반적으로 소액주주의 권리가 제한되고 경영 정보 공개가 적다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "지배구조가 우수한 기업은 소액주주 권리를 보호하고 경영 정보를 투명하게 공개합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "대주주 일가가 소액주주에게 불리한 내부거래를 반복하고 있습니다. 이러한 문제를 개선하기 위한 지배구조 방안으로 가장 적절한 것은?",
+        "options": [
+          "대주주의 이사 선임권을 더욱 강화한다.",
+          "집중투표제, 전자투표제 도입과 사외이사의 독립성을 강화한다.",
+          "내부거래 내역의 공시를 폐지한다.",
+          "이사회 구성을 대주주 가족으로 한정한다."
+        ],
+        "answer": "B",
+        "explanation": "소액주주의 의결권 행사를 돕는 집중투표제·전자투표제와 독립적인 사외이사는 대주주의 전횡을 견제하는 제도입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2112",
+    "concept_name": "임금피크제",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "임금피크제는 일정 연령 이후 임금을 줄이는 대신 정년을 보장하거나 연장하는 제도이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "근로자의 고용 안정을 보장하면서 인건비 부담을 완화하기 위해 도입됩니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "임금피크제는 고령 근로자의 임금을 높이는 제도로서 청년 고용 확대와는 관련이 없다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "임금피크제는 임금을 줄이고, 절감된 재원을 청년 고용 등에 활용하도록 하는 것을 목표로 합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "한 기업이 정년을 60세로 연장하면서 55세부터 임금을 단계적으로 줄이는 임금피크제를 도입했습니다. 기업 입장에서 기대할 수 있는 효과로 가장 적절한 것은?",
+        "options": [
+          "고령 근로자 인건비가 늘어나 신규 채용 여력이 줄어든다.",
+          "정년이 연장되어 숙련 인력이 모두 퇴직하게 된다.",
+          "인건비 절감분으로 신규 채용 여력을 확보하고 고령 근로자의 고용안정을 도모할 수 있다.",
+          "근로자의 임금이 모든 연령에서 동일해진다."
+        ],
+        "answer": "C",
+        "explanation": "임금피크제는 고령 근로자의 임금을 낮추는 대신 고용을 보장하여 인건비 부담을 줄이고 신규 채용 여력을 높이려는 제도입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1613",
+    "concept_name": "스톡옵션(Stock Option)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "스톡옵션은 임직원이 미리 정해진 가격(행사가격)으로 자사 주식을 매수할 수 있는 권리이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "기업이 임직원에게 장기적 성과에 대한 동기부여를 위해 부여하는 보상 수단입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "스톡옵션은 주가가 행사가격보다 낮을 때 행사해야 이익이 발생한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "주가가 행사가격보다 높을 때 행사하여 그 차액만큼 이익을 얻을 수 있습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "임원 A가 행사가격 10,000원으로 자사 주식 1,000주를 살 수 있는 스톡옵션을 받았습니다. 주가가 25,000원일 때 행사하여 시장에서 모두 판매하면 얻는 차익은?",
+        "options": [
+          "1,000만 원",
+          "2,500만 원",
+          "1,500만 원",
+          "0원"
+        ],
+        "answer": "C",
+        "explanation": "차익 = (25,000 - 10,000) × 1,000주 = 1,500만 원입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1440",
+    "concept_name": "서킷브레이커",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "서킷브레이커는 주가지수가 급락할 때 시장 안정을 위해 주식 매매를 일시적으로 중단하는 제도이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "투자자들이 냉정을 되찾을 시간을 주어 패닉 매도를 완화하기 위한 제도입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "서킷브레이커는 주가지수가 급등할 때에만 발동하는 제도이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "서킷브레이커는 지수가 급락할 때 발동하며, 급등·급락에 따라 프로그램 매매를 제한하는 제도는 사이드카입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "코스피 지수가 전일 대비 8% 이상 하락한 상태가 1분 이상 지속되었습니다. 이때 한국거래소가 취하는 조치로 가장 적절한 것은?",
+        "options": [
+          "프로그램 매매 호가의 효력을 5분간 정지한다.",
+          "1단계 서킷브레이커를 발동하여 주식시장 매매를 20분간 중단한다.",
+          "즉시 당일 거래를 종료한다.",
+          "아무 조치 없이 거래를 지속한다."
+        ],
+        "answer": "B",
+        "explanation": "코스피가 전일 대비 8% 이상 하락해 1분간 지속되면 1단계 서킷브레이커가 발동되어 20분간 매매가 중단됩니다. 프로그램 매매 제한은 사이드카입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1410",
+    "concept_name": "상장지수펀드(ETF: Exchange Traded Fund)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "ETF는 특정 지수의 움직임을 추종하도록 만든 펀드를 거래소에 상장하여 주식처럼 거래할 수 있게 한 상품이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "펀드의 분산투자 효과와 주식의 실시간 거래 편의성을 결합한 상품입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "ETF는 장 마감 후에만 거래할 수 있고 장중 실시간 매매는 불가능하다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "ETF는 거래소에 상장되어 장중에 실시간으로 사고팔 수 있습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "투자자 김 씨는 소액으로 코스피200 전체에 분산투자하면서 장중에 자유롭게 사고팔기를 원합니다. 가장 적절한 상품은?",
+        "options": [
+          "코스피200 지수 추종 ETF",
+          "1년 만기 정기예금",
+          "특정 비상장사 대상 사모펀드",
+          "만기 3년의 저축성 보험"
+        ],
+        "answer": "A",
+        "explanation": "지수 추종 ETF는 소액으로 분산투자가 가능하고 주식처럼 실시간 거래할 수 있어 투자자의 요구에 부합합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2859",
+    "concept_name": "핀테크(FinTech)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "핀테크는 금융(Finance)과 기술(Technology)이 결합한 서비스로 간편결제, 모바일 송금 등을 포함한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "IT 기술을 활용한 새로운 금융서비스를 통칭하는 개념입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "핀테크는 오프라인 은행 지점의 창구 업무만을 가리키며 모바일 기술과는 무관하다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "핀테크는 모바일·빅데이터·AI 등 정보기술을 금융서비스에 접목한 것입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "다음 중 핀테크에 해당하는 사례로 가장 적절한 것은?",
+        "options": [
+          "은행 창구에서 번호표를 뽑아 대기하는 방식의 예금 업무",
+          "종이 통장에 거래 내역을 인자하는 방식",
+          "은행 지점 방문을 통한 현금 입금",
+          "스마트폰 앱으로 상대방 연락처만 알면 즉시 돈을 보낼 수 있는 간편송금 서비스"
+        ],
+        "answer": "D",
+        "explanation": "모바일 기술을 활용한 간편송금은 대표적인 핀테크 서비스입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2519",
+    "concept_name": "총부채원리금상환비율(DSR: debt service ratio)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "DSR은 주택담보대출뿐 아니라 신용대출 등 모든 대출의 연간 원리금 상환액을 연소득으로 나눈 비율이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "DSR(총부채원리금상환비율)은 개인의 전체 대출 상환 부담을 종합적으로 평가하는 지표입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "DSR 산정 시 신용대출이나 카드론의 원리금은 제외하고 주택담보대출 원리금만 반영한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "DSR은 신용대출, 카드론, 자동차 할부 등 모든 대출의 원리금을 반영합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "연소득이 6,000만 원인 사람의 연간 주택담보대출 원리금 상환액이 1,800만 원, 신용대출 원리금 상환액이 600만 원입니다. 이 사람의 DSR은?",
+        "options": [
+          "40%",
+          "30%",
+          "10%",
+          "50%"
+        ],
+        "answer": "A",
+        "explanation": "DSR = (1,800 + 600) ÷ 6,000 × 100 = 40%입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_11",
+    "concept_name": "4차 산업혁명(Fourth Industrial Revolution)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "4차 산업혁명은 인공지능, 빅데이터, 사물인터넷 등 디지털 기술의 융합이 이끄는 산업 변화를 말한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "물리적, 디지털, 생물학적 영역의 경계가 허물어지는 기술 융합이 특징입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "4차 산업혁명은 증기기관의 발명과 기계화로 시작된 산업혁명을 가리킨다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "증기기관과 기계화는 1차 산업혁명의 특징입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "한 제조업체가 공장 설비에 센서를 부착해 데이터를 수집하고, 빅데이터와 AI로 고장 시점을 예측하여 생산 공정을 자동으로 조정하고 있습니다. 이 사례에 해당하는 것은?",
+        "options": [
+          "컨베이어 벨트를 이용한 대량생산 체제",
+          "IoT·빅데이터·AI가 결합된 스마트팩토리",
+          "증기기관을 이용한 방직 기계화",
+          "프로그래머블 로직 컨트롤러(PLC)를 이용한 단순 자동화"
+        ],
+        "answer": "B",
+        "explanation": "센서(IoT), 빅데이터, AI를 융합해 생산 공정을 지능적으로 운영하는 것은 4차 산업혁명의 대표 사례인 스마트팩토리입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1310",
+    "concept_name": "블록체인(Block Chain)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "블록체인은 거래 내역을 블록에 담아 체인 형태로 연결하고 다수 참여자가 분산하여 저장하는 기술이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "중앙 서버 없이 참여자들이 장부를 공동으로 보관하는 분산원장 기술입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "블록체인에 한 번 기록된 거래는 중앙 관리자가 임의로 쉽게 수정할 수 있다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "블록체인은 분산 저장과 해시 연결로 위·변조가 매우 어렵고, 중앙 관리자의 임의 수정이 불가능합니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "블록체인 네트워크에서 한 참여자가 자기 장부의 거래 내역을 몰래 조작했습니다. 이때 일어나는 일로 가장 적절한 것은?",
+        "options": [
+          "조작된 내용이 즉시 모든 참여자의 장부에 반영된다.",
+          "중앙 관리자가 조작 내용을 승인하면 그대로 인정된다.",
+          "다른 참여자들의 장부와 불일치하여 합의 과정에서 조작이 거부된다.",
+          "조작한 참여자의 장부가 자동으로 네트워크의 표준이 된다."
+        ],
+        "answer": "C",
+        "explanation": "블록체인은 다수 참여자가 동일한 장부를 보유하고 합의 알고리즘으로 검증하므로, 일부 장부만 조작해도 다른 장부와 일치하지 않아 인정되지 않습니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_531",
+    "concept_name": "구독경제",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "구독경제는 일정 금액을 주기적으로 지불하고 상품이나 서비스를 이용하는 경제 모델이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "소유보다 이용에 초점을 맞춘 방식으로, 정기배송과 OTT 서비스 등이 대표적입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "구독경제는 소비자가 상품의 소유권을 한 번에 이전받는 일회성 구매 모델이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "구독경제는 소유권 이전 없이 일정 기간 이용권을 구매하는 모델입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "기업이 판매 중심에서 구독 모델로 전환할 때 기대할 수 있는 장점으로 가장 적절한 것은?",
+        "options": [
+          "안정적인 반복 수익 확보와 고객 이용 데이터 축적",
+          "일회성 매출의 극대화",
+          "고객 이탈이 전혀 발생하지 않음",
+          "초기 재고 부담의 대폭 증가"
+        ],
+        "answer": "A",
+        "explanation": "구독 모델은 정기적인 매출 흐름과 고객 데이터를 확보하게 해 주지만, 고객 이탈 관리가 중요한 과제입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2656",
+    "concept_name": "탄소배출권거래제",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "탄소배출권거래제는 정부가 기업에 배출 허용량을 할당하고, 남거나 부족한 배출권을 기업 간에 거래하도록 하는 제도이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "시장 메커니즘을 활용해 온실가스 감축을 효율적으로 유도하는 제도입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "할당량보다 배출을 적게 한 기업이 남는 배출권을 판매할 수 없고 자동 소멸된다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "남은 배출권은 다른 기업에 판매하거나 다음 기간으로 이월할 수 있습니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "A기업은 배출 허용량이 100만 톤인데 실제로 80만 톤을 배출했고, B기업은 허용량이 100만 톤인데 120만 톤을 배출했습니다. 이 제도 하에서의 결과로 옳은 것은?",
+        "options": [
+          "A기업은 20만 톤을 구매해야 하고 B기업은 20만 톤을 판매할 수 있다.",
+          "두 기업 모두 배출권 거래가 불가능하다.",
+          "A기업은 20만 톤을 판매할 수 있고 B기업은 20만 톤을 구매해야 한다.",
+          "두 기업 모두 과태료만 부담하면 된다."
+        ],
+        "answer": "C",
+        "explanation": "허용량보다 적게 배출한 A는 남는 20만 톤을 팔 수 있고, 초과 배출한 B는 20만 톤의 배출권을 사거나 감축해야 합니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_1001",
+    "concept_name": "리쇼어링(Reshoring)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "리쇼어링은 해외로 나갔던 기업이 생산 시설을 다시 국내로 복귀시키는 것을 말한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "해외로 이전했던 기업의 국내 복귀를 뜻합니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "리쇼어링은 국내 기업이 인건비가 낮은 해외로 생산 기지를 옮기는 것을 말한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "인건비 등을 이유로 해외로 생산 기지를 옮기는 것은 오프쇼어링입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "해외에 공장을 두었던 한 제조업체가 공급망 불안과 자동화 확산으로 해외 인건비 이점이 줄어들자 공장을 국내로 복귀시키기로 했습니다. 이 결정을 더 촉진할 요인으로 가장 적절한 것은?",
+        "options": [
+          "정부의 세제 혜택과 보조금 지원",
+          "국내 법인세율의 대폭 인상",
+          "국내 수입 관세의 폐지",
+          "해외 인건비의 추가 하락"
+        ],
+        "answer": "A",
+        "explanation": "복귀 기업에 대한 세제 혜택, 보조금 지원은 리쇼어링 유인을 높이는 대표적인 정책입니다."
+      }
+    ]
+  },
+  {
+    "concept_id": "sisa_2309",
+    "concept_name": "젠트리피케이션(Gentrification)",
+    "stage_id": "stage5",
+    "questions": [
+      {
+        "question_number": 1,
+        "question_type": "OX",
+        "question": "젠트리피케이션은 낙후 지역이 개발·활성화되면서 임대료가 상승해 기존 주민이나 상인이 밀려나는 현상이다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "O",
+        "explanation": "상권 활성화에 따른 임대료 상승으로 원래 거주자와 영세 상인이 떠나는 현상입니다."
+      },
+      {
+        "question_number": 2,
+        "question_type": "OX",
+        "question": "젠트리피케이션은 도심의 인구가 교외로 대거 이동하는 교외화 현상을 의미한다.",
+        "options": [
+          "O",
+          "X"
+        ],
+        "answer": "X",
+        "explanation": "젠트리피케이션은 고소득층이나 자본이 낙후 지역으로 유입되어 기존 주민이 밀려나는 현상입니다."
+      },
+      {
+        "question_number": 3,
+        "question_type": "SITUATIONAL",
+        "question": "소규모 공방과 카페가 모여 인기를 끌던 거리의 임대료가 급등하면서 기존 영세 상인들이 떠나고 대형 프랜차이즈가 들어서고 있습니다. 이 문제를 완화하기 위한 방안으로 가장 적절한 것은?",
+        "options": [
+          "임대료 인상률을 제한하는 제도와 임대인·임차인 상생협약을 도입한다.",
+          "임대료 규제를 모두 폐지한다.",
+          "대형 프랜차이즈의 입점을 적극 유치한다.",
+          "지역 개발을 즉시 중단하고 상권을 방치한다."
+        ],
+        "answer": "A",
+        "explanation": "임대료 인상률 상한과 상생협약은 영세 상인의 이탈을 줄이는 대표적인 완화책입니다."
+      }
+    ]
+  }
+]
