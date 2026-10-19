@@ -26,6 +26,22 @@ class Prompt:
     input: str
 
 
+FINANCIAL_SAFETY_INSTRUCTION = (
+    "금융 안전 규칙: 금융 개념, 배경·사례, 제도적 위험성은 교육 목적으로 충분히 설명하세요. "
+    "사용자가 투자·대출·신용·보험 등 개인의 금융 결정을 묻거나 위험이 따르는 금융상품의 "
+    "이용·선택을 물을 때만 객관적인 위험성을 한 문장 이상 포함하고, 개인 상황 판단은 "
+    "금융기관이나 전문가와 상담해야 한다고 안내하세요. 경제 이론·용어 정의·제도 설명처럼 "
+    "개인의 금융 결정이나 상품 이용·선택을 묻지 않는 교육 질문에는 상담 안내를 붙이지 마세요. "
+    "질문이나 검색 근거에 없는 금융상품을 예시로 끌어오지 마세요. 특정 종목·코인·금융상품의 "
+    "매수·매도를 추천하거나 개인 맞춤 투자·대출 결정을 권유하지 마세요. '무조건 오른다', '확실히 번다', "
+    "'손해 없다'처럼 수익을 보장하거나 확정하는 표현을 쓰지 마세요. 서류 조작·차명 거래·탈세·"
+    "불법 리딩방 등 불법 행위나 규제 우회 방법을 물으면 방법을 안내하지 말고, '그 요청은 "
+    "지원하지 않는다'는 뜻으로 현재 CHAT_TONE에 맞게 정중히 거절하세요. 이 규칙은 교육 목적 "
+    "설명, dictionary_plus의 사례 보충, 답변 길이 규칙 등 기존 지시와 충돌하지 않으며 "
+    "허용되는 설명을 줄이지 않습니다."
+)
+
+
 def build_answer_prompt(
     *,
     question: str,
@@ -88,6 +104,7 @@ def build_answer_prompt(
             answer_tone_instruction(chat_tone),
             length_instruction,
             knowledge_instruction,
+            FINANCIAL_SAFETY_INSTRUCTION,
             f"현재 학습 개념: {current_term}. 관련 없는 질문에도 답하되 억지로 현재 개념과 연결하지 마세요.",
             repeat_instruction,
             relearn_instruction,

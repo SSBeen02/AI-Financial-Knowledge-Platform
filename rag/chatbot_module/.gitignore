@@ -19,6 +19,7 @@ __pycache__/
 # 테스트 임시 파일
 .pytest_cache/
 .pytest-tmp/
+eval_outputs/
 
 # 모델·임베딩 캐시
 cache/

@@ -1,0 +1,4 @@
+-r requirements.txt
+openpyxl>=3.1
+ragas==0.4.3
+langchain-community==0.4.1
