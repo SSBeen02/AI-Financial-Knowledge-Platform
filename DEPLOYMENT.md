@@ -19,6 +19,8 @@ Figma Make 프론트 → Cloudtype FastAPI → Supabase Auth / PostgreSQL / Qdra
 
 배포 디렉터리는 **저장소 루트**다. `main_dev:app`은 챗봇 단독 개발 진입점이며 운영 통합은 `run_integration:app`을 사용한다.
 
+루트 `requirements.txt`는 두 모듈의 의존성을 직접 나열한 독립 설치 목록이다. 설치 단계에서 하위 소스 폴더가 아직 복사되지 않아도 동작하도록 `-r rag/...` 등의 하위 파일 참조를 사용하지 않는다. 모듈 requirements가 변경되면 루트 목록의 버전·extras도 함께 맞춘다. `Could not open requirements file: rag/chatbot_module/requirements.txt`가 나오면 이 수정이 포함된 최신 main 커밋으로 빌드하는지 확인한다. 배포 경로는 계속 빈칸이다.
+
 설치 명령:
 
 ```sh

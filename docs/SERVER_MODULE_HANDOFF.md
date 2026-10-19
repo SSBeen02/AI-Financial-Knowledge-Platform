@@ -31,7 +31,7 @@
 | --- | --- |
 | `run_integration.py` | 실제 저장소 import 경로와 stages 경로 해석, 프로세스 설정 검증, 두 라우터 등록, lifespan에서 DB·모델·캐시·어댑터 초기화 및 퀴즈 DB 종료, 오류 핸들러·CORS·/health |
 | `server_auth.py` | Supabase Auth 사용자 조회로 Bearer 토큰 검증. 반환 UUID 사용. 무인증/거절 응답 401, 네트워크·인증 서버 이상 응답 503 |
-| `requirements.txt` | 챗봇·퀴즈 requirements 모두 포함 |
+| `requirements.txt` | 챗봇·퀴즈 의존성을 직접 병합한 독립 목록. 설치 단계의 하위 파일 미복사 오류를 피하기 위해 -r 참조 없이 엄격한 버전·extras를 합침 |
 | `.env.example` | 실제 키 없는 운영 변수 템플릿 |
 | `.gitignore` | dotenv·DB·캐시·테스트 패키지·가상환경 제외. `.env.example`은 포함 |
 | `tests/test_server_integration.py` | 인증 실패·검증된 ID·인증 네트워크 실패, 라우터·CORS, 초기화/종료, 자동 DDL 차단 등 회귀 검사 |
