@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
@@ -123,7 +123,20 @@ async def init_quiz_models() -> None:
     import app.models.quiz  # noqa: F401
 
     async with get_engine().begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
+        # Preserve standalone SQLite development; production never creates tables.
+        default = "true" if database_url().startswith("sqlite") else "false"
+        if os.getenv("DB_AUTO_CREATE", default).strip().lower() == "true":
+            await connection.run_sync(Base.metadata.create_all)
+        else:
+            def verify_schema(sync_connection):
+                inspector = inspect(sync_connection)
+                for table in Base.metadata.sorted_tables:
+                    if not inspector.has_table(table.name):
+                        raise RuntimeError("퀴즈 DB migration을 먼저 적용하세요: " + table.name)
+                    columns = {column["name"] for column in inspector.get_columns(table.name)}
+                    if set(table.columns.keys()) - columns:
+                        raise RuntimeError("퀴즈 DB 컬럼 migration이 필요합니다: " + table.name)
+            await connection.run_sync(verify_schema)
 
 
 @asynccontextmanager
