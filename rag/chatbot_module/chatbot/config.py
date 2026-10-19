@@ -119,6 +119,8 @@ class Settings(BaseSettings):
 
 def get_settings() -> Settings:
     _warn_legacy_dev_flag()
+    if os.getenv("PYTHON_DOTENV_DISABLED", "").strip().lower() in {"1", "true"}:
+        return Settings(_env_file=None)
     return Settings()
 
 

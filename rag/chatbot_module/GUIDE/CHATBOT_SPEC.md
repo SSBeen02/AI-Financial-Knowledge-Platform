@@ -1,5 +1,7 @@
 # 「나의 경세학당」 RAG 챗봇 모듈 구현 명세
 
+> 2026-10-19 통합 배포 보완: 저장소 루트 `run_integration.py`에서 챗봇·퀴즈 공통 Supabase Auth 검증을 주입한다. `PYTHON_DOTENV_DISABLED=1`이면 Settings도 dotenv 파일을 읽지 않는다. 학습·검색 계약은 유지한다. 배포 절차는 루트 `DEPLOYMENT.md` 참고.
+
 > 이 문서는 Cursor(AI 코딩 도구)에게 챗봇 모듈 구현을 요청하기 위한 명세다.
 > 구현 전 반드시 끝까지 읽고, **8. 작업 방식**의 순서를 따른다.
 
