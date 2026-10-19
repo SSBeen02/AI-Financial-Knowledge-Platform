@@ -81,7 +81,7 @@ class DenseEncoder:
             from sentence_transformers import SentenceTransformer
 
             self.model = SentenceTransformer(model_name, device=device)
-            self.dim = self.model.get_sentence_embedding_dimension()
+            self.dim = getattr(self.model, "get_embedding_dimension", self.model.get_sentence_embedding_dimension)()
 
     def encode(self, texts: list[str], batch_size: int = 16, show_progress: bool = False) -> np.ndarray:
         if self.model is None:
