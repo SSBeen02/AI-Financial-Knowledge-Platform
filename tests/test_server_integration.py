@@ -71,7 +71,16 @@ def test_routes_auth_overrides_and_cors():
     assert client.get("/health").json() == {"status": "ok"}
     headers = {"Origin": "https://plant-pin-65764387.figma.site", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "authorization,idempotency-key,content-type"}
     assert client.options("/learning/messages", headers=headers).status_code == 200
+    headers["Origin"] = "https://app-jlnkxt7eaot76lplf4arwbyvunw6r233ziyqdxgf2ym5koosr7q5.makeproxy-c.figma.site"
+    preview = client.options("/learning/messages", headers=headers)
+    assert preview.status_code == 200
+    assert preview.headers["access-control-allow-origin"] == headers["Origin"]
+    health = client.get("/health", headers={"Origin": headers["Origin"]})
+    assert health.status_code == 200
+    assert health.headers["access-control-allow-origin"] == headers["Origin"]
     headers["Origin"] = "https://untrusted.example"
+    assert client.options("/learning/messages", headers=headers).status_code == 400
+    headers["Origin"] = "https://app-fake.makeproxy-c.figma.site.evil.example"
     assert client.options("/learning/messages", headers=headers).status_code == 400
 
 

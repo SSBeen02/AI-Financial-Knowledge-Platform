@@ -60,7 +60,7 @@ python -m uvicorn run_integration:app --host 0.0.0.0 --port 8000 --workers 1
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | 퀴즈 생성. 모델 기본값은 퀴즈 설정을 따름 |
 | `SUPABASE_URL` | 프론트 로그인과 같은 Supabase 프로젝트의 HTTPS origin |
 | `SUPABASE_PUBLISHABLE_KEY` | 인증 서버 호출용 publishable key. 대체 이름 `SUPABASE_ANON_KEY` |
-| `CORS_ALLOW_ORIGINS` | 게시 사이트 및 필요한 미리보기 origin의 쉼표 구분 목록 |
+| `CORS_ALLOW_ORIGINS` | 게시 사이트 등 고정 origin의 쉼표 구분 목록. 통합 서버는 `https://app-<영숫자>.makeproxy-c.figma.site` 형태의 Figma Make Preview origin도 허용 |
 | `DB_AUTO_CREATE`, `DEV_ENABLE_TOOLS`, `DEV_MODE`, `DEV_SIMULATE_QUIZ_GENERATION_FAILURE` | 운영에서는 전부 `false` |
 
 키·DB 비밀번호는 Cloudtype 시크릿으로 등록하고 문서·이슈·커밋·프론트에 쓰지 않는다. DB URL 두 개는 같은 DB를 가리킬 수 있으나 드라이버와 SSL 옵션은 서로 다르다. Supabase 프로젝트를 바꿀 때 프론트 로그인 프로젝트와 서버 인증·DB가 서로 맞는지 확인한다.

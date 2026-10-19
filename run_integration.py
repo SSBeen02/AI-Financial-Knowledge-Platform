@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 CHATBOT_ROOT = ROOT / "rag" / "chatbot_module"
 QUIZ_ROOT = ROOT / "quiz-upload"
+FIGMA_MAKE_PREVIEW_ORIGIN = r"https://app-[a-z0-9]+\.makeproxy-c\.figma\.site"
 for module_root in (CHATBOT_ROOT, QUIZ_ROOT):
     sys.path.insert(0, str(module_root))
 
@@ -88,6 +89,7 @@ def create_app() -> FastAPI:
     application.add_exception_handler(RequestValidationError, validation)
     application.add_middleware(
         CORSMiddleware, allow_origins=settings.cors_origins,
+        allow_origin_regex=FIGMA_MAKE_PREVIEW_ORIGIN,
         allow_credentials=True, allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID"],
         expose_headers=["X-Request-ID"],
