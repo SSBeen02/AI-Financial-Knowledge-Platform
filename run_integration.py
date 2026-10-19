@@ -9,7 +9,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 CHATBOT_ROOT = ROOT / "rag" / "chatbot_module"
 QUIZ_ROOT = ROOT / "quiz-upload"
-FIGMA_MAKE_PREVIEW_ORIGIN = r"https://app-[a-z0-9]+\.makeproxy-c\.figma\.site"
+FIGMA_MAKE_PREVIEW_ORIGIN = (
+    r"https://(?:app-[a-z0-9]+\.makeproxy-c|"
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-figmacachedpreview)\.figma\.site"
+)
 for module_root in (CHATBOT_ROOT, QUIZ_ROOT):
     sys.path.insert(0, str(module_root))
 

@@ -78,9 +78,17 @@ def test_routes_auth_overrides_and_cors():
     health = client.get("/health", headers={"Origin": headers["Origin"]})
     assert health.status_code == 200
     assert health.headers["access-control-allow-origin"] == headers["Origin"]
+    headers["Origin"] = "https://1c072bcd-172b-49cd-92a6-1b5ccce474c3-figmacachedpreview.figma.site"
+    cached_preview = client.options("/learning/current", headers=headers)
+    assert cached_preview.status_code == 200
+    assert cached_preview.headers["access-control-allow-origin"] == headers["Origin"]
+    health = client.get("/health", headers={"Origin": headers["Origin"]})
+    assert health.headers["access-control-allow-origin"] == headers["Origin"]
     headers["Origin"] = "https://untrusted.example"
     assert client.options("/learning/messages", headers=headers).status_code == 400
     headers["Origin"] = "https://app-fake.makeproxy-c.figma.site.evil.example"
+    assert client.options("/learning/messages", headers=headers).status_code == 400
+    headers["Origin"] = "https://not-a-uuid-figmacachedpreview.figma.site"
     assert client.options("/learning/messages", headers=headers).status_code == 400
 
 
