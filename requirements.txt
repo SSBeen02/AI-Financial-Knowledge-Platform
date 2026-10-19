@@ -1,0 +1,2 @@
+-r rag/chatbot_module/requirements.txt
+-r quiz-upload/requirements.txt
