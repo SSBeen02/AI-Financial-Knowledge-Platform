@@ -1597,6 +1597,7 @@
     {
       "id": "stage5",
       "order": 5,
+      "is_optional": true,
       "name_ko": "TESAT·매경TEST 빈출 핵심 용어",
       "concept_count": 70,
       "subcategories": [

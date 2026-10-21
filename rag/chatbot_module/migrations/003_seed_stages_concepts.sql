@@ -1112,7 +1112,7 @@ on conflict (concept_id, stage_id) do update set
   display_order = excluded.display_order;
 
 insert into public.stages (stage_id, name_ko, display_order, is_optional)
-values ('stage5', 'TESAT·매경TEST 빈출 핵심 용어', 5, false)
+values ('stage5', 'TESAT·매경TEST 빈출 핵심 용어', 5, true)
 on conflict (stage_id) do update set
   name_ko = excluded.name_ko,
   display_order = excluded.display_order,
