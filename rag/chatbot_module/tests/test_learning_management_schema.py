@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -189,3 +190,21 @@ def test_fourth_migration_renames_learning_session_stage_column() -> None:
         / "004_rename_learning_sessions_stage.sql"
     ).read_text(encoding="utf-8").lower()
     assert "alter table public.learning_sessions rename column stage to stage_id" in sql
+
+
+def test_stage5_is_marked_optional_in_catalog_and_migrations() -> None:
+    root = Path(__file__).parents[1]
+    stages = json.loads((root / "data" / "stages.json").read_text(encoding="utf-8"))["stages"]
+    optional = {stage["id"]: bool(stage.get("is_optional", False)) for stage in stages}
+    assert optional == {
+        "stage1": False,
+        "stage2": False,
+        "stage3": False,
+        "stage4": False,
+        "stage5": True,
+    }
+    seed = (root / "migrations" / "003_seed_stages_concepts.sql").read_text(encoding="utf-8")
+    assert "values ('stage5', 'TESAT·매경TEST 빈출 핵심 용어', 5, true)" in seed
+    sql = (root / "migrations" / "005_mark_stage5_optional.sql").read_text(encoding="utf-8").lower()
+    assert "set is_optional = true" in sql
+    assert "where stage_id = 'stage5'" in sql
