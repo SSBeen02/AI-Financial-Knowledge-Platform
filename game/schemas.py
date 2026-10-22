@@ -83,6 +83,13 @@ class StageCompletion(BaseModel):
     completed_at: datetime
 
 
+class StoryReward(BaseModel):
+    stage: int
+    story_reward_id: str
+    source_event_id: str | None = None
+    unlocked_at: datetime
+
+
 class CompletionPresentation(BaseModel):
     stage: int = Field(ge=1, le=5)
     event_id: str
@@ -115,6 +122,7 @@ class GameStateOut(BaseModel):
     crown: Crown | None = None
     coin_balance: int = Field(ge=0)
     reward_history: list[RewardHistory] = Field(default_factory=list)
+    story_rewards: list[StoryReward] = Field(default_factory=list)
     stage_completion_history: list[StageCompletion] = Field(default_factory=list)
     completion_presentation: CompletionPresentation | None = None
     pending_transition: PendingTransition | None = None
@@ -145,3 +153,18 @@ class PurchaseResult(BaseModel):
     status: Literal["success", "already_owned", "insufficient_balance", "unavailable"]
     accessory_id: str
     coin_balance: int = Field(ge=0)
+
+
+class LearningEventIn(BaseModel):
+    """GameEventOut을 게임 경계에서 검증한다. 공급 모듈에는 의존하지 않는다."""
+    event_id: str = Field(min_length=1, max_length=100)
+    user_id: str = Field(min_length=1, max_length=36)
+    event_type: Literal["concept_passed", "stage_completed"]
+    stage_id: str = Field(pattern=r"^stage[1-5]$")
+    concept_id: str | None = Field(default=None, max_length=100)
+    first_pass: bool | None = Field(default=None, strict=True)
+    passed_count: int = Field(strict=True)
+    total_count: int = Field(strict=True)
+    stage_completed: bool = Field(strict=True)
+    next_stage_id: str | None = Field(default=None, pattern=r"^stage[1-5]$")
+    occurred_at: datetime
