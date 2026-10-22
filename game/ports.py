@@ -2,6 +2,8 @@
 from collections.abc import Callable
 from typing import Protocol, TypeVar
 
+from sqlalchemy.orm import Session
+
 from game.schemas import Character, GameStateOut, PurchaseResult
 
 
@@ -24,7 +26,7 @@ class CoinLedger(Protocol):
 
 
 class UnitOfWork(Protocol):
-    def run(self, work: Callable[[], T]) -> T: ...
+    def run(self, work: Callable[[Session], T]) -> T: ...
 
 
 class PurchaseStore(Protocol):
