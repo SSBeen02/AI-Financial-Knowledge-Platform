@@ -77,7 +77,9 @@ class ConceptStatusService(ABC):
     ) -> dict[str, Any]: ...
 
     @abstractmethod
-    def get_unprocessed_events(self, *, limit: int = 100) -> list[GameEventOut]: ...
+    def get_unprocessed_events(
+        self, *, limit: int = 100, user_id: str | None = None
+    ) -> list[GameEventOut]: ...
 
     @abstractmethod
     def mark_event_processed(self, event_id: str) -> GameEventOut: ...
@@ -359,13 +361,17 @@ class SqlConceptStatusService(ConceptStatusService):
                 raise ConceptStatusError("퀴즈 결과를 저장하지 못했습니다.") from exc
             return result
 
-    def get_unprocessed_events(self, *, limit: int = 100) -> list[GameEventOut]:
+    def get_unprocessed_events(
+        self, *, limit: int = 100, user_id: str | None = None
+    ) -> list[GameEventOut]:
         if limit < 1:
             raise ConceptStatusError("limit은 1 이상이어야 합니다.")
+        query = select(LearningEventRow).where(LearningEventRow.processed_at.is_(None))
+        if user_id is not None:
+            query = query.where(LearningEventRow.user_id == user_id)
         with Session(self._engine) as session:
             rows = session.scalars(
-                select(LearningEventRow)
-                .where(LearningEventRow.processed_at.is_(None))
+                query
                 .order_by(
                     LearningEventRow.occurred_at,
                     case(
@@ -655,10 +661,14 @@ def get_concept_status(
 
 
 def get_unprocessed_events(
-    service: ConceptStatusService, *, limit: int = 100
+    service: ConceptStatusService, *, limit: int = 100, user_id: str | None = None
 ) -> list[GameEventOut]:
-    """게임 모듈이 아직 처리하지 않은 학습 이벤트를 조회한다."""
-    return service.get_unprocessed_events(limit=limit)
+    """게임 모듈이 아직 처리하지 않은 학습 이벤트를 조회한다.
+
+    user_id를 주면 해당 사용자의 이벤트만 반환한다(메인화면 진입 시 사용).
+    정렬은 occurred_at → concept_passed 우선 → event_id 순이다.
+    """
+    return service.get_unprocessed_events(limit=limit, user_id=user_id)
 
 
 def mark_event_processed(

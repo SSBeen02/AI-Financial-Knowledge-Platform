@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from chatbot.integrations import SqlConceptStatusService
 from chatbot.learning_management import (
     ConceptRow,
+    LearningEventRow,
     UserConceptProgressRow,
     UserStageProgressRow,
 )
@@ -202,3 +203,57 @@ def test_last_concept_pass_completes_stage_and_opens_next(tmp_path: Path) -> Non
     finally:
         service.close()
         store.close()
+
+
+def test_unprocessed_events_can_be_filtered_by_user(tmp_path: Path) -> None:
+    settings = make_settings(tmp_path / "events-by-user.db", simulate_quiz_status=False)
+    service = SqlConceptStatusService(settings)
+    t0 = datetime(2026, 10, 23, tzinfo=timezone.utc)
+    t1 = datetime(2026, 10, 24, tzinfo=timezone.utc)
+
+    def event(event_id, user_id, event_type, occurred_at):
+        payload = {
+            "event_id": event_id,
+            "event_type": event_type,
+            "user_id": user_id,
+            "stage_id": "stage1",
+            "passed_count": 30,
+            "total_count": 30,
+        }
+        if event_type == "concept_passed":
+            payload.update(concept_id=CONCEPT, first_pass=True, stage_completed=True)
+        return LearningEventRow(
+            event_id=event_id,
+            event_type=event_type,
+            user_id=user_id,
+            payload=payload,
+            occurred_at=occurred_at,
+            processed_at=None,
+        )
+
+    try:
+        with Session(service._engine) as db:
+            db.add_all(
+                [
+                    event("a-stage", "user-a", "stage_completed", t0),
+                    event("a-concept", "user-a", "concept_passed", t0),
+                    event("b-concept", "user-b", "concept_passed", t0),
+                    event("a-later", "user-a", "concept_passed", t1),
+                ]
+            )
+            db.commit()
+        a_events = service.get_unprocessed_events(user_id="user-a")
+        assert [e.event_id for e in a_events] == ["a-concept", "a-stage", "a-later"]
+        assert {e.user_id for e in a_events} == {"user-a"}
+        assert len(service.get_unprocessed_events()) == 4
+        assert service.get_unprocessed_events(user_id="nobody") == []
+        service.mark_event_processed("a-concept")
+        assert [e.event_id for e in service.get_unprocessed_events(user_id="user-a")] == [
+            "a-stage",
+            "a-later",
+        ]
+        assert [e.event_id for e in service.get_unprocessed_events(user_id="user-b")] == [
+            "b-concept"
+        ]
+    finally:
+        service.close()
