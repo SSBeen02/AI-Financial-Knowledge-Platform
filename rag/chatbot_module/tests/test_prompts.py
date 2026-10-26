@@ -34,7 +34,12 @@ def test_financial_safety_applies_to_every_answer_mode_and_tone(mode: str, tone:
     assert "질문이나 검색 근거에 없는 금융상품을 예시로 끌어오지 마세요" in prompt.instructions
     assert "리볼빙" not in FINANCIAL_SAFETY_INSTRUCTION
     assert "레버리지" not in FINANCIAL_SAFETY_INSTRUCTION
-    assert "특정 종목·코인·금융상품의 매수·매도를 추천하거나" in prompt.instructions
+    assert "특정 종목·코인·금융상품의 매수·매도를 추천하거나 지시하지 마세요" in prompt.instructions
+    assert "소득·자산·부채 등 개인 상황을 근거로" in prompt.instructions
+    assert "대출 실행·한도 확대를 권유하지 마세요" in prompt.instructions
+    assert "위험성·비용·금리·상환 조건·비교 기준은 교육 목적으로" in prompt.instructions
+    assert "일반 금융교육 질문을 거절하지 마세요" in prompt.instructions
+    assert "고지 문구 'AI 작성, 투자 조언 아님'은" in prompt.instructions
     assert "수익을 보장하거나 확정하는 표현을 쓰지 마세요" in prompt.instructions
     assert "방법을 안내하지 말고" in prompt.instructions
     assert "그 요청은 지원하지 않는다" in prompt.instructions

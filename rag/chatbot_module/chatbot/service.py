@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from threading import RLock
 from time import perf_counter
 
+from chatbot.answer_format import normalize_answer_text, with_advice_disclaimer
 from chatbot.concepts import (
     STATUS_IN_PROGRESS,
     STATUS_PASSED,
@@ -38,7 +39,8 @@ from chatbot.relevance import (
     mentioned_concepts,
     normalize_term,
 )
-from chatbot.retrieval import ConceptCache, RetrievalResult, RetrievedDoc, Retriever, to_source_out
+from chatbot.retrieval import ConceptCache, RetrievalResult, RetrievedDoc, Retriever, display_source_label, to_source_out
+from chatbot.safety import classify_question, limited_answer, redact_sensitive
 from chatbot.schemas import (
     ChatMode,
     ConceptStateOut,
@@ -59,6 +61,7 @@ from chatbot.schemas import (
     QuizRetryOut,
     QuizSetOut,
     SessionOut,
+    SafetyLevel,
     SourceOut,
     StageProgressOut,
     StateResponse,
@@ -165,6 +168,8 @@ class PreparedMessage:
     display_source_min_score: float
     chat_tone: ChatTone
     answer_knowledge_mode: AnswerKnowledgeMode
+    safety_level: SafetyLevel = "ALLOW"
+    safe_answer: str | None = None
 
 
 def list_concept_page(
@@ -337,15 +342,19 @@ def send_message(
         user_id=user_id,
         request=request,
     )
-    try:
-        raw_answer = llm.generate(prepared.prompt)
-    except LLMError as exc:
-        raise ExternalServiceError(exc.detail) from exc
-    answer = _ensure_answer_suffixes(
-        raw_answer,
-        prepared.retrieval,
-        prepared.answer_knowledge_mode,
-    )
+    if prepared.safe_answer is not None:
+        answer = prepared.safe_answer
+    else:
+        try:
+            raw_answer = llm.generate(prepared.prompt)
+        except LLMError as exc:
+            raise ExternalServiceError(exc.detail) from exc
+        answer = _ensure_answer_suffixes(
+            raw_answer,
+            prepared.retrieval,
+            prepared.answer_knowledge_mode,
+        )
+    answer = with_advice_disclaimer(answer, prepared.request.message, prepared.safety_level)
     return _persist_prepared_message(
         prepared=prepared,
         answer=answer,
@@ -368,6 +377,28 @@ def prepare_message(
 ) -> PreparedMessage:
     """비스트리밍과 SSE가 공유하는 분기·검색·검증·프롬프트 준비."""
     started_at = perf_counter()
+    safe_question = redact_sensitive(request.message)
+    safety_level = classify_question(safe_question, llm)
+    if safety_level != "ALLOW":
+        return PreparedMessage(
+            user_id=user_id,
+            request=MessageIn(
+                message="[안전 정책에 따라 처리된 요청]" if safety_level == "BLOCK" else safe_question
+            ),
+            plan=MessagePlan(concept=None, session=None, start_type=None, attempt=None),
+            retrieval=RetrievalResult(sources=[], concept_hits=[], band="low", top_score=0.0),
+            is_related=False,
+            notice=None,
+            suggested_concept=None,
+            prompt=Prompt(instructions="", input=""),
+            started_at=started_at,
+            display_source_min_score=settings.display_source_min_score,
+            chat_tone=settings.chat_tone,
+            answer_knowledge_mode=settings.answer_knowledge_mode,
+            safety_level=safety_level,
+            safe_answer=limited_answer(safety_level, safe_question, settings.chat_tone),
+        )
+    request = request.model_copy(update={"message": safe_question})
     screen = resolve_screen(catalog, status_service, store, user_id)
     plan = _initial_message_plan(catalog, status_service, store, user_id, request, screen)
 
@@ -462,6 +493,24 @@ async def stream_message_events(
     chunks: list[str] = []
     iterator: Iterator[str] | None = None
     try:
+        if prepared.safe_answer is not None:
+            answer = with_advice_disclaimer(
+                prepared.safe_answer, prepared.request.message, prepared.safety_level
+            )
+            if await is_disconnected():
+                return
+            yield _sse("token", {"delta": answer})
+            await asyncio.sleep(0)
+            if await is_disconnected():
+                return
+            response = _persist_prepared_message(
+                prepared=prepared,
+                answer=answer,
+                status_service=status_service,
+                store=store,
+            )
+            yield _sse("done", response.model_dump(mode="json", exclude={"answer"}))
+            return
         iterator = iter(llm.stream(prepared.prompt))
         while True:
             if await is_disconnected():
@@ -473,7 +522,6 @@ async def stream_message_events(
             if not text:
                 continue
             chunks.append(text)
-            yield _sse("token", {"delta": text})
 
         raw_answer = "".join(chunks).strip()
         if not raw_answer:
@@ -483,11 +531,10 @@ async def stream_message_events(
             prepared.retrieval,
             prepared.answer_knowledge_mode,
         )
-        suffix = answer[len(raw_answer) :]
-        if suffix:
-            if await is_disconnected():
-                return
-            yield _sse("token", {"delta": suffix})
+        answer = with_advice_disclaimer(answer, prepared.request.message, prepared.safety_level)
+        if await is_disconnected():
+            return
+        yield _sse("token", {"delta": answer})
 
         # 마지막 토큰 전송 뒤 취소 신호가 처리될 기회를 주고, 커밋 직전에 다시 확인한다.
         await asyncio.sleep(0)
@@ -581,6 +628,7 @@ def _persist_prepared_message(
         )
     return MessageResponse(
         answer=answer,
+        safety_level=prepared.safety_level,
         session_id=session.session_id if session is not None else None,
         session_started=session_started,
         concept=concept_state,
@@ -1257,14 +1305,15 @@ def _ensure_answer_suffixes(
     retrieval: RetrievalResult,
     knowledge_mode: AnswerKnowledgeMode,
 ) -> str:
-    result = answer.strip()
-    labels = list(dict.fromkeys(source.label for source in retrieval.sources))
-    if not labels or knowledge_mode == "free":
+    result, model_cited = normalize_answer_text(answer)
+    labels = list(dict.fromkeys(
+        display_source_label(source.label, source.collection)
+        for source in retrieval.sources
+    ))
+    if not labels or (knowledge_mode == "free" and not model_cited):
         return result
     prefix = "핵심 정의 출처:" if knowledge_mode == "dictionary_plus" else "출처:"
-    if prefix not in result:
-        result += f"\n\n{prefix} {', '.join(labels)}"
-    return result
+    return f"{result}\n\n{prefix} {', '.join(labels)}"
 
 
 def _message_list_item(
@@ -1281,7 +1330,10 @@ def _message_list_item(
     display_sources: list[SourceOut] = []
     for source in raw_sources:
         try:
-            display_sources.append(SourceOut.model_validate(source))
+            validated = SourceOut.model_validate(source)
+            display_sources.append(validated.model_copy(update={
+                "label": display_source_label(validated.label, validated.collection)
+            }))
         except (TypeError, ValueError):
             continue
     return MessageListItem(

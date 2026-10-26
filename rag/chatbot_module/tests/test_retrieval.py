@@ -65,7 +65,7 @@ def test_single_source_keeps_slot_count_and_dense_band() -> None:
     assert result.top_score == 0.71
     assert result.band == "high"
     dumped = to_source_out(result.sources[0]).model_dump()
-    assert dumped["label"] == "시사경제용어사전"
+    assert dumped["label"] == "재정경제부_시사경제용어 정보 (공공데이터포털)"
     assert "images" not in dumped
 
 

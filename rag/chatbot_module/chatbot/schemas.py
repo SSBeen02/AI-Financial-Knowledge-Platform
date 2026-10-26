@@ -17,6 +17,7 @@ from pydantic import (
 ConceptProgress = Literal["not_started", "in_progress", "passed"]
 QuizStatus = Literal["pending", "passed", "failed", "generation_failed"]
 Band = Literal["high", "mid", "low"]
+SafetyLevel = Literal["ALLOW", "REVIEW", "BLOCK"]
 ChatMode = Literal["normal", "relearn", "quiz_pending", "quiz_generation_failed"]
 SessionStartType = Literal["keyword", "detected", "relearn", "quiz_retry"]
 SessionStatus = Literal["active", "completed"]
@@ -101,6 +102,7 @@ class SuggestedConceptOut(BaseModel):
 
 class MessageResponse(BaseModel):
     answer: str
+    safety_level: SafetyLevel = "ALLOW"
     session_id: str | None
     session_started: bool
     concept: ConceptStateOut | None

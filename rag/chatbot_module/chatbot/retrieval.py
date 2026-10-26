@@ -17,6 +17,14 @@ from chatbot.schemas import Band, SourceOut
 
 PointId = str
 _BATCH = 128
+PUBLIC_DATA_SOURCE_LABEL = SEARCH_PROFILES["sisa_terms"]["label"]
+
+
+def display_source_label(label: str, collection: str) -> str:
+    """옛 메타데이터의 축약명을 사용자용 공식 데이터셋 이름으로 바꾼다."""
+    if collection == "sisa_terms":
+        return PUBLIC_DATA_SOURCE_LABEL
+    return label
 
 
 class ConceptCacheError(Exception):
@@ -173,7 +181,7 @@ def to_source_out(doc: RetrievedDoc) -> SourceOut:
         term=doc.term,
         score=doc.score,
         collection=doc.collection,
-        label=doc.label,
+        label=display_source_label(doc.label, doc.collection),
         images=list(doc.images) if doc.images is not None else None,
     )
 

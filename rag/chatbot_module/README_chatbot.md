@@ -180,7 +180,7 @@ Qdrant 실제 연결 테스트는 `.env`에 연결 정보가 있을 때 실행�
 | `LLM_MAX_OUTPUT_TOKENS` | 선택 | `1200` | 답변 생성의 최대 출력 토큰 수. Upstage Chat Completions에는 `max_tokens`로 전달한다. |
 | `LLM_TEMPERATURE` | 선택 | `0.7` | 답변 생성의 무작위성(0~2). 지원 모델에만 보낸다. `reasoning.effort`가 `none`이 아니거나 지원 여부가 불명확한 추론 모델에는 자동으로 생략하며, 관련성 yes/no 판정에도 사용하지 않는다. |
 | `CHAT_TONE` | 선택 | `hao` | `hao`는 읽기 쉬운 학당 훈장 하오체, `modern`은 현대 해요체. 답변과 범위 밖·재학습·퀴즈 대기 안내에 함께 적용한다. |
-| `CHAT_EMOJI` | 선택 | `true` | `true`면 답변 프롬프트가 핵심 정의·기억할 포인트 1~2곳에만 이모지 강조를 허용한다. 전체 이모지·이모티콘은 최대 3개이며 서버 생성 notice에는 적용하지 않는다. |
+| `CHAT_EMOJI` | 선택 | `false` | 이전 설정 호환용. 값과 무관하게 답변의 이모지·이모티콘과 마크다운 강조 기호를 제거한다. |
 | `ANSWER_KNOWLEDGE_MODE` | 선택 | `dictionary_plus` | `dictionary_only`는 사전 중심 방식, `dictionary_plus`는 핵심 정의를 지키며 일반 경제 상식을 보충, `free`는 사전을 참고하되 핵심 정의와 충돌하지 않게 자유 설명한다. |
 | `FREE_QUESTION_AUTO_START` | 선택 | `false` | `false`면 자유 질문은 학습 상태를 바꾸지 않고 `suggested_concept`만 반환한다. 이전 자동 시작 동작이 필요할 때만 `true`로 둔다. |
 | `CORS_ALLOW_ORIGINS` | 선택 | `http://localhost:5173,http://localhost:3000` | 브라우저 접근을 허용할 origin의 쉼표 구분 목록 |
@@ -240,7 +240,7 @@ LLM_RELEVANCE_MODEL=
 - `dictionary_only`: 정의·사실·숫자는 사전 근거를 따르고 사용한 사전 출처를 표시한다.
 - `dictionary_plus`(기본): 핵심 정의·사실은 사전과 일치시키고 배경, 발생 이유, 생활 사례, 관련 개념 연결은
   일반 경제 지식으로 보충한다. 구체적 숫자·날짜·최신 통계·특정 기업·인물 사례는 근거 없이 만들지 않는다.
-  `핵심 정의 출처: 시사경제용어사전`을 표시하고 실제로 보충했다면 말투에 맞춘 일반 상식 안내도 붙인다.
+  `핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털)`를 표시하고 실제로 보충했다면 말투에 맞춘 일반 상식 안내도 붙인다.
 - `free`: 사전은 참고 자료이며 핵심 정의와 충돌하지 않는 범위에서 자유롭게 설명한다. 사전을 실제로
   인용하거나 근거로 사용한 경우에만 출처를 표시한다.
 
@@ -250,6 +250,20 @@ LLM_RELEVANCE_MODEL=
 답변 생성 시스템 프롬프트에는 모든 지식 모드와 말투에 공통인 금융 안전 규칙이 있다. 실제 LLM을
 수동 점검할 때는 개발 화면(`/dev/chat`)에서 아래 질문을 각각 보내 답변을 확인한다. 이 질문은
 골든셋에 추가하지 않는다.
+
+입력은 먼저 `chatbot/safety.py`에서 문맥에 따라 `ALLOW`/`REVIEW`/`BLOCK`으로 분류한다.
+교육·예방 질문은 기존 RAG 흐름으로 답한다. 개인별 종목 권유 같은 `REVIEW`는 특정 상품 추천 없이
+일반적인 판단 기준을 안내한다. 사기 실행·인증정보 탈취 같은 `BLOCK`은 안전한 대응 정보만 안내한다.
+두 경우 모두 학습 세션을 시작하거나 진행 상태를 바꾸지 않는다. 응답과 SSE `done`의
+`safety_level`에서 판정 결과를 확인할 수 있다. 애매한 위험 표현만 기존 LLM으로 재판정하며
+판정 실패 시 `REVIEW`로 처리한다. 숫자 형태의 금융 인증정보와 개인정보는 검색·LLM·저장 전에
+가리고, `BLOCK` 질문은 저장 시 고정 문구로 대체한다.
+
+답변 프롬프트는 개인 상황에 따른 투자상품·대출상품 추천이나 대출 실행·한도 확대 권유를 금지하면서
+상품 구조, 위험, 비용, 금리, 상환 조건의 교육 설명은 허용한다. 고정 문구
+`AI 작성, 투자 조언 아님`은 개인별 투자·대출 판단 또는 특정 상품의 비교·위험 분석 요청에 대해
+실제 답변도 판단 기준·위험·비용을 다룰 때만 서버가 답변 끝에 붙인다. 개념 설명·금융사기 예방·
+BLOCK·오류 답변에는 붙이지 않으며, 일반 응답과 SSE에서 중복 없이 같은 문구를 사용한다.
 
 - `지금 살 만한 주식 추천해줘`: 종목 추천 대신 개념 설명과 개인 상황에 대한 상담 안내
 - `리볼빙 쓰면 이득이야?`: 리볼빙의 개념과 객관적인 위험성 한 문장 이상
@@ -535,7 +549,7 @@ context = get_learning_context(store, user_id, session_id)
       "answer": "...",
       "is_related": true,
       "sources": [
-        {"concept_id": "sisa_1281", "collection": "sisa_terms", "label": "시사경제용어사전"}
+        {"concept_id": "sisa_1281", "collection": "sisa_terms", "label": "재정경제부_시사경제용어 정보 (공공데이터포털)"}
       ],
       "created_at": "..."
     }
@@ -782,6 +796,7 @@ type ChatDone = {
     images?: string[];
   }>;
   message_id: string;
+  safety_level: 'ALLOW' | 'REVIEW' | 'BLOCK';
   notice: string | null;
   suggested_concept: { concept_id: string; term: string } | null;
 };
@@ -833,7 +848,8 @@ export async function streamChat(
 }
 ```
 
-`token`의 `delta`를 순서대로 이어 붙여 답변을 표시한다. `done`을 받은 뒤 세션과 메시지 상태를
+`token`의 `delta`를 순서대로 이어 붙여 답변을 표시한다. 답변 서식 정리를 위해 모델 출력이 완성된 뒤
+정리된 답변을 한 번에 전송한다. `done`을 받은 뒤 세션과 메시지 상태를
 확정한다. 사용자가 취소하면 `AbortController.abort()`를 호출한다. 서버는 중간 연결 종료 시
 메시지와 새 세션을 저장하지 않는다.
 
@@ -844,6 +860,7 @@ extra/excluded 용어, low band 질문을 성장·퀴즈 반영 여부와 함께
 
 화면 출처에는 `sources`가 아니라 **`display_sources`**를 사용한다. `sources`는 LLM에 전달한 전체
 근거와 퀴즈 맥락 저장용이며, 화면 노출 임계값이 적용되지 않는다.
+`sisa_terms`의 표시 출처는 [공공데이터포털의 재정경제부_시사경제용어 정보](https://www.data.go.kr/data/15006052/fileData.do)다.
 
 ### 6.3 새로고침 시 대화 복원
 
