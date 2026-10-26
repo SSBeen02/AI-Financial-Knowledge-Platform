@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from chatbot.config import AnswerKnowledgeMode
-from chatbot.retrieval import CachedConcept, RetrievedDoc
+from chatbot.retrieval import CachedConcept, RetrievedDoc, display_source_label
 from chatbot.schemas import Band
 from chatbot.tone import (
     ChatTone,
@@ -33,7 +33,11 @@ FINANCIAL_SAFETY_INSTRUCTION = (
     "금융기관이나 전문가와 상담해야 한다고 안내하세요. 경제 이론·용어 정의·제도 설명처럼 "
     "개인의 금융 결정이나 상품 이용·선택을 묻지 않는 교육 질문에는 상담 안내를 붙이지 마세요. "
     "질문이나 검색 근거에 없는 금융상품을 예시로 끌어오지 마세요. 특정 종목·코인·금융상품의 "
-    "매수·매도를 추천하거나 개인 맞춤 투자·대출 결정을 권유하지 마세요. '무조건 오른다', '확실히 번다', "
+    "매수·매도를 추천하거나 지시하지 마세요. 사용자의 소득·자산·부채 등 개인 상황을 근거로 "
+    "특정 투자상품을 추천하거나 개인 맞춤 투자를 권유하지 마세요. 개인 상황에 맞춰 특정 "
+    "대출상품을 추천하거나 대출 실행·한도 확대를 권유하지 마세요. 대신 금융상품의 일반적인 "
+    "특성·위험성·비용·금리·상환 조건·비교 기준은 교육 목적으로 설명할 수 있습니다. "
+    "이 제한으로 일반 금융교육 질문을 거절하지 마세요. '무조건 오른다', '확실히 번다', "
     "'손해 없다'처럼 수익을 보장하거나 확정하는 표현을 쓰지 마세요. 서류 조작·차명 거래·탈세·"
     "불법 리딩방 등 불법 행위나 규제 우회 방법을 물으면 방법을 안내하지 말고, '그 요청은 "
     "지원하지 않는다'는 뜻으로 현재 CHAT_TONE에 맞게 정중히 거절하세요. 이 규칙은 교육 목적 "
@@ -54,7 +58,7 @@ def build_answer_prompt(
     attempt: int | None,
     chat_tone: ChatTone,
     knowledge_mode: AnswerKnowledgeMode,
-    chat_emoji: bool = True,
+    chat_emoji: bool = False,
 ) -> Prompt:
     current_term = current_concept.term if current_concept is not None else "없음"
     band_instruction = {
@@ -64,7 +68,7 @@ def build_answer_prompt(
             "검색 근거를 사용하지 말고 일반 지식으로만 답하세요."
         ),
     }[band]
-    source_labels = list(dict.fromkeys(source.label for source in sources))
+    source_labels = list(dict.fromkeys(display_source_label(source.label, source.collection) for source in sources))
     source_instruction = _source_instruction(
         knowledge_mode, source_labels, chat_tone
     )
@@ -89,13 +93,10 @@ def build_answer_prompt(
         if stage == "stage5"
         else ""
     )
-    emoji_instruction = (
-        "핵심 정의나 꼭 기억할 포인트 1~2곳에만 ⭐️, 🕯, 💡 같은 이모지나 이모티콘을 "
-        "사용하세요. 답변 전체의 이모지·이모티콘은 합계 3개를 넘기지 마세요. 중요한 문구만 "
-        "필요 최소한으로 굵게 표시하고 볼드체를 남발하지 마세요. 이 강조 지시 때문에 사전 "
-        "근거의 핵심 정의 문장 내용 자체를 바꾸지 마세요."
-        if chat_emoji
-        else ""
+    format_instruction = (
+        "답변은 일반 텍스트로 작성하세요. 마크다운 강조 기호(**, __, `), 제목 기호, "
+        "이모지와 이모티콘을 사용하지 마세요. 고지 문구 'AI 작성, 투자 조언 아님'은 "
+        "서버가 필요할 때 붙이므로 직접 작성하지 마세요."
     )
     instructions = "\n".join(
         part
@@ -109,7 +110,7 @@ def build_answer_prompt(
             repeat_instruction,
             relearn_instruction,
             advanced_instruction,
-            emoji_instruction,
+            format_instruction,
             band_instruction,
             source_instruction,
         )
