@@ -340,7 +340,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
         throw new Error(error.message || `stream failed: ${response.status}`);
       }
       const reader = response.body.getReader();
-      const decoder = new TextDecoder();
+      const decoder = new TextDecoder("utf-8", {fatal: true});
       let buffer = "";
       let doneMetadata = null;
       while (true) {

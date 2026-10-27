@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from dataclasses import dataclass
 
 import pytest
@@ -10,6 +11,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from chatbot.answer_format import IncrementalAnswerFormatter
 from chatbot.concepts import STATUS_IN_PROGRESS, STATUS_NOT_STARTED, STATUS_PASSED, load_stage_catalog
 from chatbot.config import Settings
 from chatbot.deps import (
@@ -43,6 +45,7 @@ DEMAND = "sisa_1552"
 INFLATION = "sisa_2091"
 DEFLATION = "sisa_960"
 EIGHTY_EIGHT = "sisa_15"
+LONGEVITY = "sisa_2173"
 EXTRA_TERM = "extra_1"
 EXCLUDED_TERM = "excluded_1"
 
@@ -77,6 +80,7 @@ class FakeCache:
                 "설명: 불안정한 일자리와 낮은 소득을 겪는 청년 세대를 가리키는 말",
                 None,
             ),
+            CachedConcept(LONGEVITY, "장수리스크", (), "설명: 오래 살며 필요한 자금이 늘어나는 위험", None),
         ]
         self._docs = {doc.concept_id: doc for doc in docs}
 
@@ -118,6 +122,9 @@ class FakeRetriever:
         self.calls.append(query)
         if self.fail:
             raise RuntimeError("qdrant unavailable")
+        if "장수리스크 에 대 해" in query:
+            hit = _doc(LONGEVITY, "장수리스크", 0.20)
+            return RetrievalResult([], [hit], "low", 0.20)
         if "날씨" in query:
             hit = _doc(DIVISION, "분업/특화", 0.20)
             return RetrievalResult([], [hit], "low", 0.20)
@@ -915,6 +922,8 @@ def test_low_band_has_no_sources_and_keeps_score(message_env: MessageEnv) -> Non
     assert body["display_sources"] == []
     assert body["session_id"] is None
     assert "경제 학습 범위 밖" not in body["answer"]
+    assert "핵심 정의 출처" not in body["answer"]
+    assert "참고한 사전 항목" not in body["answer"]
     assert body["notice"] == "이 물음은 학당의 경제 공부 범위 밖이라 사전의 근거 없이 답하였소."
     assert "친절한 훈장" in message_env.llm.prompts[-1].instructions
     assert "하오체(~이오, ~하오)" in message_env.llm.prompts[-1].instructions
@@ -1334,7 +1343,7 @@ def test_stream_completes_then_persists_and_sends_done_metadata(
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     events = _sse_events(response.text)
-    assert [event for event, _data in events] == ["token", "done"]
+    assert [event for event, _data in events] == ["token", "token", "done"]
     answer = "".join(data["delta"] for event, data in events if event == "token")
     done = events[-1][1]
     assert "answer" not in done
@@ -1350,21 +1359,85 @@ def test_stream_completes_then_persists_and_sends_done_metadata(
     assert message_env.status.get_statuses(USER, "stage1")[WORKING_POOR] == STATUS_IN_PROGRESS
 
 
-def test_stream_sends_only_normalized_answer(message_env: MessageEnv) -> None:
-    message_env.llm.stream_chunks = ["**분", "업**은 중요하오. 💡", "\n출처: 시사경제용어사전"]
+def test_stream_sends_only_normalized_answer(
+    message_env: MessageEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    message_env.llm.stream_chunks = [
+        "**분", "업**은 중요하오. 💡", "\n- 생활 속에서도 쓰이오!",
+        "\n출처: 시사경제용어사전",
+    ]
+    monkeypatch.setattr(
+        message_env.llm, "generate", lambda _prompt: "".join(message_env.llm.stream_chunks)
+    )
+    payload = {"message": "분업/특화에 대해 알려줘", "concept_id": DIVISION}
+    regular = message_env.client.post(
+        "/learning/messages", headers=HEADERS, json=payload
+    )
     response = message_env.client.post(
         "/learning/messages/stream",
         headers=HEADERS,
-        json={"message": "분업/특화에 대해 알려줘", "concept_id": DIVISION},
+        json=payload,
     )
     events = _sse_events(response.text)
-    assert [event for event, _ in events] == ["token", "done"]
-    answer = events[0][1]["delta"]
+    assert [event for event, _ in events] == ["token", "token", "token", "done"]
+    answer = "".join(data["delta"] for event, data in events if event == "token")
     assert answer == (
-        "분업은 중요하오.\n\n"
+        "분업은 중요하오.\n생활 속에서도 쓰이오!\n\n"
         "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털) (분업/특화)"
     )
+    assert regular.json()["answer"] == answer
     assert _messages(message_env.store)[-1].content == answer
+
+
+def test_split_utf8_stream_matches_regular_answer_and_storage(
+    message_env: MessageEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = "분업은 모멘텀을 만드는 방식이오. 생활에서 변화를 느낄 수 있소."
+    encoded = raw.encode("utf-8")
+    split = encoded.index("멘".encode("utf-8")) + 1
+    message_env.llm.stream_chunks = [
+        encoded[:split], encoded[split:split + 1], encoded[split + 1:]
+    ]
+    monkeypatch.setattr(message_env.llm, "generate", lambda _prompt: raw)
+    payload = {"message": "분업/특화에 대해 알려줘", "concept_id": DIVISION}
+    regular = message_env.client.post("/learning/messages", headers=HEADERS, json=payload)
+    streamed = message_env.client.post("/learning/messages/stream", headers=HEADERS, json=payload)
+    events = _sse_events(streamed.text)
+    tokens = [data["delta"] for event, data in events if event == "token"]
+    assert regular.status_code == streamed.status_code == 200
+    assert len(tokens) >= 2
+    assert "".join(tokens) == regular.json()["answer"] == _messages(message_env.store)[-1].content
+    assert "\ufffd" not in "".join(tokens)
+    assert "모멘텀" in "".join(tokens)
+
+
+def test_replacement_character_in_stored_answer_logs_without_answer_text(
+    message_env: MessageEnv, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(message_env.llm, "generate", lambda _prompt: "민감한 본문 모멘\ufffd텀이오.")
+    with caplog.at_level(logging.WARNING, logger="chatbot.service"):
+        response = message_env.client.post(
+            "/learning/messages", headers=HEADERS, json={"message": "분업/특화에 대해 알려줘"}
+        )
+    assert response.status_code == 200
+    assert "Answer contains U+FFFD replacement character before persistence" in caplog.text
+    assert "민감한 본문" not in caplog.text
+
+
+def test_sentence_formatter_is_independent_of_model_chunk_boundaries() -> None:
+    raw = "**" + ("긴 설명과 사례를 이어 갑니다 " * 20) + "**.\n출처: 모델이 적은 문구"
+    whole = IncrementalAnswerFormatter()
+    whole.feed(raw)
+    whole.finish()
+    pieces = IncrementalAnswerFormatter()
+    deltas = []
+    for index in range(0, len(raw), 7):
+        deltas.extend(pieces.feed(raw[index:index + 7]))
+    deltas.extend(pieces.finish())
+    assert len(deltas) >= 2
+    assert "".join(deltas) == whole.body == pieces.body
+    assert "**" not in pieces.body
+    assert "출처:" not in pieces.body
 
 
 @pytest.mark.parametrize(
@@ -1418,7 +1491,7 @@ def test_source_attribution_matches_in_message_and_sse(
     events = _sse_events(streamed.text)
     assert events[0][0] == "token"
     assert events[-1][0] == "done"
-    assert events[0][1]["delta"] == body["answer"]
+    assert "".join(data["delta"] for event, data in events if event == "token") == body["answer"]
     assert expected_prefix in body["answer"]
     assert body["sources"] == events[-1][1]["sources"]
     assert body["display_sources"] == events[-1][1]["display_sources"]
@@ -1443,12 +1516,117 @@ def test_stream_low_band_sends_notice_only_in_done(message_env: MessageEnv) -> N
     done = next(data for event, data in events if event == "done")
 
     assert "경제 공부 범위 밖" not in token_text
+    assert "핵심 정의 출처" not in token_text
+    assert "참고한 사전 항목" not in token_text
     assert done["notice"] == (
         "이 물음은 학당의 경제 공부 범위 밖이라 사전의 근거 없이 답하였소."
     )
 
 
+def test_active_longevity_low_band_uses_current_concept_without_out_of_scope_notice(
+    message_env: MessageEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    started = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "장수리스크에 대해 알려줘", "concept_id": LONGEVITY},
+    )
+    assert started.status_code == 200
+    session_id = started.json()["session_id"]
+    answer = (
+        "장수리스크는 오래 살수록 생활비가 더 필요한 위험이오.\n"
+        "참고한 사전 항목: (장수리스크)\n"
+        "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했소"
+    )
+    monkeypatch.setattr(message_env.llm, "generate", lambda _prompt: answer)
+    message_env.llm.stream_chunks = [answer]
+    spaced = "장 수 리 스 크 에 대 해 알 려 줘 가 가"
+
+    regular = message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": spaced}
+    )
+    streamed = message_env.client.post(
+        "/learning/messages/stream", headers=HEADERS, json={"message": spaced}
+    )
+    assert regular.status_code == streamed.status_code == 200
+    body = regular.json()
+    events = _sse_events(streamed.text)
+    token = "".join(data["delta"] for event, data in events if event == "token")
+    done = next(data for event, data in events if event == "done")
+    for reply, notice in ((body["answer"], body["notice"]), (token, done["notice"])):
+        assert "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털) (장수리스크)" in reply
+        assert "참고한 사전 항목" not in reply
+        assert "핵심 정의는 일반 경제 지식" not in reply
+        assert notice is None
+        assert "사전의 근거 없이" not in reply
+    assert body["band"] == done["band"] == "low"
+    assert body["session_id"] == done["session_id"] == session_id
+    assert body["sources"] == done["sources"] == []
+    assert body["display_sources"] == done["display_sources"] == []
+    assert body["answer"] == token
+    assert _messages(message_env.store)[-1].content == token
+    assert _messages(message_env.store)[-2].content == spaced
+    assert message_env.retriever.calls[-1] == "장수리스크 에 대 해 알 려 줘 가 가"
+    assert "현재 학습 개념 문서는 이 관련 질문의 근거" in message_env.llm.prompts[-1].instructions
+
+
+@pytest.mark.parametrize("follow_up", ["예시 하나만 더 들어줘", "그럼 반대 경우는?"])
+def test_termless_follow_up_low_uses_current_concept_with_fake_llm(
+    message_env: MessageEnv, monkeypatch: pytest.MonkeyPatch, follow_up: str
+) -> None:
+    started = message_env.client.post(
+        "/learning/messages", headers=HEADERS,
+        json={"message": "장수리스크에 대해 알려줘", "concept_id": LONGEVITY},
+    )
+    assert started.status_code == 200
+    message_env.llm.judgment = True
+    monkeypatch.setattr(
+        message_env.retriever, "search",
+        lambda _question: RetrievalResult([], [], "low", 0.2),
+    )
+    message_env.llm.stream_chunks = [
+        "개념을 쉬운 말로 설명합니다. 생활 속 예시도 함께 볼 수 있습니다."
+    ]
+    body = message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": follow_up}
+    ).json()
+    streamed = message_env.client.post(
+        "/learning/messages/stream", headers=HEADERS, json={"message": follow_up}
+    )
+    events = _sse_events(streamed.text)
+    token = "".join(data["delta"] for event, data in events if event == "token")
+    done = next(data for event, data in events if event == "done")
+    assert body["band"] == "low"
+    assert body["is_related"] is True
+    assert body["notice"] is None
+    assert "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털) (장수리스크)" in body["answer"]
+    assert "참고한 사전 항목" not in body["answer"]
+    assert body["answer"] == token
+    assert done["band"] == "low" and done["is_related"] is True
+    assert done["notice"] is None
+    assert message_env.llm.judgments[-1][0] == follow_up
+    assert "현재 학습 개념 문서는 이 관련 질문의 근거" in message_env.llm.prompts[-1].instructions
+    assert "[현재 개념] sisa_2173 장수리스크:" in message_env.llm.prompts[-1].input
+
+
+def test_unrelated_low_during_learning_keeps_out_of_scope_notice(message_env: MessageEnv) -> None:
+    started = message_env.client.post(
+        "/learning/messages", headers=HEADERS,
+        json={"message": "장수리스크에 대해 알려줘", "concept_id": LONGEVITY},
+    )
+    assert started.status_code == 200
+    body = message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": "오늘 날씨 어때?"}
+    ).json()
+    assert body["band"] == "low"
+    assert body["is_related"] is False
+    assert body["notice"] == "이 물음은 학당의 경제 공부 범위 밖이라 사전의 근거 없이 답하였소."
+    assert "핵심 정의 출처" not in body["answer"]
+    assert "참고한 사전 항목" not in body["answer"]
+
+
 def test_stream_mid_error_sends_error_without_writes(message_env: MessageEnv) -> None:
+    message_env.llm.stream_chunks = ["첫 문장이오.", "다음 문장"]
     message_env.llm.stream_error_after = 1
     response = message_env.client.post(
         "/learning/messages/stream",
@@ -1456,7 +1634,8 @@ def test_stream_mid_error_sends_error_without_writes(message_env: MessageEnv) ->
         json={"message": "워킹푸어가 뭐야?", "concept_id": WORKING_POOR},
     )
     events = _sse_events(response.text)
-    assert [event for event, _data in events] == ["error"]
+    assert [event for event, _data in events] == ["token", "error"]
+    assert events[0][1]["delta"] == "첫 문장이오."
     assert events[-1][1]["code"] == "external_service_error"
     assert events[-1][1]["message"] == "LLM 스트리밍 호출에 실패했습니다."
     assert events[-1][1]["request_id"]

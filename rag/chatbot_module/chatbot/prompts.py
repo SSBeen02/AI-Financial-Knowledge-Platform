@@ -72,6 +72,7 @@ def build_answer_prompt(
     chat_tone: ChatTone,
     knowledge_mode: AnswerKnowledgeMode,
     chat_emoji: bool = False,
+    use_current_concept_on_low: bool = False,
 ) -> Prompt:
     current_term = current_concept.term if current_concept is not None else "없음"
     band_instruction = {
@@ -81,6 +82,11 @@ def build_answer_prompt(
             "검색 근거를 사용하지 말고 일반 지식으로만 답하세요."
         ),
     }[band]
+    if band == "low" and use_current_concept_on_low and current_concept is not None:
+        band_instruction = (
+            "검색 결과는 낮은 신뢰도이므로 사용하지 마세요. "
+            "현재 학습 개념 문서는 이 관련 질문의 근거로 제공되므로 그 정의를 사용해 답하세요."
+        )
     source_labels = list(dict.fromkeys(display_source_label(source.label, source.collection) for source in sources))
     source_instruction = _source_instruction(
         knowledge_mode, source_labels, chat_tone

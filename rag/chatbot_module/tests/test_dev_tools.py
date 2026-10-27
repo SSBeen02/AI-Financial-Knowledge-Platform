@@ -64,6 +64,8 @@ def test_dev_routes_and_page_are_registered_only_for_local_status(status_db) -> 
     assert "selectConcept(concept)" in response.text
     assert "selectConcept(suggestion)" in response.text
     assert 'if (state.selectedConceptId) body.concept_id = state.selectedConceptId' in response.text
+    assert 'new TextDecoder("utf-8", {fatal: true})' in response.text
+    assert '{stream: !chunk.done}' in response.text
     assert '$("message").addEventListener("input"' not in response.text
     assert '$("selectedConceptChip").addEventListener("click", clearSelectedConcept)' in response.text
     assert "/quiz-retry" in response.text
