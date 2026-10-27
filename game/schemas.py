@@ -58,6 +58,13 @@ class Accessory(BaseModel):
     on_sale: bool = True
 
 
+class ShopItem(BaseModel):
+    accessory: Accessory
+    owned: bool
+    unlocked: bool
+    can_purchase: bool
+
+
 class UserAccessory(BaseModel):
     accessory_id: str
     acquired_at: datetime

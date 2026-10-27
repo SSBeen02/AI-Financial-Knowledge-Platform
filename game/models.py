@@ -81,7 +81,7 @@ class CoinTransactionRow(Base):
     reason: Mapped[str] = mapped_column(String(100))
     stage: Mapped[int | None] = mapped_column(Integer)
     concept_id: Mapped[str | None] = mapped_column(String(100))
-    idempotency_key: Mapped[str] = mapped_column(String(200))
+    idempotency_key: Mapped[str] = mapped_column(String(240))
     source_event_id: Mapped[str | None] = mapped_column(String(100))
     balance_after: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -102,3 +102,37 @@ class StoryRewardRow(Base):
     story_reward_id: Mapped[str] = mapped_column(String(100), primary_key=True)
     source_event_id: Mapped[str | None] = mapped_column(String(100))
     unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class UserAccessoryRow(Base):
+    __tablename__ = "game_user_accessories"
+    character_id: Mapped[str] = mapped_column(ForeignKey("game_characters.character_id"), primary_key=True)
+    accessory_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    acquired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class EquippedAccessoryRow(Base):
+    __tablename__ = "game_equipped_accessories"
+    character_id: Mapped[str] = mapped_column(ForeignKey("game_characters.character_id"), primary_key=True)
+    accessory_id: Mapped[str] = mapped_column(String(100))
+    equipped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PurchaseRequestRow(Base):
+    __tablename__ = "game_purchase_requests"
+    character_id: Mapped[str] = mapped_column(ForeignKey("game_characters.character_id"), primary_key=True)
+    idempotency_key: Mapped[str] = mapped_column(String(200), primary_key=True)
+    accessory_id: Mapped[str] = mapped_column(String(100))
+    result: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class RewardHistoryRow(Base):
+    __tablename__ = "game_reward_history"
+    character_id: Mapped[str] = mapped_column(ForeignKey("game_characters.character_id"), primary_key=True)
+    reward_key: Mapped[str] = mapped_column(String(240), primary_key=True)
+    reward_type: Mapped[str] = mapped_column(String(30))
+    reward_ref: Mapped[str | None] = mapped_column(String(100))
+    amount: Mapped[int] = mapped_column(Integer, default=0)
+    source_event_id: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

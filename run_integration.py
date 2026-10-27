@@ -37,6 +37,8 @@ from chatbot.integrations import get_current_user_id as chat_user_id
 from chatbot.router import router as chat_router
 from dependencies import get_current_user_id as quiz_user_id
 from server_auth import auth_settings, get_verified_user_id
+from game.integration import prepare_game_runtime
+from game.router import router as game_router
 
 
 def validate_environment() -> None:
@@ -58,14 +60,21 @@ def validate_environment() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     validate_environment()
+    game_runtime = None
+    app.state.game_service = None
+    app.state.game_event_source = None
     async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
         app.state.auth_client = client
         try:
             deps.get_stage_catalog()
             deps.get_chat_store()
-            deps.get_concept_status_service()
+            status_service = deps.get_concept_status_service()
             await ensure_quiz_schema()
             register_quiz_integration(app)
+            game_runtime = prepare_game_runtime(status_service)
+            if game_runtime is not None:
+                app.state.game_service = game_runtime.service
+                app.state.game_event_source = game_runtime.event_source
             deps.get_qdrant_client()
             deps.get_dense_encoder()
             deps.get_concept_cache()
@@ -73,6 +82,10 @@ async def lifespan(app: FastAPI):
             deps.get_llm_adapter()
             yield
         finally:
+            app.state.game_service = None
+            app.state.game_event_source = None
+            if game_runtime is not None:
+                game_runtime.close()
             await dispose_quiz_database()
 
 
@@ -101,6 +114,7 @@ def create_app() -> FastAPI:
     application.dependency_overrides[quiz_user_id] = get_verified_user_id
     application.include_router(chat_router)
     application.include_router(quiz_router)
+    application.include_router(game_router)
 
     @application.get("/health", tags=["system"])
     def health():
