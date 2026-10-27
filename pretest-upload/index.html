@@ -286,7 +286,7 @@
       const scores = document.createElement("section");
       scores.className = "report-section";
       scores.append(heading("영역별 결과", 3), scoreList(body.domain_scores || []));
-      for (const item of llm.level_diagnosis.domain_comments) {
+      for (const item of inStageOrder(llm.level_diagnosis.domain_comments)) {
         const note = document.createElement("article");
         note.className = "domain-note";
         note.append(heading(item.domain_label, 3), paragraph(item.diagnosis));
@@ -339,9 +339,19 @@
       resultNode.replaceChildren(section);
     }
 
+    function inStageOrder(rows) {
+      const order = {
+        socioeconomic_phenomena_consumer_life: 1,
+        finance_investment: 2,
+        macroeconomy_monetary_fiscal_policy: 3,
+        international_economy_industry_technology: 4,
+      };
+      return [...rows].sort((a, b) => (order[a.domain] ?? 99) - (order[b.domain] ?? 99));
+    }
+
     function scoreList(rows) {
       const list = document.createElement("div");
-      for (const row of rows) {
+      for (const row of inStageOrder(rows)) {
         const line = document.createElement("div");
         line.className = "score";
         const name = document.createElement("span");
