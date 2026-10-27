@@ -102,7 +102,7 @@ class OpenAiReportParseTest(unittest.TestCase):
         self.assertEqual(client.chat.completions.kwargs["model"], "gpt-4o-mini")
         self.assertEqual(report.level_diagnosis.overall_level, graded["summary"]["level"])
         self.assertTrue(report.level_diagnosis.summary.endswith("금융 기초를 다시 봐야 합니다."))
-        self.assertIn("Stage2 금융·투자", report.level_diagnosis.summary)
+        self.assertIn("Stage2 금융과 투자", report.level_diagnosis.summary)
         self.assertEqual(report.level_diagnosis.domain_comments[0].score, graded["domain_scores"][0]["score"])
         self.assertEqual([item.question_id for item in report.wrong_answer_analysis.items], ["a1"])
         self.assertEqual(report.wrong_answer_analysis.items[0].vulnerability, "이자 계산 방식을 혼동했습니다.")

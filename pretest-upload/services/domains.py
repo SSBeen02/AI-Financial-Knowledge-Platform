@@ -3,28 +3,28 @@ HIGH_SEVERITY_SCORE_THRESHOLD = 50.0
 
 DOMAIN_CATALOG: dict[str, dict[str, str]] = {
     "finance_investment": {
-        "label": "금융·투자",
+        "label": "금융과 투자",
         "recommendation": (
             "단리·복리, 연금제도, 예금자보호, ETF, PER, VaR를 중심으로 "
             "금융·투자 기초 개념을 다시 정리해 보세요."
         ),
     },
     "macroeconomy_monetary_fiscal_policy": {
-        "label": "거시경제·통화·재정",
+        "label": "거시경제와 통화·재정정책",
         "recommendation": (
             "물가지수, 기준금리, 세금, GDP, 고용지표, 국가채무의 정의와 "
             "비슷해 보이는 지표의 차이를 비교해 보세요."
         ),
     },
     "international_economy_industry_technology": {
-        "label": "국제경제·산업·기술",
+        "label": "국제경제와 산업·기술동향",
         "recommendation": (
             "FTA, WTO, 4차 산업혁명, 리쇼어링, 벤처캐피탈, GSP처럼 "
             "제도와 산업 용어가 가리키는 범위를 구분해 보세요."
         ),
     },
     "socioeconomic_phenomena_consumer_life": {
-        "label": "사회경제·소비생활",
+        "label": "사회경제현상과 소비생활",
         "recommendation": (
             "고령화 구분, 청년 고용, 근로빈곤, 도시 변화, 직장 내 장벽, "
             "은퇴 소득공백 개념을 유사 용어와 짝지어 정리해 보세요."

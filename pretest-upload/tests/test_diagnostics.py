@@ -65,7 +65,7 @@ class GradingTest(unittest.TestCase):
         self.assertEqual(graded["vulnerabilities"][0]["score"], 0.0)
         self.assertEqual(graded["vulnerabilities"][1]["severity"], "medium")
         self.assertEqual(graded["vulnerabilities"][1]["score"], 50.0)
-        self.assertIn("금융·투자 0점", graded["summary"]["analysis"])
+        self.assertIn("금융과 투자 0점", graded["summary"]["analysis"])
 
     def test_clear_result_has_no_vulnerability(self):
         questions = [
