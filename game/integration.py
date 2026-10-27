@@ -3,7 +3,7 @@ import inspect as python_inspect
 import os
 from dataclasses import dataclass
 
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import bindparam, create_engine, inspect, text
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import sessionmaker
 
@@ -47,9 +47,30 @@ def build_game_runtime(engine: Engine, learning_service) -> GameRuntime:
         actual = {c["name"] for c in schema.get_columns(table.name)}
         if not set(table.columns.keys()) <= actual:
             raise RuntimeError(f"게임 migration 컬럼을 확인하세요: {table.name}")
+    if engine.dialect.name == "postgresql":
+        validate_game_access(engine)
     factory = sessionmaker(engine, expire_on_commit=False)
     service = GameService(SqlUnitOfWork(factory), STORY_RULES, VISUALS, STAGE_TOTALS, TITLES, ACCESSORIES)
     return GameRuntime(service, source, engine)
+
+
+def validate_game_access(engine: Engine) -> None:
+    """RLS 누락이나 브라우저 직접 쓰기 허용 상태로 운영을 시작하지 않는다."""
+    query = text("""
+        select c.relname, c.relrowsecurity,
+               has_table_privilege('anon', c.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE') as anon_access,
+               has_table_privilege('authenticated', c.oid, 'INSERT,UPDATE,DELETE,TRUNCATE') as browser_write,
+               has_table_privilege('authenticated', c.oid, 'SELECT') as user_read
+        from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'public' and c.relname in :names
+    """).bindparams(bindparam("names", expanding=True))
+    with engine.connect() as connection:
+        rows = connection.execute(query, {"names": list(Base.metadata.tables)}).mappings().all()
+    if len(rows) != len(Base.metadata.tables):
+        raise RuntimeError("public 게임 테이블 구성을 확인하세요.")
+    for row in rows:
+        if not row["relrowsecurity"] or row["anon_access"] or row["browser_write"] or not row["user_read"]:
+            raise RuntimeError(f"게임 RLS·조회 전용 권한을 확인하세요: {row['relname']}")
 
 
 def prepare_game_runtime(learning_service) -> GameRuntime | None:

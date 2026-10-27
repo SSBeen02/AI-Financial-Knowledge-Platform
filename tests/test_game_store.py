@@ -55,6 +55,38 @@ def test_failed_transaction_rolls_back_character_and_initial_state(factory):
             assert session.scalar(select(func.count()).select_from(model)) == 0
 
 
+def test_transaction_retries_database_conflict_once_but_not_business_errors(factory):
+    from sqlalchemy.exc import OperationalError
+    engine = factory.kw["bind"]
+    attempts = []
+
+    class SerializationFailure(Exception):
+        sqlstate = "40001"
+
+    def conflict(connection, cursor, statement, parameters, context, many):
+        if statement.startswith("INSERT INTO game_characters"):
+            attempts.append(statement)
+            if len(attempts) == 1:
+                raise OperationalError(statement, parameters, SerializationFailure())
+
+    event.listen(engine, "before_cursor_execute", conflict)
+    try:
+        result = SqlUnitOfWork(factory).run(lambda session: SqlCharacterStore(session).create("retry-user", "학당"))
+    finally:
+        event.remove(engine, "before_cursor_execute", conflict)
+    assert len(attempts) == 2 and result.user_id == "retry-user"
+    with factory() as session:
+        assert session.scalar(select(func.count()).select_from(CharacterRow)) == 1
+
+    calls = []
+    def invalid(session):
+        calls.append(1)
+        raise ValueError("구매 조건 오류")
+    with pytest.raises(ValueError):
+        SqlUnitOfWork(factory).run(invalid)
+    assert len(calls) == 1
+
+
 def service_for(factory):
     return GameService(SqlUnitOfWork(factory), StoryRules([
         StoryDefinition(1, 2, "can", "can"), StoryDefinition(1, 3, "umbrella", "umbrella")]),

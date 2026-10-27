@@ -13,7 +13,7 @@ from app.services import learning_callbacks
 from chatbot.config import Settings
 from chatbot.integrations import SqlConceptStatusService
 from chatbot.store import SqlChatStore
-from game.integration import LearningEventSource, build_game_runtime, prepare_game_runtime
+from game.integration import LearningEventSource, build_game_runtime, prepare_game_runtime, validate_game_access
 from game.models import Base
 from server_auth import get_verified_user_id
 
@@ -33,6 +33,24 @@ def test_runtime_does_not_create_missing_schema_and_disabled_mode_does_not_conne
             LearningEventSource(type("OldService", (), {"get_unprocessed_events": lambda self, limit=100: []})())
     finally:
         engine.dispose()
+
+
+def test_unsafe_browser_permissions_or_missing_rls_prevent_startup():
+    from contextlib import nullcontext
+    rows = [dict(relname=name, relrowsecurity=True, anon_access=False,
+                 browser_write=False, user_read=True) for name in Base.metadata.tables]
+    connection = Mock()
+    connection.execute.return_value.mappings.return_value.all.return_value = rows
+    engine = Mock()
+    engine.connect.return_value = nullcontext(connection)
+    validate_game_access(engine)
+    for field, unsafe in [("relrowsecurity", False), ("anon_access", True), ("browser_write", True)]:
+        original = rows[0][field]
+        rows[0][field] = unsafe
+        engine.connect.return_value = nullcontext(connection)
+        with pytest.raises(RuntimeError, match="RLS"):
+            validate_game_access(engine)
+        rows[0][field] = original
 
 
 def test_real_quiz_callback_learning_events_and_game_api_are_user_scoped(tmp_path, monkeypatch):

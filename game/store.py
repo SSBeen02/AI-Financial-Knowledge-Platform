@@ -4,7 +4,7 @@ from typing import TypeVar
 from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from game.models import CharacterRow, CharacterStateRow, StoryProgressRow, StoryRewardRow, utcnow
@@ -19,8 +19,16 @@ class SqlUnitOfWork:
         self.factory = factory
 
     def run(self, work: Callable[[Session], T]) -> T:
-        with self.factory.begin() as session:
-            return work(session)
+        # work는 DB 작업만 수행한다. 원본 이벤트 완료 표시 등 외부 효과는 커밋 뒤 처리한다.
+        for attempt in range(2):
+            try:
+                with self.factory.begin() as session:
+                    return work(session)
+            except DBAPIError as exc:
+                sqlstate = getattr(exc.orig, "sqlstate", None)
+                if attempt or sqlstate not in {"40001", "40P01"}:
+                    raise
+                # 실패한 세션은 롤백·종료됐으므로 새 트랜잭션에서 한 번만 재시도한다.
 
 
 def character_out(row: CharacterRow) -> Character:
