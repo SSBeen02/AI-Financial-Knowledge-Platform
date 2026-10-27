@@ -8,6 +8,7 @@ band는 `concept_source` 소스의 Dense 최고 점수로만 정한다.
 from __future__ import annotations
 
 import uuid
+import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -111,6 +112,25 @@ class ConceptCache:
         return len(self._docs)
 
 
+_HANGUL_TERM = re.compile(r"[가-힣]{4,}")
+
+
+def normalize_search_query(query: str, known_terms: Iterable[str]) -> str:
+    """검색용으로만 캐시 용어·별칭의 한 글자 띄어쓰기 표기를 붙인다."""
+    candidates = {
+        compact
+        for term in known_terms
+        if (compact := re.sub(r"\s+", "", term)) and _HANGUL_TERM.fullmatch(compact)
+    }
+    for term in sorted(candidates, key=len, reverse=True):
+        pattern = re.compile(
+            r"(?<![가-힣])" + r"[ \t]+".join(re.escape(char) for char in term)
+            + r"(?![가-힣]{2,})"
+        )
+        query = pattern.sub(term, query)
+    return query
+
+
 class Retriever:
     def __init__(
         self,
@@ -154,6 +174,7 @@ class Retriever:
             band=band,
             top_score=top_score,
         )
+
 
     def _search_profile(self, query: str, collection: str, profile: SearchProfile) -> list[RetrievedDoc]:
         if profile["mode"] != "dense" and self._sparse is None:

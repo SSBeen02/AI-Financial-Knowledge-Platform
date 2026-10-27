@@ -8,6 +8,7 @@ from chatbot.retrieval import (
     Retriever,
     concept_point_id,
     judge_band,
+    normalize_search_query,
     to_source_out,
 )
 
@@ -54,6 +55,29 @@ def test_band_boundaries() -> None:
     assert judge_band(0.45, high=0.50, low=0.45) == "mid"
     assert judge_band(0.499, high=0.50, low=0.45) == "mid"
     assert judge_band(0.449, high=0.50, low=0.45) == "low"
+
+
+def test_search_joins_only_spaced_single_hangul_run() -> None:
+    original = "오늘은 장 수 리 스 크에 대해 알려줘"
+    expected = "오늘은 장수리스크에 대해 알려줘"
+    terms = ["장수리스크"]
+    assert normalize_search_query(original, terms) == expected
+    assert normalize_search_query("장 수 리 스 크 에 대 해 알 려 줘 가 가", terms) == "장수리스크 에 대 해 알 려 줘 가 가"
+    assert normalize_search_query("예시 하나만 더 들어줘", terms) == "예시 하나만 더 들어줘"
+    assert normalize_search_query("그럼 반대 경우는?", terms) == "그럼 반대 경우는?"
+    assert normalize_search_query("한 글자만 더 설명해 줘", terms) == "한 글자만 더 설명해 줘"
+    assert normalize_search_query("그 때 한 번 더 설명해 줘", terms) == "그 때 한 번 더 설명해 줘"
+    assert normalize_search_query("잠이 안 올 때 어떻게 해야 해?", terms) == "잠이 안 올 때 어떻게 해야 해?"
+
+    seen: list[str] = []
+    def search(_client, query, _dense, _sparse, **_kwargs):
+        seen.append(query)
+        return [Point("sisa_2173", 0.2)]
+
+    retriever = Retriever(object(), object(), _settings(), profiles={"sisa_terms": SISA}, search_fn=search)
+    retriever.search(normalize_search_query(original, terms))
+    assert seen == [expected]
+    assert original == "오늘은 장 수 리 스 크에 대해 알려줘"
 
 
 def test_single_source_keeps_slot_count_and_dense_band() -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
+import codecs
 import logging
 from typing import Any
 
@@ -45,12 +46,35 @@ class LLMConfigurationError(LLMError):
     """LLM 설정이 없어 요청을 시작할 수 없을 때."""
 
 
+class Utf8ChunkDecoder:
+    """바이트 경계와 무관하게 UTF-8 조각을 문자열로 조립한다."""
+
+    def __init__(self) -> None:
+        self._decoder = codecs.getincrementaldecoder("utf-8")("strict")
+
+    def feed(self, chunk: str | bytes) -> str:
+        try:
+            if isinstance(chunk, bytes):
+                return self._decoder.decode(chunk, final=False)
+            if self._decoder.getstate()[0]:
+                raise UnicodeError("UTF-8 문자가 완성되기 전에 문자열 조각이 도착했습니다.")
+            return chunk
+        except UnicodeError as exc:
+            raise LLMError("LLM 스트림의 UTF-8 인코딩이 올바르지 않습니다.") from exc
+
+    def finish(self) -> str:
+        try:
+            return self._decoder.decode(b"", final=True)
+        except UnicodeError as exc:
+            raise LLMError("LLM 스트림의 UTF-8 인코딩이 올바르지 않습니다.") from exc
+
+
 class LLMAdapter(ABC):
     @abstractmethod
     def generate(self, prompt: Prompt) -> str: ...
 
     @abstractmethod
-    def stream(self, prompt: Prompt) -> Iterator[str]: ...
+    def stream(self, prompt: Prompt) -> Iterator[str | bytes]: ...
 
     @abstractmethod
     def judge_relevance(
@@ -347,6 +371,8 @@ class UpstageAdapter(LLMAdapter):
         finish_reason: str | None = None
         field_names: set[str] = set()
         usage: Any = None
+        decoder = Utf8ChunkDecoder()
+        replacement_seen = False
         try:
             stream = self._client.chat.completions.create(**kwargs)
             for chunk in stream:
@@ -361,7 +387,17 @@ class UpstageAdapter(LLMAdapter):
                     field_names.update(_field_names(delta))
                     text = getattr(delta, "content", None) if delta is not None else None
                     if text:
-                        yield str(text)
+                        if isinstance(text, str) and "\ufffd" in text and not replacement_seen:
+                            logger.warning("Upstage SDK stream text already contains U+FFFD")
+                            replacement_seen = True
+                        decoded = decoder.feed(text if isinstance(text, (str, bytes)) else str(text))
+                        if decoded:
+                            yield decoded
+            tail = decoder.finish()
+            if tail:
+                yield tail
+        except LLMError:
+            raise
         except Exception as exc:
             raise LLMError("LLM 스트리밍 호출에 실패했습니다.") from exc
         metadata.update(
