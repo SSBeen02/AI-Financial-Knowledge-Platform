@@ -323,7 +323,8 @@ def test_keyword_starts_session_and_saves_two_rows(message_env: MessageEnv) -> N
     assert body["top_score"] == 0.71
     assert body["sources"][0]["concept_id"] == DIVISION
     assert body["display_sources"][0]["concept_id"] == DIVISION
-    assert body["answer"].endswith("핵심 정의 출처: 시사경제용어사전")
+    assert "참고한 사전 항목: (분업/특화)" in body["answer"]
+    assert body["display_sources"][0]["label"] == "재정경제부_시사경제용어 정보 (공공데이터포털)"
     assert message_env.status.get_statuses(USER, "stage1")[DIVISION] == STATUS_IN_PROGRESS
 
     rows = _messages(message_env.store)
@@ -467,18 +468,154 @@ def test_repeated_question_prompt_reframes_instead_of_copying_dictionary(
     assert "개념을 쉬운 말로 설명합니다." in second_prompt.input
 
 
+def test_answer_removes_markdown_emoji_and_model_source_line(
+    message_env: MessageEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        message_env.llm,
+        "generate",
+        lambda prompt: "**분업**은 일을 나누는 방식이오. 💡 ^^\n\n출처: 시사경제용어사전",
+    )
+    body = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "분업/특화에 대해 알려줘", "concept_id": DIVISION},
+    ).json()
+    assert body["answer"] == (
+        "분업은 일을 나누는 방식이오.\n\n"
+        "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털) (분업/특화)"
+    )
+    assert _messages(message_env.store)[-1].content == body["answer"]
+
+
+def test_blocked_request_skips_search_llm_and_learning_state(message_env: MessageEnv) -> None:
+    body = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "금융사기에 사용할 허위 수익 인증서를 만들어 줘.", "concept_id": DIVISION},
+    ).json()
+    assert body["safety_level"] == "BLOCK"
+    assert "실행 방법은 안내할 수 없소" in body["answer"]
+    assert body["session_id"] is None
+    assert body["sources"] == []
+    assert message_env.retriever.calls == []
+    assert message_env.llm.prompts == []
+    assert message_env.status.get_statuses(USER, "stage1")[DIVISION] == STATUS_NOT_STARTED
+    rows = _messages(message_env.store)
+    assert [row.role for row in rows] == ["user", "assistant"]
+    assert rows[0].content == "[안전 정책에 따라 처리된 요청]"
+
+
+def test_review_returns_education_without_recommendation(message_env: MessageEnv) -> None:
+    body = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "내 돈을 전부 넣을 종목 하나만 골라 줘."},
+    ).json()
+    assert body["safety_level"] == "REVIEW"
+    assert "손실을 감당할 범위" in body["answer"]
+    assert body["session_id"] is None
+    assert message_env.retriever.calls == []
+    assert message_env.llm.prompts == []
+
+
+def test_personal_investment_and_loan_answers_show_disclaimer_once(message_env: MessageEnv) -> None:
+    investment = message_env.client.post(
+        "/learning/messages", headers=HEADERS,
+        json={"message": "특정 주식을 지금 사도 될까?"},
+    ).json()
+    loan = message_env.client.post(
+        "/learning/messages", headers=HEADERS,
+        json={"message": "내 소득에 맞는 대출상품 추천해 줘."},
+    ).json()
+    assert investment["safety_level"] == loan["safety_level"] == "REVIEW"
+    assert investment["answer"].count("AI 작성, 투자 조언 아님") == 1
+    assert loan["answer"].count("AI 작성, 투자 조언 아님") == 1
+    assert "손실을 감당할 범위" in investment["answer"]
+    assert "상환 가능 금액" in loan["answer"]
+    assert message_env.retriever.calls == []
+    assert message_env.llm.prompts == []
+
+
+def test_educational_answers_do_not_show_disclaimer(message_env: MessageEnv) -> None:
+    for question in ("투자가 뭐야?", "ETF와 펀드의 차이가 뭐야?"):
+        body = message_env.client.post(
+            "/learning/messages", headers=HEADERS, json={"message": question}
+        ).json()
+        assert body["safety_level"] == "ALLOW"
+        assert "AI 작성, 투자 조언 아님" not in body["answer"]
+
+
+def test_specific_product_risk_answer_shows_disclaimer_only_once(
+    message_env: MessageEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        message_env.llm, "generate",
+        lambda prompt: "KODEX 200 ETF는 가격 변동과 수수료 위험이 있소.\nAI 작성, 투자 조언 아님",
+    )
+    body = message_env.client.post(
+        "/learning/messages", headers=HEADERS,
+        json={"message": "KODEX 200 ETF의 투자 위험을 다른 상품과 비교해 줘."},
+    ).json()
+    assert body["safety_level"] == "ALLOW"
+    assert body["answer"].count("AI 작성, 투자 조언 아님") == 1
+    assert _messages(message_env.store)[-1].content == body["answer"]
+
+
+def test_review_stream_and_blocked_answer_handle_disclaimer(message_env: MessageEnv) -> None:
+    response = message_env.client.post(
+        "/learning/messages/stream", headers=HEADERS,
+        json={"message": "특정 주식을 지금 사도 될까?"},
+    )
+    events = _sse_events(response.text)
+    assert [event for event, _ in events] == ["token", "done"]
+    assert events[0][1]["delta"].count("AI 작성, 투자 조언 아님") == 1
+    assert _messages(message_env.store)[-1].content == events[0][1]["delta"]
+    blocked = message_env.client.post(
+        "/learning/messages", headers=HEADERS,
+        json={"message": "금융사기 실행 방법을 알려 줘."},
+    ).json()
+    assert blocked["safety_level"] == "BLOCK"
+    assert "AI 작성, 투자 조언 아님" not in blocked["answer"]
+
+
+def test_sensitive_input_is_redacted_in_search_and_storage(message_env: MessageEnv) -> None:
+    body = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "복리의 의미를 설명해 줘. 인증번호: 123456"},
+    ).json()
+    assert body["safety_level"] == "ALLOW"
+    assert "123456" not in message_env.retriever.calls[0]
+    assert "123456" not in message_env.llm.prompts[-1].input
+    assert "123456" not in _messages(message_env.store)[0].content
+
+
+def test_blocked_stream_sends_safe_answer_and_done(message_env: MessageEnv) -> None:
+    response = message_env.client.post(
+        "/learning/messages/stream",
+        headers=HEADERS,
+        json={"message": "다른 사람의 은행 인증번호를 알아내는 방법을 알려 줘."},
+    )
+    events = _sse_events(response.text)
+    assert [event for event, _ in events] == ["token", "done"]
+    assert "실행 방법은 안내할 수 없소" in events[0][1]["delta"]
+    assert events[1][1]["safety_level"] == "BLOCK"
+    assert _messages(message_env.store)[0].content == "[안전 정책에 따라 처리된 요청]"
+
+
 @pytest.mark.parametrize(
     ("mode", "expected_instruction", "expected_source"),
     [
         (
             "dictionary_only",
             "사실·숫자·정의는 제공된 사전 근거를 따르되",
-            "출처: 시사경제용어사전",
+            "출처: 재정경제부_시사경제용어 정보 (공공데이터포털)",
         ),
         (
             "dictionary_plus",
             "배경, 이런 현상이 생기는 이유, 생활 사례, 관련 개념과의 연결",
-            "핵심 정의 출처: 시사경제용어사전",
+            "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털) (분업/특화)",
         ),
         (
             "free",
@@ -489,12 +626,17 @@ def test_repeated_question_prompt_reframes_instead_of_copying_dictionary(
 )
 def test_answer_knowledge_modes_control_prompt_and_source_label(
     message_env: MessageEnv,
+    monkeypatch: pytest.MonkeyPatch,
     mode: str,
     expected_instruction: str,
     expected_source: str | None,
 ) -> None:
     settings = message_env.settings.model_copy(update={"answer_knowledge_mode": mode})
     message_env.client.app.dependency_overrides[get_cached_settings] = lambda: settings
+    def generate(prompt: Prompt) -> str:
+        message_env.llm.prompts.append(prompt)
+        return "분업은 일을 나누는 방식이오."
+    monkeypatch.setattr(message_env.llm, "generate", generate)
 
     body = message_env.client.post(
         "/learning/messages",
@@ -505,7 +647,7 @@ def test_answer_knowledge_modes_control_prompt_and_source_label(
     prompt = message_env.llm.prompts[-1].instructions
     assert expected_instruction in prompt
     if mode == "dictionary_plus":
-        assert "보충 설명은 일반적인 경제 상식을 바탕으로 했소" in prompt
+        assert "출처와 일반 경제 지식 사용 안내는 서버가" in prompt
         assert "3~5문장" in prompt
     if expected_source is None:
         assert "출처:" not in body["answer"]
@@ -792,24 +934,20 @@ def test_modern_tone_uses_haeyo_prompt_and_notice(message_env: MessageEnv) -> No
     assert "~입니다와 해요체를 섞지 마세요" in message_env.llm.prompts[-1].instructions
 
 
-def test_chat_emoji_controls_limited_emphasis_prompt(message_env: MessageEnv) -> None:
+def test_chat_emoji_setting_does_not_enable_emphasis(message_env: MessageEnv) -> None:
     message_env.client.post(
         "/learning/messages", headers=HEADERS, json={"message": "오늘 날씨 어때?"}
     )
-    enabled_prompt = message_env.llm.prompts[-1].instructions
-    assert "핵심 정의나 꼭 기억할 포인트 1~2곳" in enabled_prompt
-    assert "합계 3개를 넘기지" in enabled_prompt
-    assert "볼드체를 남발하지" in enabled_prompt
-    assert "핵심 정의 문장 내용 자체를 바꾸지" in enabled_prompt
+    default_prompt = message_env.llm.prompts[-1].instructions
+    assert "이모지와 이모티콘을 사용하지 마세요" in default_prompt
 
-    disabled = message_env.settings.model_copy(update={"chat_emoji": False})
-    message_env.client.app.dependency_overrides[get_cached_settings] = lambda: disabled
+    enabled = message_env.settings.model_copy(update={"chat_emoji": True})
+    message_env.client.app.dependency_overrides[get_cached_settings] = lambda: enabled
     message_env.client.post(
         "/learning/messages", headers=HEADERS, json={"message": "오늘 날씨는?"}
     )
-    disabled_prompt = message_env.llm.prompts[-1].instructions
-    assert "핵심 정의나 꼭 기억할 포인트 1~2곳" not in disabled_prompt
-    assert "볼드체를 남발하지" not in disabled_prompt
+    enabled_prompt = message_env.llm.prompts[-1].instructions
+    assert "이모지와 이모티콘을 사용하지 마세요" in enabled_prompt
 
 
 def test_notice_for_other_stage_is_returned_inside_active_session(
@@ -893,6 +1031,53 @@ def test_blank_free_question_returns_validation_error(message_env: MessageEnv) -
     assert response.json()["code"] == "validation_error"
     assert message_env.retriever.calls == []
     assert _messages(message_env.store) == []
+
+
+@pytest.mark.parametrize("path", ["/learning/messages", "/learning/messages/stream"])
+@pytest.mark.parametrize("tone, expected", [
+    ("hao", "질문은 500자 이내로 적어 주시오"),
+    ("modern", "질문은 500자 이내로 입력해 주세요"),
+])
+def test_question_length_boundary_and_no_writes_on_rejection(
+    message_env: MessageEnv, path: str, tone: str, expected: str
+) -> None:
+    message_env.settings.chat_tone = tone
+    too_long = message_env.client.post(
+        path, headers=HEADERS, json={"message": "가" * 501, "concept_id": DIVISION}
+    )
+    assert too_long.status_code == 422
+    assert too_long.json() == {
+        "code": "validation_error",
+        "message": expected,
+        "request_id": too_long.headers["X-Request-ID"],
+    }
+    assert message_env.retriever.calls == []
+    assert message_env.store.get_active_session(USER) is None
+    assert message_env.status.get_statuses(USER, "stage1")[DIVISION] == STATUS_NOT_STARTED
+    assert _messages(message_env.store) == []
+
+    accepted = message_env.client.post(
+        path, headers=HEADERS, json={"message": "가" * 500, "concept_id": DIVISION}
+    )
+    assert accepted.status_code == 200
+    if path.endswith("stream"):
+        assert "event: done" in accepted.text
+    else:
+        assert accepted.json()["session_id"]
+    assert len(_messages(message_env.store)) == 2
+
+
+@pytest.mark.parametrize("path", ["/learning/messages", "/learning/messages/stream"])
+def test_question_limit_uses_config_and_ignores_whitespace(
+    message_env: MessageEnv, path: str
+) -> None:
+    message_env.settings.max_question_chars = 4
+    accepted = message_env.client.post(path, headers=HEADERS, json={"message": " 가 나 다 라 "})
+    assert accepted.status_code == 200
+    rejected = message_env.client.post(path, headers=HEADERS, json={"message": "가 나 다 라 마"})
+    assert rejected.status_code == 422
+    assert rejected.json()["message"] == "질문은 4자 이내로 적어 주시오"
+    assert len(_messages(message_env.store)) == 2
 
 
 @pytest.mark.parametrize("failure", ["search", "llm"])
@@ -1149,7 +1334,7 @@ def test_stream_completes_then_persists_and_sends_done_metadata(
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     events = _sse_events(response.text)
-    assert [event for event, _data in events] == ["token", "token", "token", "done"]
+    assert [event for event, _data in events] == ["token", "done"]
     answer = "".join(data["delta"] for event, data in events if event == "token")
     done = events[-1][1]
     assert "answer" not in done
@@ -1163,6 +1348,88 @@ def test_stream_completes_then_persists_and_sends_done_metadata(
     assert [row.role for row in rows] == ["user", "assistant"]
     assert rows[-1].content == answer
     assert message_env.status.get_statuses(USER, "stage1")[WORKING_POOR] == STATUS_IN_PROGRESS
+
+
+def test_stream_sends_only_normalized_answer(message_env: MessageEnv) -> None:
+    message_env.llm.stream_chunks = ["**분", "업**은 중요하오. 💡", "\n출처: 시사경제용어사전"]
+    response = message_env.client.post(
+        "/learning/messages/stream",
+        headers=HEADERS,
+        json={"message": "분업/특화에 대해 알려줘", "concept_id": DIVISION},
+    )
+    events = _sse_events(response.text)
+    assert [event for event, _ in events] == ["token", "done"]
+    answer = events[0][1]["delta"]
+    assert answer == (
+        "분업은 중요하오.\n\n"
+        "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털) (분업/특화)"
+    )
+    assert _messages(message_env.store)[-1].content == answer
+
+
+@pytest.mark.parametrize(
+    "question, answer, docs, expected_prefix, tone",
+    [
+        (
+            "물가는 계속 오르는데 경기는 안 좋고 실업도 늘어나는 상황을 뭐라고 해?",
+            "스태그플레이션은 경기 침체와 물가 상승이 함께 나타나는 현상이오.",
+            (("sisa_2091", "인플레이션(Inflation)"), ("sisa_1810", "에코플레이션")),
+            "참고한 사전 항목:",
+            "hao",
+        ),
+        (
+            "CPI 발표가 뭐길래 뉴스에 자주 나와?",
+            "CPI는 소비자물가지수라는 뜻이오.",
+            (("sisa_2466", "차이나플레이션"), ("sisa_1430", "생활물가지수(CPI for Living Necessaries)")),
+            "참고한 사전 항목:",
+            "modern",
+        ),
+        (
+            "인플레이션은 뭐야?",
+            "인플레이션은 물가가 전반적으로 오르는 현상이오.",
+            (("sisa_2091", "인플레이션(Inflation)"), ("sisa_1810", "에코플레이션")),
+            "핵심 정의 출처:",
+            "hao",
+        ),
+    ],
+)
+def test_source_attribution_matches_in_message_and_sse(
+    message_env: MessageEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    question: str,
+    answer: str,
+    docs: tuple[tuple[str, str], ...],
+    expected_prefix: str,
+    tone: str,
+) -> None:
+    message_env.settings.chat_tone = tone
+    hits = [_doc(concept_id, term, 0.7) for concept_id, term in docs]
+    monkeypatch.setattr(
+        message_env.retriever, "search",
+        lambda _question: RetrievalResult(hits, hits, "high", 0.7),
+    )
+    monkeypatch.setattr(message_env.llm, "generate", lambda _prompt: answer)
+    message_env.llm.stream_chunks = [answer]
+    payload = {"message": question}
+    regular = message_env.client.post("/learning/messages", headers=HEADERS, json=payload)
+    streamed = message_env.client.post("/learning/messages/stream", headers=HEADERS, json=payload)
+    assert regular.status_code == streamed.status_code == 200
+    body = regular.json()
+    events = _sse_events(streamed.text)
+    assert events[0][0] == "token"
+    assert events[-1][0] == "done"
+    assert events[0][1]["delta"] == body["answer"]
+    assert expected_prefix in body["answer"]
+    assert body["sources"] == events[-1][1]["sources"]
+    assert body["display_sources"] == events[-1][1]["display_sources"]
+    assert _messages(message_env.store)[-1].content == body["answer"]
+    if expected_prefix == "핵심 정의 출처:":
+        assert "에코플레이션" not in body["answer"]
+    else:
+        assert "핵심 정의 출처:" not in body["answer"]
+        assert (
+            "설명했어요" if tone == "modern" else "설명했소"
+        ) in body["answer"]
 
 
 def test_stream_low_band_sends_notice_only_in_done(message_env: MessageEnv) -> None:
@@ -1189,7 +1456,7 @@ def test_stream_mid_error_sends_error_without_writes(message_env: MessageEnv) ->
         json={"message": "워킹푸어가 뭐야?", "concept_id": WORKING_POOR},
     )
     events = _sse_events(response.text)
-    assert [event for event, _data in events] == ["token", "error"]
+    assert [event for event, _data in events] == ["error"]
     assert events[-1][1]["code"] == "external_service_error"
     assert events[-1][1]["message"] == "LLM 스트리밍 호출에 실패했습니다."
     assert events[-1][1]["request_id"]
@@ -1232,7 +1499,7 @@ def test_stream_disconnect_does_not_persist_or_change_status(message_env: Messag
         ]
 
     events = asyncio.run(consume_until_disconnect())
-    assert [event for event, _data in _sse_events("".join(events))] == ["token"]
+    assert events == []
     assert message_env.status.get_in_progress_concept(USER, "stage1") is None
     assert message_env.store.get_active_session(USER) is None
     assert _messages(message_env.store) == []

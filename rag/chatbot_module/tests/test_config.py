@@ -25,7 +25,7 @@ def test_defaults(clean_env: None) -> None:
     assert settings.llm_max_output_tokens == 1200
     assert settings.llm_temperature == 0.7
     assert settings.chat_tone == "hao"
-    assert settings.chat_emoji is True
+    assert settings.chat_emoji is False
     assert settings.answer_knowledge_mode == "dictionary_plus"
     assert settings.free_question_auto_start is False
     assert settings.cors_origins == ["http://localhost:5173", "http://localhost:3000"]
@@ -161,7 +161,7 @@ def test_search_profile_has_only_sisa_terms() -> None:
     assert profile["k"] == 5
     assert profile["slots"] == 3
     assert profile["concept_source"] is True
-    assert profile["label"] == "시사경제용어사전"
+    assert profile["label"] == "재정경제부_시사경제용어 정보 (공공데이터포털)"
 
 
 def test_qdrant_collection_renames_default_search_profile(clean_env: None) -> None:

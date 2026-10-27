@@ -24,7 +24,7 @@ SEARCH_PROFILES: dict[str, SearchProfile] = {
         "mode": "dense",
         "k": 5,
         "slots": 3,
-        "label": "시사경제용어사전",
+        "label": "재정경제부_시사경제용어 정보 (공공데이터포털)",
         "concept_source": True,
     },
 }
@@ -57,9 +57,10 @@ class Settings(BaseSettings):
     llm_max_output_tokens: int = Field(default=1200, ge=1)
     llm_temperature: float = Field(default=0.7, ge=0, le=2)
     chat_tone: Literal["hao", "modern"] = "hao"
-    chat_emoji: bool = True
+    chat_emoji: bool = False
     answer_knowledge_mode: AnswerKnowledgeMode = "dictionary_plus"
     free_question_auto_start: bool = False
+    max_question_chars: int = Field(default=500, ge=1)
     cors_allow_origins: str = "http://localhost:5173,http://localhost:3000"
     band_high: float = 0.50
     band_low: float = 0.45
