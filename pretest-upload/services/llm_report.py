@@ -11,6 +11,7 @@ from schemas.llm_report import (
     WrongAnswerItem,
 )
 from services.errors import LlmReportError
+from services.report_summary import add_lowest_stage_summary
 
 logger = logging.getLogger("diagnostics")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -192,7 +193,7 @@ def align_llm_report(report: LlmReportAnalysis, graded: dict) -> LlmReportAnalys
     else:
         wrong_summary = report.wrong_answer_analysis.summary.strip() or "틀린 문항이 없습니다."
 
-    return LlmReportAnalysis(
+    aligned = LlmReportAnalysis(
         level_diagnosis=LevelDiagnosis(
             overall_level=summary["level"],
             summary=level_summary,
@@ -201,6 +202,7 @@ def align_llm_report(report: LlmReportAnalysis, graded: dict) -> LlmReportAnalys
         wrong_answer_analysis=WrongAnswerAnalysis(summary=wrong_summary, items=wrong_items),
         recommendations=_align_recommendations(report.recommendations, domain_scores, wrong, graded["question_results"]),
     )
+    return add_lowest_stage_summary(aligned, domain_scores)
 
 
 def _resolved_mode(settings) -> str:

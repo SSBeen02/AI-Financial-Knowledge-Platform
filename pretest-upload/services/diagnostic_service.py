@@ -13,6 +13,7 @@ from services.errors import DiagnosticNotFoundError, IdempotencyConflictError, I
 from services.grading import grade_attempt
 from services.llm_report import generate_llm_report
 from services.question_bank import load_questions
+from services.report_summary import add_lowest_stage_summary
 
 logger = logging.getLogger("diagnostics")
 _service: "DiagnosticService | None" = None
@@ -146,7 +147,12 @@ class DiagnosticService:
             result.pop("llm_report", None)
         if isinstance(result.get("llm_report"), dict):
             result["llm_report"].pop("unpassed_concepts", None)
-        return ReportResponse.model_validate(result)
+        response = ReportResponse.model_validate(result)
+        if response.llm_report is not None and response.domain_scores:
+            response.llm_report = add_lowest_stage_summary(
+                response.llm_report, [row.model_dump() for row in response.domain_scores]
+            )
+        return response
 
     def _validate_answers(self, payload: SubmitRequest, questions: list[dict]) -> None:
         question_ids = [item.question_id for item in payload.answers]

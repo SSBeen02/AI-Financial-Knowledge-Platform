@@ -347,7 +347,8 @@
         const name = document.createElement("span");
         name.textContent = row.domain_label;
         const score = document.createElement("span");
-        score.textContent = row.is_vulnerable ? `${row.score}점 · 취약` : `${row.score}점`;
+        const displayScore = Math.round(row.score);
+        score.textContent = row.is_vulnerable ? `${displayScore}점 · 취약` : `${displayScore}점`;
         score.classList.toggle("vulnerable", row.is_vulnerable);
         line.append(name, score);
         list.append(line);

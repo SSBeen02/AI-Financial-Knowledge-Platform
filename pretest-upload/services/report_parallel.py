@@ -9,14 +9,18 @@ from typing import Callable
 from pydantic import BaseModel, ConfigDict
 from schemas.llm_report import DomainLevelComment, LevelDiagnosis, LlmReportAnalysis, RecommendationItem, WrongAnswerAnalysis, WrongAnswerItem
 from services.errors import LlmReportError
+from services.report_summary import add_lowest_stage_summary
 
 logger = logging.getLogger("diagnostics")
 REPORT_BUDGET_SECONDS = 28.0
 # Bound outbound concurrency across reports, not just within one report.
 _API_SLOTS = threading.BoundedSemaphore(12)
 
-STYLE_PROMPT = """경제 사전테스트의 친절한 튜터로서 입력 보기·해설·채점만 근거로 설명하시오.
-모든 서술은 현대인이 읽기 쉬운 가벼운 하오체로 쓰시오. 명사 뒤는 문법에 맞게 ~이오/~라오를 쓰고 ~단서요/~펀드요처럼 일반 해요체나 어색한 축약을 쓰지 마시오. ~하오/~이오/~소/~시오/~겠소를 문맥에 맞게 섞고, 억지로 하오만 붙이거나 ~합니다/~하세요를 쓰지 마시오. 전하·소인·나으리·명심하시오·분부 등 과장된 사극 표현과 꾸짖음은 금지하오.
+# 리포트 서술 말투의 공통 기준. 모든 OpenAI 분석 프롬프트에 적용한다.
+REPORT_TONE = "하오체"
+
+STYLE_PROMPT = f"""경제 사전테스트의 친절한 튜터로서 입력 보기·해설·채점만 근거로 설명하시오.
+모든 서술은 현대인이 읽기 쉬운 가벼운 {REPORT_TONE}로 쓰시오. 명사 뒤는 문법에 맞게 ~이오/~라오를 쓰고 ~단서요/~펀드요처럼 일반 해요체나 어색한 축약을 쓰지 마시오. ~하오/~이오/~소/~시오/~겠소를 문맥에 맞게 섞고, 억지로 하오만 붙이거나 ~합니다/~하세요를 쓰지 마시오. 전하·소인·나으리·명심하시오·분부 등 과장된 사극 표현과 꾸짖음은 금지하오.
 평가는 이번 문항 범위에 한정하되 그 단서를 영역마다 반복하지 마시오. 전반적 능력·성격·동기·오답 원인을 단정하지 마시오.
 같은 문장 시작·끝, '헷갈렸을 수 있소' 같은 추측의 반복을 피하고 실제 선택과 정답의 핵심 차이 및 문제 단서를 직접 짚으시오. 숫자·기간·주체는 입력에 충실해야 하오.
 대괄호 태그, 불렛, 번호, 마크다운 강조와 숙제형 지시(표 만들기·자기 말로 쓰기·해설 가리고 재풀이)를 쓰지 마시오.
@@ -158,4 +162,4 @@ def generate_parallel_report(client, graded: dict, model: str, observer: Callabl
     logger.info("report_llm_total %s", json.dumps(final_metric))
     if observer:
         observer(final_metric)
-    return report
+    return add_lowest_stage_summary(report, rows)
