@@ -349,6 +349,17 @@ def test_upstage_adapter_streams_chat_completion_deltas() -> None:
     assert completions.calls[0]["max_tokens"] == 1200
 
 
+def test_upstage_adapter_decodes_split_utf8_bytes() -> None:
+    encoded = "모멘텀은 중요하오.".encode("utf-8")
+    split = encoded.index("멘".encode("utf-8")) + 1
+    completions = ChatCompletions(chunks=[
+        SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=part))])
+        for part in (encoded[:split], encoded[split:split + 1], encoded[split + 1:])
+    ])
+    adapter = UpstageAdapter(_upstage_settings(), client=_chat_client(completions))
+    assert "".join(adapter.stream(Prompt("지시", "입력"))) == "모멘텀은 중요하오."
+
+
 def test_upstage_stream_retries_reasoning_only_length_response() -> None:
     first = [
         SimpleNamespace(

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import suppress
@@ -17,7 +18,7 @@ from datetime import datetime, timezone
 from threading import RLock
 from time import perf_counter
 
-from chatbot.answer_format import normalize_answer_text, with_advice_disclaimer
+from chatbot.answer_format import IncrementalAnswerFormatter, normalize_answer_text, with_advice_disclaimer
 from chatbot.concepts import (
     STATUS_IN_PROGRESS,
     STATUS_PASSED,
@@ -32,7 +33,7 @@ from chatbot.concepts import (
 )
 from chatbot.config import AnswerKnowledgeMode, Settings
 from chatbot.integrations import ConceptStatusService
-from chatbot.llm import LLMAdapter, LLMError
+from chatbot.llm import LLMAdapter, LLMError, Utf8ChunkDecoder
 from chatbot.prompts import HistoryTurn, Prompt, build_answer_prompt
 from chatbot.relevance import (
     detect_concept,
@@ -40,7 +41,8 @@ from chatbot.relevance import (
     mentioned_concepts,
     normalize_term,
 )
-from chatbot.retrieval import ConceptCache, CachedConcept, RetrievalResult, RetrievedDoc, Retriever, PUBLIC_DATA_SOURCE_LABEL, display_source_label, to_source_out
+
+from chatbot.retrieval import ConceptCache, CachedConcept, RetrievalResult, RetrievedDoc, Retriever, PUBLIC_DATA_SOURCE_LABEL, display_source_label, normalize_search_query, to_source_out
 from chatbot.safety import classify_question, limited_answer, redact_sensitive
 from chatbot.schemas import (
     ChatMode,
@@ -83,6 +85,8 @@ from chatbot.tone import (
     suggested_concept_notice,
     with_korean_particle,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -351,12 +355,18 @@ def send_message(
             raw_answer = llm.generate(prepared.prompt)
         except LLMError as exc:
             raise ExternalServiceError(exc.detail) from exc
+        formatter = IncrementalAnswerFormatter()
+        formatter.feed(raw_answer)
+        formatter.finish()
         answer = _ensure_answer_suffixes(
-            raw_answer,
+            formatter.body,
             prepared.retrieval,
             prepared.answer_knowledge_mode,
             current_concept=prepared.current_concept,
             chat_tone=prepared.chat_tone,
+            use_current_concept_on_low=prepared.is_related and prepared.current_concept is not None,
+            normalized=True,
+            model_cited=formatter.model_cited,
         )
     answer = with_advice_disclaimer(answer, prepared.request.message, prepared.safety_level)
     return _persist_prepared_message(
@@ -408,7 +418,11 @@ def prepare_message(
     plan = _initial_message_plan(catalog, status_service, store, user_id, request, screen)
 
     try:
-        retrieval = retriever.search(request.message)
+        search_query = normalize_search_query(
+            request.message,
+            (term for concept in cache.values() for term in (concept.term, *concept.aliases)),
+        )
+        retrieval = retriever.search(search_query)
     except Exception as exc:
         raise ExternalServiceError("검색 서비스 호출에 실패했습니다.") from exc
 
@@ -445,6 +459,7 @@ def prepare_message(
         llm=llm,
         history=history,
     )
+    use_current_concept_on_low = retrieval.band == "low" and is_related and cached is not None
     notice = _message_notice(
         catalog=catalog,
         status_service=status_service,
@@ -454,6 +469,8 @@ def prepare_message(
         retrieval=retrieval,
         chat_tone=settings.chat_tone,
     )
+    if use_current_concept_on_low and notice == low_band_notice(settings.chat_tone):
+        notice = None
     if suggested_concept is not None:
         notice = suggested_concept_notice(suggested_concept.term, settings.chat_tone)
     prompt = build_answer_prompt(
@@ -468,6 +485,7 @@ def prepare_message(
         chat_tone=settings.chat_tone,
         knowledge_mode=settings.answer_knowledge_mode,
         chat_emoji=settings.chat_emoji,
+        use_current_concept_on_low=use_current_concept_on_low,
     )
     return PreparedMessage(
         user_id=user_id,
@@ -496,8 +514,9 @@ async def stream_message_events(
     request_id: str,
 ) -> AsyncIterator[str]:
     """답변을 SSE로 보내고, 완주 및 연결 유지가 확인된 뒤에만 상태를 반영한다."""
-    chunks: list[str] = []
-    iterator: Iterator[str] | None = None
+    formatter = IncrementalAnswerFormatter()
+    utf8_decoder = Utf8ChunkDecoder()
+    iterator: Iterator[str | bytes] | None = None
     try:
         if prepared.safe_answer is not None:
             answer = with_advice_disclaimer(
@@ -524,25 +543,44 @@ async def stream_message_events(
             chunk = await asyncio.to_thread(_next_or_end, iterator)
             if chunk is _STREAM_END:
                 break
-            text = str(chunk)
+            text = utf8_decoder.feed(chunk if isinstance(chunk, (str, bytes)) else str(chunk))
             if not text:
                 continue
-            chunks.append(text)
+            for delta in formatter.feed(text):
+                if await is_disconnected():
+                    return
+                yield _sse("token", {"delta": delta})
 
-        raw_answer = "".join(chunks).strip()
-        if not raw_answer:
+        for delta in formatter.feed(utf8_decoder.finish()):
+            if await is_disconnected():
+                return
+            yield _sse("token", {"delta": delta})
+        if not formatter.has_input:
+            raise LLMError("LLM이 비어 있는 응답을 반환했습니다.")
+        for delta in formatter.finish():
+            if await is_disconnected():
+                return
+            yield _sse("token", {"delta": delta})
+        if not formatter.body:
             raise LLMError("LLM이 비어 있는 응답을 반환했습니다.")
         answer = _ensure_answer_suffixes(
-            raw_answer,
+            formatter.body,
             prepared.retrieval,
             prepared.answer_knowledge_mode,
             current_concept=prepared.current_concept,
             chat_tone=prepared.chat_tone,
+            use_current_concept_on_low=prepared.is_related and prepared.current_concept is not None,
+            normalized=True,
+            model_cited=formatter.model_cited,
         )
         answer = with_advice_disclaimer(answer, prepared.request.message, prepared.safety_level)
+        if not answer.startswith(formatter.body):
+            raise LLMError("답변 서식 정리 중 오류가 발생했습니다.")
+        suffix = answer[len(formatter.body):]
         if await is_disconnected():
             return
-        yield _sse("token", {"delta": answer})
+        if suffix:
+            yield _sse("token", {"delta": suffix})
 
         # 마지막 토큰 전송 뒤 취소 신호가 처리될 기회를 주고, 커밋 직전에 다시 확인한다.
         await asyncio.sleep(0)
@@ -581,6 +619,8 @@ def _persist_prepared_message(
     status_service: ConceptStatusService,
     store: ChatStore,
 ) -> MessageResponse:
+    if "\ufffd" in answer:
+        logger.warning("Answer contains U+FFFD replacement character before persistence")
     latency_ms = max(0, round((perf_counter() - prepared.started_at) * 1000))
 
     plan = prepared.plan
@@ -654,7 +694,7 @@ def _persist_prepared_message(
 _STREAM_END = object()
 
 
-def _next_or_end(iterator: Iterator[str]) -> str | object:
+def _next_or_end(iterator: Iterator[str | bytes]) -> str | bytes | object:
     try:
         return next(iterator)
     except StopIteration:
@@ -1315,8 +1355,25 @@ def _ensure_answer_suffixes(
     *,
     current_concept: CachedConcept | None = None,
     chat_tone: ChatTone = "hao",
+    use_current_concept_on_low: bool = False,
+    normalized: bool = False,
+    model_cited: bool = False,
 ) -> str:
-    result, model_cited = normalize_answer_text(answer)
+    if normalized:
+        result = answer
+    else:
+        result, model_cited = normalize_answer_text(answer)
+    if retrieval.band == "low":
+        # low 검색 근거는 쓰지 않는다. 관련 학습 대화는 현재 개념 캐시만 근거로 쓴다.
+        result = re.sub(
+            r"(?m)^\s*(?:참고한 사전 항목\s*:|※\s*(?:핵심 정의는|보충 설명은)).*$",
+            "",
+            result,
+        )
+        result = re.sub(r"\n{3,}", "\n\n", result).strip()
+        if use_current_concept_on_low and current_concept is not None:
+            return f"{result}\n\n핵심 정의 출처: {PUBLIC_DATA_SOURCE_LABEL} ({current_concept.term})"
+        return result
     if knowledge_mode == "dictionary_plus" and (retrieval.sources or current_concept is not None):
         first_sentence = re.split(r"(?<=[.!?。])\s+", result, maxsplit=1)[0]
         matched = [
