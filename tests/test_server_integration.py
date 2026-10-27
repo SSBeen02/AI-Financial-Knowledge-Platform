@@ -83,6 +83,11 @@ def test_routes_auth_overrides_and_cors(monkeypatch):
     preview = client.options("/learning/messages", headers=headers)
     assert preview.status_code == 200
     assert preview.headers["access-control-allow-origin"] == headers["Origin"]
+    headers["Origin"] = "https://ta-01m5yj5vac8njv8j256mwkq1pv-1380-lp872tikukpxayt0s1iptt4qh.makeproxy-m.figma.site"
+    mobile_preview = client.options("/learning/messages/stream", headers=headers)
+    assert mobile_preview.status_code == 200
+    assert mobile_preview.headers["access-control-allow-origin"] == headers["Origin"]
+    assert client.options("/learning/messages/stream", headers={**headers, "Origin": headers["Origin"] + ".evil.example"}).status_code == 400
     health = client.get("/health", headers={"Origin": headers["Origin"]})
     assert health.status_code == 200
     assert health.headers["access-control-allow-origin"] == headers["Origin"]

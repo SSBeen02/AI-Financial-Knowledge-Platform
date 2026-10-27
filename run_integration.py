@@ -12,6 +12,7 @@ QUIZ_ROOT = ROOT / "quiz-upload"
 PRETEST_ROOT = ROOT / "pretest-upload"
 FIGMA_MAKE_PREVIEW_ORIGIN = (
     r"https://(?:app-[a-z0-9]+\.makeproxy-c|"
+    r"ta-[a-z0-9]+-[0-9]+-[a-z0-9]+\.makeproxy-m|"
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-figmacachedpreview)\.figma\.site"
 )
 for module_root in (CHATBOT_ROOT, QUIZ_ROOT, PRETEST_ROOT):
