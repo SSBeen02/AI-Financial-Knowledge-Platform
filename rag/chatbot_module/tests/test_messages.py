@@ -323,7 +323,7 @@ def test_keyword_starts_session_and_saves_two_rows(message_env: MessageEnv) -> N
     assert body["top_score"] == 0.71
     assert body["sources"][0]["concept_id"] == DIVISION
     assert body["display_sources"][0]["concept_id"] == DIVISION
-    assert body["answer"].endswith("핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털)")
+    assert "참고한 사전 항목: (분업/특화)" in body["answer"]
     assert body["display_sources"][0]["label"] == "재정경제부_시사경제용어 정보 (공공데이터포털)"
     assert message_env.status.get_statuses(USER, "stage1")[DIVISION] == STATUS_IN_PROGRESS
 
@@ -483,7 +483,7 @@ def test_answer_removes_markdown_emoji_and_model_source_line(
     ).json()
     assert body["answer"] == (
         "분업은 일을 나누는 방식이오.\n\n"
-        "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털)"
+        "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털) (분업/특화)"
     )
     assert _messages(message_env.store)[-1].content == body["answer"]
 
@@ -615,7 +615,7 @@ def test_blocked_stream_sends_safe_answer_and_done(message_env: MessageEnv) -> N
         (
             "dictionary_plus",
             "배경, 이런 현상이 생기는 이유, 생활 사례, 관련 개념과의 연결",
-            "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털)",
+            "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털) (분업/특화)",
         ),
         (
             "free",
@@ -626,12 +626,17 @@ def test_blocked_stream_sends_safe_answer_and_done(message_env: MessageEnv) -> N
 )
 def test_answer_knowledge_modes_control_prompt_and_source_label(
     message_env: MessageEnv,
+    monkeypatch: pytest.MonkeyPatch,
     mode: str,
     expected_instruction: str,
     expected_source: str | None,
 ) -> None:
     settings = message_env.settings.model_copy(update={"answer_knowledge_mode": mode})
     message_env.client.app.dependency_overrides[get_cached_settings] = lambda: settings
+    def generate(prompt: Prompt) -> str:
+        message_env.llm.prompts.append(prompt)
+        return "분업은 일을 나누는 방식이오."
+    monkeypatch.setattr(message_env.llm, "generate", generate)
 
     body = message_env.client.post(
         "/learning/messages",
@@ -642,7 +647,7 @@ def test_answer_knowledge_modes_control_prompt_and_source_label(
     prompt = message_env.llm.prompts[-1].instructions
     assert expected_instruction in prompt
     if mode == "dictionary_plus":
-        assert "보충 설명은 일반적인 경제 상식을 바탕으로 했소" in prompt
+        assert "출처와 일반 경제 지식 사용 안내는 서버가" in prompt
         assert "3~5문장" in prompt
     if expected_source is None:
         assert "출처:" not in body["answer"]
@@ -1028,6 +1033,53 @@ def test_blank_free_question_returns_validation_error(message_env: MessageEnv) -
     assert _messages(message_env.store) == []
 
 
+@pytest.mark.parametrize("path", ["/learning/messages", "/learning/messages/stream"])
+@pytest.mark.parametrize("tone, expected", [
+    ("hao", "질문은 500자 이내로 적어 주시오"),
+    ("modern", "질문은 500자 이내로 입력해 주세요"),
+])
+def test_question_length_boundary_and_no_writes_on_rejection(
+    message_env: MessageEnv, path: str, tone: str, expected: str
+) -> None:
+    message_env.settings.chat_tone = tone
+    too_long = message_env.client.post(
+        path, headers=HEADERS, json={"message": "가" * 501, "concept_id": DIVISION}
+    )
+    assert too_long.status_code == 422
+    assert too_long.json() == {
+        "code": "validation_error",
+        "message": expected,
+        "request_id": too_long.headers["X-Request-ID"],
+    }
+    assert message_env.retriever.calls == []
+    assert message_env.store.get_active_session(USER) is None
+    assert message_env.status.get_statuses(USER, "stage1")[DIVISION] == STATUS_NOT_STARTED
+    assert _messages(message_env.store) == []
+
+    accepted = message_env.client.post(
+        path, headers=HEADERS, json={"message": "가" * 500, "concept_id": DIVISION}
+    )
+    assert accepted.status_code == 200
+    if path.endswith("stream"):
+        assert "event: done" in accepted.text
+    else:
+        assert accepted.json()["session_id"]
+    assert len(_messages(message_env.store)) == 2
+
+
+@pytest.mark.parametrize("path", ["/learning/messages", "/learning/messages/stream"])
+def test_question_limit_uses_config_and_ignores_whitespace(
+    message_env: MessageEnv, path: str
+) -> None:
+    message_env.settings.max_question_chars = 4
+    accepted = message_env.client.post(path, headers=HEADERS, json={"message": " 가 나 다 라 "})
+    assert accepted.status_code == 200
+    rejected = message_env.client.post(path, headers=HEADERS, json={"message": "가 나 다 라 마"})
+    assert rejected.status_code == 422
+    assert rejected.json()["message"] == "질문은 4자 이내로 적어 주시오"
+    assert len(_messages(message_env.store)) == 2
+
+
 @pytest.mark.parametrize("failure", ["search", "llm"])
 def test_free_question_external_failure_returns_502_without_writes(
     message_env: MessageEnv, failure: str
@@ -1310,9 +1362,74 @@ def test_stream_sends_only_normalized_answer(message_env: MessageEnv) -> None:
     answer = events[0][1]["delta"]
     assert answer == (
         "분업은 중요하오.\n\n"
-        "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털)"
+        "핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털) (분업/특화)"
     )
     assert _messages(message_env.store)[-1].content == answer
+
+
+@pytest.mark.parametrize(
+    "question, answer, docs, expected_prefix, tone",
+    [
+        (
+            "물가는 계속 오르는데 경기는 안 좋고 실업도 늘어나는 상황을 뭐라고 해?",
+            "스태그플레이션은 경기 침체와 물가 상승이 함께 나타나는 현상이오.",
+            (("sisa_2091", "인플레이션(Inflation)"), ("sisa_1810", "에코플레이션")),
+            "참고한 사전 항목:",
+            "hao",
+        ),
+        (
+            "CPI 발표가 뭐길래 뉴스에 자주 나와?",
+            "CPI는 소비자물가지수라는 뜻이오.",
+            (("sisa_2466", "차이나플레이션"), ("sisa_1430", "생활물가지수(CPI for Living Necessaries)")),
+            "참고한 사전 항목:",
+            "modern",
+        ),
+        (
+            "인플레이션은 뭐야?",
+            "인플레이션은 물가가 전반적으로 오르는 현상이오.",
+            (("sisa_2091", "인플레이션(Inflation)"), ("sisa_1810", "에코플레이션")),
+            "핵심 정의 출처:",
+            "hao",
+        ),
+    ],
+)
+def test_source_attribution_matches_in_message_and_sse(
+    message_env: MessageEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    question: str,
+    answer: str,
+    docs: tuple[tuple[str, str], ...],
+    expected_prefix: str,
+    tone: str,
+) -> None:
+    message_env.settings.chat_tone = tone
+    hits = [_doc(concept_id, term, 0.7) for concept_id, term in docs]
+    monkeypatch.setattr(
+        message_env.retriever, "search",
+        lambda _question: RetrievalResult(hits, hits, "high", 0.7),
+    )
+    monkeypatch.setattr(message_env.llm, "generate", lambda _prompt: answer)
+    message_env.llm.stream_chunks = [answer]
+    payload = {"message": question}
+    regular = message_env.client.post("/learning/messages", headers=HEADERS, json=payload)
+    streamed = message_env.client.post("/learning/messages/stream", headers=HEADERS, json=payload)
+    assert regular.status_code == streamed.status_code == 200
+    body = regular.json()
+    events = _sse_events(streamed.text)
+    assert events[0][0] == "token"
+    assert events[-1][0] == "done"
+    assert events[0][1]["delta"] == body["answer"]
+    assert expected_prefix in body["answer"]
+    assert body["sources"] == events[-1][1]["sources"]
+    assert body["display_sources"] == events[-1][1]["display_sources"]
+    assert _messages(message_env.store)[-1].content == body["answer"]
+    if expected_prefix == "핵심 정의 출처:":
+        assert "에코플레이션" not in body["answer"]
+    else:
+        assert "핵심 정의 출처:" not in body["answer"]
+        assert (
+            "설명했어요" if tone == "modern" else "설명했소"
+        ) in body["answer"]
 
 
 def test_stream_low_band_sends_notice_only_in_done(message_env: MessageEnv) -> None:

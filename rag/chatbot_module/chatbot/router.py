@@ -68,6 +68,18 @@ from chatbot.quiz import QuizService
 router = APIRouter(prefix="/learning", tags=["learning"])
 
 
+def _validate_message_length(request: MessageIn, settings: Settings) -> None:
+    try:
+        request.validate_max_length(settings.max_question_chars)
+    except ValueError as exc:
+        message = (
+            f"질문은 {settings.max_question_chars}자 이내로 적어 주시오"
+            if settings.chat_tone == "hao"
+            else str(exc)
+        )
+        raise HTTPException(status_code=422, detail=message) from exc
+
+
 def _call[T](action: Callable[[], T]) -> T:
     try:
         return action()
@@ -187,6 +199,7 @@ def create_message(
     llm: LLMAdapter = Depends(get_llm_adapter),
     settings: Settings = Depends(get_cached_settings),
 ) -> MessageResponse:
+    _validate_message_length(request, settings)
     return _call(
         lambda: send_message(
             catalog=catalog,
@@ -215,6 +228,7 @@ def create_message_stream(
     llm: LLMAdapter = Depends(get_llm_adapter),
     settings: Settings = Depends(get_cached_settings),
 ) -> StreamingResponse:
+    _validate_message_length(request, settings)
     prepared = _call(
         lambda: prepare_message(
             catalog=catalog,

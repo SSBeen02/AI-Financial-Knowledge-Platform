@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     chat_emoji: bool = False
     answer_knowledge_mode: AnswerKnowledgeMode = "dictionary_plus"
     free_question_auto_start: bool = False
+    max_question_chars: int = Field(default=500, ge=1)
     cors_allow_origins: str = "http://localhost:5173,http://localhost:3000"
     band_high: float = 0.50
     band_low: float = 0.45

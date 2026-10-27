@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import suppress
 from dataclasses import dataclass
@@ -39,7 +40,7 @@ from chatbot.relevance import (
     mentioned_concepts,
     normalize_term,
 )
-from chatbot.retrieval import ConceptCache, RetrievalResult, RetrievedDoc, Retriever, display_source_label, to_source_out
+from chatbot.retrieval import ConceptCache, CachedConcept, RetrievalResult, RetrievedDoc, Retriever, PUBLIC_DATA_SOURCE_LABEL, display_source_label, to_source_out
 from chatbot.safety import classify_question, limited_answer, redact_sensitive
 from chatbot.schemas import (
     ChatMode,
@@ -160,6 +161,7 @@ class PreparedMessage:
     request: MessageIn
     plan: MessagePlan
     retrieval: RetrievalResult
+    current_concept: CachedConcept | None
     is_related: bool
     notice: str | None
     suggested_concept: SuggestedConceptOut | None
@@ -353,6 +355,8 @@ def send_message(
             raw_answer,
             prepared.retrieval,
             prepared.answer_knowledge_mode,
+            current_concept=prepared.current_concept,
+            chat_tone=prepared.chat_tone,
         )
     answer = with_advice_disclaimer(answer, prepared.request.message, prepared.safety_level)
     return _persist_prepared_message(
@@ -387,6 +391,7 @@ def prepare_message(
             ),
             plan=MessagePlan(concept=None, session=None, start_type=None, attempt=None),
             retrieval=RetrievalResult(sources=[], concept_hits=[], band="low", top_score=0.0),
+            current_concept=None,
             is_related=False,
             notice=None,
             suggested_concept=None,
@@ -477,6 +482,7 @@ def prepare_message(
         display_source_min_score=settings.display_source_min_score,
         chat_tone=settings.chat_tone,
         answer_knowledge_mode=settings.answer_knowledge_mode,
+        current_concept=cached,
     )
 
 
@@ -530,6 +536,8 @@ async def stream_message_events(
             raw_answer,
             prepared.retrieval,
             prepared.answer_knowledge_mode,
+            current_concept=prepared.current_concept,
+            chat_tone=prepared.chat_tone,
         )
         answer = with_advice_disclaimer(answer, prepared.request.message, prepared.safety_level)
         if await is_disconnected():
@@ -1304,8 +1312,39 @@ def _ensure_answer_suffixes(
     answer: str,
     retrieval: RetrievalResult,
     knowledge_mode: AnswerKnowledgeMode,
+    *,
+    current_concept: CachedConcept | None = None,
+    chat_tone: ChatTone = "hao",
 ) -> str:
     result, model_cited = normalize_answer_text(answer)
+    if knowledge_mode == "dictionary_plus" and (retrieval.sources or current_concept is not None):
+        first_sentence = re.split(r"(?<=[.!?。])\s+", result, maxsplit=1)[0]
+        matched = [
+            source for source in retrieval.sources
+            if _definition_term_matches(first_sentence, source.term, source.aliases)
+        ]
+        current_matches = current_concept is not None and _definition_term_matches(
+            first_sentence, current_concept.term, current_concept.aliases
+        )
+        if matched or current_matches:
+            entries = [
+                f"{display_source_label(source.label, source.collection)} ({source.term})"
+                for source in matched
+            ]
+            if current_matches and current_concept is not None and not any(
+                source.concept_id == current_concept.concept_id for source in matched
+            ):
+                entries.append(f"{PUBLIC_DATA_SOURCE_LABEL} ({current_concept.term})")
+            return f"{result}\n\n핵심 정의 출처: {', '.join(dict.fromkeys(entries))}"
+        if not retrieval.sources:
+            return result
+        terms = ", ".join(dict.fromkeys(source.term for source in retrieval.sources))
+        note = (
+            "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했어요"
+            if chat_tone == "modern"
+            else "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했소"
+        )
+        return f"{result}\n\n참고한 사전 항목: ({terms})\n{note}"
     labels = list(dict.fromkeys(
         display_source_label(source.label, source.collection)
         for source in retrieval.sources
@@ -1314,6 +1353,20 @@ def _ensure_answer_suffixes(
         return result
     prefix = "핵심 정의 출처:" if knowledge_mode == "dictionary_plus" else "출처:"
     return f"{result}\n\n{prefix} {', '.join(labels)}"
+
+
+def _definition_term_matches(sentence: str, term: str, aliases: tuple[str, ...]) -> bool:
+    """첫 정의 문장의 완전한 용어만 인정하며 긴 단어 안의 부분 문자열은 제외한다."""
+    base_term = re.sub(r"\([^)]*\)", "", term).strip()
+    candidates = [base_term, *re.split(r"[/·]", base_term), *re.findall(r"\(([^)]*)\)", term), *aliases]
+    suffix = r"(?:은|는|이|가|란|이라|이라고|라고|라는|이라는|을|를|과|와|도|까지|부터|의|으로|로|이오|요)?(?![가-힣A-Za-z0-9])"
+    for candidate in dict.fromkeys(c.strip() for c in candidates if c.strip()):
+        if len(candidate) < 2:
+            continue
+        pattern = r"(?<![가-힣A-Za-z0-9])" + r"\s*".join(re.escape(char) for char in candidate.replace(" ", "")) + suffix
+        if re.search(pattern, sentence, flags=re.IGNORECASE):
+            return True
+    return False
 
 
 def _message_list_item(

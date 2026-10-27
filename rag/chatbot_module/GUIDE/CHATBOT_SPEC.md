@@ -159,6 +159,7 @@
 ### 4.2 메시지 전송 (단일 진입점)
 `POST /learning/messages`
 - 요청: `{ "message": "분업/특화에 대해 알려줘", "concept_id": "sisa_1281" }`
+  - `message`는 공백을 제외한 글자 수가 `MAX_QUESTION_CHARS`(기본 500)를 넘으면 422다. `POST /learning/messages/stream`에도 같은 제한과 `{code,message,request_id}` 오류 형식을 적용하고 저장·학습 상태 변경 전에 거절한다. 오류 메시지는 설정된 글자 수와 `CHAT_TONE`을 따른다(`hao`: `질문은 500자 이내로 적어 주시오`, `modern`: `질문은 500자 이내로 입력해 주세요`).
   - `concept_id`: 키워드 버튼으로 입력된 경우에만 프론트가 함께 보낸다 (선택). 자유 질문이면 생략.
   - 클라이언트는 `stage`를 보내지 않는다. 모든 분기와 검증은 `get_current_stage()` 결과를 사용한다.
 - 서버 처리 순서
@@ -313,6 +314,7 @@
 - **context**: 현재 개념 정의 + 검색 근거(band에 따라) — 각 근거는 `[concept_id] term: text` 형식
 - **history**: 같은 세션의 최근 6턴
 - **user**: 현재 질문
+- 답변·관련성·안전 재판정 프롬프트는 사용자 질문과 대화 이력의 지시문을 자료로만 취급하고 시스템 지시·프롬프트·내부 설정 공개와 역할 변경 요청을 거절하도록 지시한다. 현재 질문은 `<user_question>` 경계로 감싸며 질문 속 같은 태그는 이스케이프한다. 이는 프롬프트 인젝션의 기본 방어이며 모델이 지시를 항상 무시한다는 보장은 아니다.
 - 프롬프트 템플릿은 `prompts.py` 한 곳에 모은다 (나중에 수정하기 쉽게).
 
 ---
@@ -414,6 +416,7 @@ README_chatbot.md  # 통합 방법, 환경변수, API 예시
 | `CHAT_TONE` | `hao`(기본, 학당 훈장 하오체) / `modern`(현대 해요체) |
 | `ANSWER_KNOWLEDGE_MODE` | `dictionary_only` / `dictionary_plus`(기본) / `free` |
 | `FREE_QUESTION_AUTO_START` | 기본 `false`. 자유 질문 자동 시작 호환 설정 |
+| `MAX_QUESTION_CHARS` | 기본 `500`. 공백 제외 질문 글자 수 제한. 일반·SSE 메시지 API 공통, 말투별 422 |
 | `CORS_ALLOW_ORIGINS` | 쉼표 구분. 기본 `http://localhost:5173,http://localhost:3000` |
 | `BAND_HIGH` / `BAND_LOW` | `0.50` / `0.45` |
 | `DISPLAY_SOURCE_MIN_SCORE` | `0.60` (현재 개념 외 화면 표시 출처의 최소 점수) |
@@ -530,7 +533,7 @@ install_learning_error_handlers(app)
 45. **개발 플래그**: `DEV_ENABLE_TOOLS`는 개발 API와 `/dev/chat` 등록만 제어한다. 이전 `DEV_USE_LOCAL_STATUS`가 남으면 이름 변경 경고를 기록한다. `DEV_SIMULATE_QUIZ_GENERATION_FAILURE`는 개발 QuizService 실패 시뮬레이션이다.
 46. **학습 중 화면**: active 세션 또는 `in_progress` 개념이 있으면 다른 키워드를 비활성화하고 `/learning/current.quick_prompts`를 입력 보조로 제공한다. 개념 칩 클릭은 첫 prompt를 입력할 뿐 자동 전송하지 않는다.
 47. **답변 지식 범위**: `ANSWER_KNOWLEDGE_MODE`는 `dictionary_only`(사전 중심 프롬프트), `dictionary_plus`(기본. 핵심 정의·사실은 사전과 일치시키고 배경·이유·생활 사례·관련 개념은 일반 경제 지식으로 보충), `free`(사전은 참고하되 퀴즈 기준 핵심 정의와 충돌하지 않게 자유 설명)다. 후자의 두 모드는 단순 질문은 3~5문장, 상세·이유·예시 요청은 더 길게 답한다. 근거 없는 구체적 숫자·날짜·최신 통계·특정 기업·인물 사례는 만들지 않는다.
-48. **지식 모드별 출처**: `dictionary_plus`는 `핵심 정의 출처: 재정경제부_시사경제용어 정보 (공공데이터포털)`를 표시하고 일반 지식 보충이 있으면 `CHAT_TONE`에 맞는 보충 안내를 붙인다. `free`는 사전을 실제로 인용하거나 근거로 사용한 경우에만 출처를 표시한다. `dictionary_only`의 기존 출처 동작은 유지한다.
+48. **지식 모드별 출처**: `dictionary_plus`는 첫 정의 문장의 대상 용어가 검색 문서의 `term`/`aliases` 또는 현재 학습 개념과 전체 일치하면 일치한 문서만 `핵심 정의 출처: …`로 표시한다. 일치하지 않으면 검색 문서 용어들을 `참고한 사전 항목: …`으로 표시하고 핵심 정의가 일반 경제 지식 기반이라는 `CHAT_TONE`별 안내를 붙인다. 이 구분은 답변 본문에만 적용하며 `sources`와 `display_sources`는 유지한다. `free`는 사전을 실제로 인용하거나 근거로 사용한 경우에만 출처를 표시한다. `dictionary_only`의 기존 출처 동작은 유지한다.
 49. **10/06 대화 복원**: `/learning/history`는 `limit`만 받고 각 메시지에 `session_id`, `attempt`, `concept_id`, `start_type`을 반환한다. 재학습 화면은 시도 경계에 구분선을 표시하되 LLM 대화 맥락과 퀴즈 학습 맥락은 변경하지 않는다. `learning_sessions` DB 컬럼은 `stage_id`를 사용한다.
 50. **팀원 개발 환경**: `LLM_PROVIDER=fake`는 OpenAI 모델·키 없이 고정 답변을 반환한다. 브라우저 origin은 `CORS_ALLOW_ORIGINS`로 제한하며, Qdrant 표준 payload에는 누락 시 `source=시사경제용어사전`을 보강한다.
 51. **응답 스테이지 필드**: API 응답의 스테이지 식별자는 모두 `stage_id`를 사용한다. 개념 목록은 `stage_id`와 `stage_name_ko`, 메시지 개념·세션·학습 맥락 개념은 `stage_id`를 반환한다. 기존 SQLite에 저장된 학습 맥락의 `concept.stage`는 읽기 호환만 유지하고 새 응답과 저장 payload는 `concept.stage_id`를 사용한다. 게임 이벤트 조회는 4.7의 평면 객체를 반환하며 DB의 JSON payload 저장 구조는 유지한다.
