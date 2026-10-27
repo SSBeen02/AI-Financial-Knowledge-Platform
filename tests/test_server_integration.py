@@ -56,13 +56,21 @@ def test_auth_timeout(monkeypatch):
         assert client.get("/identity", headers={"Authorization": "Bearer token"}).status_code == 503
 
 
-def test_routes_auth_overrides_and_cors():
+def test_routes_auth_overrides_and_cors(monkeypatch):
+    # 다른 테스트의 import 시점에 생성된 설정 캐시와 독립적으로 검증한다.
+    settings = integration.deps.get_cached_settings().model_copy(update={
+        "cors_allow_origins": "https://plant-pin-65764387.figma.site",
+    })
+    monkeypatch.setattr(integration.deps, "get_cached_settings", lambda: settings)
     app = integration.create_app()
     paths = {route.path for route in app.routes if hasattr(route, "path")}
     # Include-router internals differ across FastAPI versions; inspect OpenAPI instead.
     paths |= set(app.openapi()["paths"])
     assert "/learning/messages" in paths
     assert "/api/v1/quiz-sets/{id}" in paths
+    assert "/game/sync" in paths
+    assert "/game/character" in paths
+    assert "/diagnostics" in paths and "/diagnostics/current" in paths and "/reports/{id}" in paths
     assert not any(path.startswith("/dev") for path in paths)
     assert app.dependency_overrides[integration.chat_user_id] is get_verified_user_id
     assert app.dependency_overrides[integration.quiz_user_id] is get_verified_user_id
@@ -99,15 +107,28 @@ def test_startup_connects_callbacks_once_and_disposes(monkeypatch):
     schema = AsyncMock()
     dispose = AsyncMock()
     register = Mock()
+    game = Mock()
+    prepare = Mock(return_value=game)
     monkeypatch.setattr(integration, "ensure_quiz_schema", schema)
     monkeypatch.setattr(integration, "dispose_quiz_database", dispose)
     monkeypatch.setattr(integration, "register_quiz_integration", register)
+    monkeypatch.setattr(integration, "prepare_game_runtime", prepare)
+    pretest = Mock()
+    monkeypatch.setattr(integration, "prepare_pretest_runtime", Mock(return_value=pretest))
     app = integration.create_app()
     with TestClient(app) as client:
         assert client.get("/health").status_code == 200
         register.assert_called_once_with(app)
+        assert app.state.game_service is game.service
+        assert app.state.game_event_source is game.event_source
+        assert app.state.pretest_service is pretest.service
     schema.assert_awaited_once()
     dispose.assert_awaited_once()
+    prepare.assert_called_once()
+    game.close.assert_called_once()
+    assert app.state.game_service is None
+    pretest.close.assert_called_once()
+    assert app.state.pretest_service is None
 
 
 def test_schema_checks_do_not_create_tables(monkeypatch):
