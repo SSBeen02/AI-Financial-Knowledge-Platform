@@ -9,11 +9,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 CHATBOT_ROOT = ROOT / "rag" / "chatbot_module"
 QUIZ_ROOT = ROOT / "quiz-upload"
+PRETEST_ROOT = ROOT / "pretest-upload"
 FIGMA_MAKE_PREVIEW_ORIGIN = (
     r"https://(?:app-[a-z0-9]+\.makeproxy-c|"
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-figmacachedpreview)\.figma\.site"
 )
-for module_root in (CHATBOT_ROOT, QUIZ_ROOT):
+for module_root in (CHATBOT_ROOT, QUIZ_ROOT, PRETEST_ROOT):
     sys.path.insert(0, str(module_root))
 
 # Deployment uses process variables only; nested development .env files are ignored.
@@ -39,6 +40,13 @@ from dependencies import get_current_user_id as quiz_user_id
 from server_auth import auth_settings, get_verified_user_id
 from game.integration import prepare_game_runtime
 from game.router import router as game_router
+from pretest.dependencies import get_current_user_id as pretest_user_id
+from pretest.integration import get_pretest_service, prepare_pretest_runtime, router as pretest_state_router
+from pretest.routers.diagnostics import router as diagnostics_router
+from pretest.routers.reports import router as reports_router
+from pretest.routers.errors import diagnostic_error_handler, pretest_validation_handler
+from pretest.services.errors import DiagnosticError
+from pretest.services.diagnostic_service import get_diagnostic_service
 
 
 def validate_environment() -> None:
@@ -61,6 +69,8 @@ def validate_environment() -> None:
 async def lifespan(app: FastAPI):
     validate_environment()
     game_runtime = None
+    pretest_runtime = None
+    app.state.pretest_service = None
     app.state.game_service = None
     app.state.game_event_source = None
     async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
@@ -71,6 +81,9 @@ async def lifespan(app: FastAPI):
             status_service = deps.get_concept_status_service()
             await ensure_quiz_schema()
             register_quiz_integration(app)
+            pretest_runtime = prepare_pretest_runtime()
+            if pretest_runtime is not None:
+                app.state.pretest_service = pretest_runtime.service
             game_runtime = prepare_game_runtime(status_service)
             if game_runtime is not None:
                 app.state.game_service = game_runtime.service
@@ -82,6 +95,9 @@ async def lifespan(app: FastAPI):
             deps.get_llm_adapter()
             yield
         finally:
+            app.state.pretest_service = None
+            if pretest_runtime is not None:
+                pretest_runtime.close()
             app.state.game_service = None
             app.state.game_event_source = None
             if game_runtime is not None:
@@ -97,11 +113,14 @@ def create_app() -> FastAPI:
     learning_validation = application.exception_handlers[RequestValidationError]
 
     async def validation(request, exc):
+        if request.url.path.startswith(("/diagnostics", "/reports")):
+            return await pretest_validation_handler(request, exc)
         if request.url.path.startswith("/api/v1/"):
             return await validation_error_handler(request, exc)
         return await learning_validation(request, exc)
 
     application.add_exception_handler(QuizAPIError, quiz_api_error_handler)
+    application.add_exception_handler(DiagnosticError, diagnostic_error_handler)
     application.add_exception_handler(RequestValidationError, validation)
     application.add_middleware(
         CORSMiddleware, allow_origins=settings.cors_origins,
@@ -112,9 +131,14 @@ def create_app() -> FastAPI:
     )
     application.dependency_overrides[chat_user_id] = get_verified_user_id
     application.dependency_overrides[quiz_user_id] = get_verified_user_id
+    application.dependency_overrides[pretest_user_id] = get_verified_user_id
+    application.dependency_overrides[get_diagnostic_service] = get_pretest_service
     application.include_router(chat_router)
     application.include_router(quiz_router)
     application.include_router(game_router)
+    application.include_router(pretest_state_router)
+    application.include_router(diagnostics_router)
+    application.include_router(reports_router)
 
     @application.get("/health", tags=["system"])
     def health():
