@@ -71,6 +71,11 @@ class MessageIn(BaseModel):
             raise ValueError("메시지를 입력해 주세요.")
         return text
 
+    def validate_max_length(self, maximum: int) -> None:
+        """앞뒤 공백은 정리하되 길이는 모든 공백을 제외한 글자 수로 센다."""
+        if len("".join(self.message.split())) > maximum:
+            raise ValueError(f"질문은 {maximum}자 이내로 입력해 주세요")
+
     @field_validator("concept_id")
     @classmethod
     def _blank_concept_id_is_absent(cls, value: str | None) -> str | None:

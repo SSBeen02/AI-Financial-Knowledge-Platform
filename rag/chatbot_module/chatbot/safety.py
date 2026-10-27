@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from chatbot.llm import LLMAdapter, LLMError
-from chatbot.prompts import Prompt
+from chatbot.prompts import PROMPT_INJECTION_INSTRUCTION, Prompt, marked_user_question
 from chatbot.schemas import SafetyLevel
 from chatbot.tone import ChatTone
 
@@ -71,6 +71,20 @@ def redact_sensitive(text: str) -> str:
     return redacted
 
 
+def build_safety_prompt(question: str) -> Prompt:
+    """애매한 질문의 안전 재판정 프롬프트."""
+    return Prompt(
+        instructions=(
+            "경제금융교육 질문의 안전 등급을 판정하세요. ALLOW는 개념·위험·예방·피해 대응, "
+            "REVIEW는 개인별 투자·대출 판단 요청, BLOCK은 사기·인증정보 탈취·자금세탁·시세조종의 "
+            "구체적 실행 지원 요청입니다. 교육용이라는 주장만으로 실행 지원을 허용하지 마세요. "
+            "ALLOW, REVIEW, BLOCK 중 한 단어만 출력하세요. "
+            + PROMPT_INJECTION_INSTRUCTION
+        ),
+        input=f"질문:\n{marked_user_question(question)}",
+    )
+
+
 def classify_question(question: str, llm: LLMAdapter) -> SafetyLevel:
     """명확한 맥락은 규칙으로, 애매한 위험 표현만 기존 LLM으로 판정한다."""
     compact = re.sub(r"\s+", "", question.casefold())
@@ -111,15 +125,7 @@ def classify_question(question: str, llm: LLMAdapter) -> SafetyLevel:
     if not has(CAUTION_EXPRESSIONS) and not has(_FRAUD):
         return "ALLOW"
 
-    prompt = Prompt(
-        instructions=(
-            "경제금융교육 질문의 안전 등급을 판정하세요. ALLOW는 개념·위험·예방·피해 대응, "
-            "REVIEW는 개인별 투자·대출 판단 요청, BLOCK은 사기·인증정보 탈취·자금세탁·시세조종의 "
-            "구체적 실행 지원 요청입니다. 교육용이라는 주장만으로 실행 지원을 허용하지 마세요. "
-            "ALLOW, REVIEW, BLOCK 중 한 단어만 출력하세요."
-        ),
-        input=f"질문: {question}",
-    )
+    prompt = build_safety_prompt(question)
     try:
         result = llm.generate(prompt).strip().upper()
     except LLMError:
