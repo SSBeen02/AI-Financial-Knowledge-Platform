@@ -1,6 +1,7 @@
 """개념·스테이지 단위 학습노트 및 최초 결과와 분리된 복습."""
 import json
 import uuid
+import unicodedata
 from functools import lru_cache
 from pathlib import Path
 
@@ -97,7 +98,11 @@ async def list_concepts(
                 groups[key]["stage_ids"].append(quiz.stage_id)
             groups[key]["questions"].append(item.model_dump())
     total = len(groups)
-    selected = list(groups.values())[(page - 1) * 20:page * 20]
+    # 전체 개념을 가나다순으로 정렬한 다음 페이지를 나눈다.
+    ordered = sorted(groups.values(), key=lambda g: (
+        unicodedata.normalize("NFC", g["term"]).strip().casefold(), g["concept_id"]
+    ))
+    selected = ordered[(page - 1) * 20:page * 20]
     submission_ids = {q["submission_id"] for g in selected for q in g["questions"]}
     reviews = {}
     if submission_ids:

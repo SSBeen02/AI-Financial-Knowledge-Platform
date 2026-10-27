@@ -77,6 +77,8 @@
 
 
   <script>
+    const formatChoice = (choice) => String(choice.key).trim() === String(choice.text).trim()
+      ? choice.key : choice.key + ". " + choice.text;
     const params = new URLSearchParams(location.search);
     if(params.get('mode') === 'review') {
       document.querySelector('header h1').textContent='다시 풀기';
@@ -101,7 +103,7 @@
           const card=el('article','');card.className='question';card.append(el('h2',question.prompt));
           const choices=el('div','');choices.className='choices';let answer='',sending=false;const key=crypto.randomUUID(),buttons=[];
           const submit=el('button','답안 제출');submit.className='submit';submit.disabled=true;
-          for(const choice of question.choices){const b=el('button',choice.key+'. '+choice.text);b.className='choice';b.setAttribute('aria-pressed','false');b.onclick=()=>{if(sending)return;answer=choice.key;buttons.forEach(x=>{x.classList.toggle('selected',x===b);x.setAttribute('aria-pressed',String(x===b))});submit.disabled=false};buttons.push(b);choices.append(b)}
+          for(const choice of question.choices){const b=el('button',formatChoice(choice));b.className='choice';b.setAttribute('aria-pressed','false');b.onclick=()=>{if(sending)return;answer=choice.key;buttons.forEach(x=>{x.classList.toggle('selected',x===b);x.setAttribute('aria-pressed',String(x===b))});submit.disabled=false};buttons.push(b);choices.append(b)}
           const result=el('section','');result.setAttribute('role','status');
           submit.onclick=async()=>{sending=true;submit.disabled=true;buttons.forEach(b=>b.disabled=true);statusEl.textContent='복습 결과를 저장하는 중입니다.';
             try{const r=await reviewFetch('/api/v1/learning-notes/submissions/'+encodeURIComponent(question.submission_id)+'/questions/'+question.question_index+'/reviews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answer,idempotency_key:key})});
@@ -166,7 +168,7 @@
           button.dataset.key = choice.key;
           button.classList.toggle("selected", answers[question.question_index] === choice.key);
           button.setAttribute("aria-pressed", answers[question.question_index] === choice.key ? "true" : "false");
-          button.textContent = choice.key + ". " + choice.text;
+          button.textContent = formatChoice(choice);
           button.addEventListener("click", () => selectAnswer(question.question_index, choice.key));
           choices.appendChild(button);
         });
@@ -220,7 +222,7 @@
         const question = quiz.questions.find((q) => q.question_index === item.question_index);
         const choiceLabel = (key) => {
           const choice = question.choices.find((c) => c.key === key);
-          return choice ? key + ". " + choice.text : key;
+          return choice ? formatChoice(choice) : key;
         };
         const answer = document.createElement("p");
         answer.className = "answer-detail";
