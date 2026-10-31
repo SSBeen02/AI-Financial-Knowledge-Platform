@@ -5,6 +5,7 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated, Literal
 
 ROOT = Path(__file__).resolve().parent
 CHATBOT_ROOT = ROOT / "rag" / "chatbot_module"
@@ -12,6 +13,7 @@ QUIZ_ROOT = ROOT / "quiz-upload"
 PRETEST_ROOT = ROOT / "pretest-upload"
 FIGMA_MAKE_PREVIEW_ORIGIN = (
     r"https://(?:app-[a-z0-9]+\.makeproxy-c|"
+    r"ta-[a-z0-9]+-[0-9]+-[a-z0-9]+\.makeproxy-m|"
     r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-figmacachedpreview)\.figma\.site"
 )
 for module_root in (CHATBOT_ROOT, QUIZ_ROOT, PRETEST_ROOT):
@@ -24,18 +26,19 @@ if not catalog.is_absolute():
     os.environ["STAGES_JSON_PATH"] = str((CHATBOT_ROOT / catalog).resolve())
 
 import httpx
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints.quizzes import router as quiz_router
+from app.api.v1.endpoints.quiz_reviews import router as quiz_review_router
 from app.db import dispose_quiz_database, ensure_quiz_schema
 from app.errors import QuizAPIError, quiz_api_error_handler, validation_error_handler
 from app.services.team_quiz import register_quiz_integration
 from chatbot import deps
 from chatbot.errors import install_learning_error_handlers
 from chatbot.integrations import get_current_user_id as chat_user_id
-from chatbot.router import router as chat_router
+from chatbot.router import router as chat_router, _call as learning_call
 from dependencies import get_current_user_id as quiz_user_id
 from server_auth import auth_settings, get_verified_user_id
 from game.integration import prepare_game_runtime
@@ -135,10 +138,31 @@ def create_app() -> FastAPI:
     application.dependency_overrides[get_diagnostic_service] = get_pretest_service
     application.include_router(chat_router)
     application.include_router(quiz_router)
+    application.include_router(quiz_review_router)
     application.include_router(game_router)
     application.include_router(pretest_state_router)
     application.include_router(diagnostics_router)
     application.include_router(reports_router)
+
+    @application.get("/learning/concept-statuses", tags=["learning"])
+    def concept_statuses(
+        status: Literal["passed", "in_progress", "not_started"],
+        user: Annotated[str, Depends(get_verified_user_id)],
+        service=Depends(deps.get_concept_status_service),
+        catalog=Depends(deps.get_stage_catalog),
+    ):
+        def read():
+            stage_id = service.get_current_stage(user)
+            statuses = service.get_statuses(user, stage_id)
+            concepts = [
+                {"concept_id": item.concept_id, "term": item.term,
+                 "stage_id": stage_id, "status": status}
+                for item in catalog.stages[stage_id].concepts
+                if statuses.get(item.concept_id, "not_started") == status
+            ]
+            return {"stage_id": stage_id, "status": status,
+                    "total": len(concepts), "concepts": concepts}
+        return learning_call(read)
 
     @application.get("/health", tags=["system"])
     def health():

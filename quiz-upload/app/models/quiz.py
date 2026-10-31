@@ -80,3 +80,21 @@ class QuizSubmission(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
 
     quiz_set: Mapped[QuizSet] = relationship(back_populates="submissions")
+
+
+class QuizReview(Base):
+    """개별 문제 복습. 최초 제출·학습 통과·보상에는 영향을 주지 않는다."""
+
+    __tablename__ = "quiz_reviews"
+    __table_args__ = (
+        UniqueConstraint("user_id", "idempotency_key", name="uq_quiz_reviews_user_key"),
+        Index("ix_quiz_reviews_source", "user_id", "submission_id", "question_index", "created_at"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[str] = mapped_column(String, nullable=False)
+    submission_id: Mapped[str] = mapped_column(ForeignKey("quiz_submissions.id"), nullable=False)
+    question_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    submitted_answer: Mapped[str] = mapped_column(String(500), nullable=False)
+    is_correct: Mapped[bool] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
