@@ -362,7 +362,10 @@ class SqlChatStore(ChatStore):
         connect_args = {}
         if settings.chat_db_url.startswith("sqlite"):
             connect_args["check_same_thread"] = False
-        self._engine = create_engine(settings.chat_db_url, connect_args=connect_args)
+        pool_options = {} if settings.chat_db_url.startswith("sqlite") else {
+            "pool_size": 1, "max_overflow": 0, "pool_timeout": 15, "pool_pre_ping": True,
+        }
+        self._engine = create_engine(settings.chat_db_url, connect_args=connect_args, **pool_options)
         if settings.db_auto_create:
             if settings.chat_db_url.startswith("sqlite"):
                 self._migrate_sqlite_schema()

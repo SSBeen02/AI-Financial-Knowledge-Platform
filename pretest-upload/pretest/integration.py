@@ -57,7 +57,9 @@ def prepare_pretest_runtime():
         raise RuntimeError("운영 LLM_REPORT_MODE는 gemini 또는 openai로 설정하세요.")
     if not os.getenv("GEMINI_API_KEY" if mode == "gemini" else "OPENAI_API_KEY", "").strip():
         raise RuntimeError("선택한 사전테스트 리포트 제공자의 서버 API 키가 필요합니다.")
-    engine = create_engine(url, pool_pre_ping=True, hide_parameters=True)
+    # Each module has its own engine; keep rollout overlap below the shared session limit.
+    engine = create_engine(url, pool_pre_ping=True, hide_parameters=True,
+                           pool_size=1, max_overflow=0, pool_timeout=15)
     try:
         return PretestRuntime(DiagnosticService(load_questions(), SqlDiagnosticRepository(engine)), engine)
     except Exception:
