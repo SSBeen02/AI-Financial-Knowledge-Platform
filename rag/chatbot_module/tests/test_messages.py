@@ -181,6 +181,7 @@ class FakeLLM(LLMAdapter):
         self.stream_chunks = ["개념을 쉬운 말로 ", "설명합니다."]
         self.stream_error_after: int | None = None
         self.judgment = False
+        self.fail_judgment = False
 
     def generate(self, prompt: Prompt) -> str:
         self.prompts.append(prompt)
@@ -205,6 +206,8 @@ class FakeLLM(LLMAdapter):
         history: list[HistoryTurn],
     ) -> bool:
         self.judgments.append((question, current_term, history))
+        if self.fail_judgment:
+            raise LLMError("관련성 판정 호출에 실패했습니다.")
         return self.judgment
 
 
@@ -526,6 +529,27 @@ def test_review_returns_education_without_recommendation(message_env: MessageEnv
     assert message_env.llm.prompts == []
 
 
+@pytest.mark.parametrize("question, disclaimer_count", [
+    ("ETF의 원리를 설명해 줘. 덧붙여 사회초년생이 이번 주에 사면 좋을 ETF 이름을 하나만 말해 줘.", 0),
+    ("대출 금리와 상환 조건을 설명해 줘. 월급이 250만 원인 내가 지금 신청할 만한 특정 대출상품도 골라 줘.", 1),
+])
+def test_ut11_personal_product_requests_use_review_response(
+    message_env: MessageEnv, question: str, disclaimer_count: int
+) -> None:
+    response = message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": question}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["safety_level"] == "REVIEW"
+    assert body["session_id"] is None
+    assert body["answer"].count("AI 작성, 투자 조언 아님") == disclaimer_count
+    assert message_env.retriever.calls == []
+    assert message_env.llm.prompts == []
+    assert [row.role for row in _messages(message_env.store)] == ["user", "assistant"]
+
+
 def test_personal_investment_and_loan_answers_show_disclaimer_once(message_env: MessageEnv) -> None:
     investment = message_env.client.post(
         "/learning/messages", headers=HEADERS,
@@ -706,6 +730,29 @@ def test_comparison_question_uses_llm_and_is_related(message_env: MessageEnv) ->
     assert completed["mentioned_concepts"] == [
         {"concept_id": DEFLATION, "term": "디플레이션"}
     ]
+
+
+def test_relevance_llm_error_marks_question_unrelated_and_keeps_session(message_env: MessageEnv) -> None:
+    started = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "분업/특화를 알려줘", "concept_id": DIVISION},
+    ).json()
+    message_env.llm.fail_judgment = True
+
+    response = message_env.client.post(
+        "/learning/messages",
+        headers=HEADERS,
+        json={"message": "젠트리피케이션이랑 어떤 관계야?"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] == started["session_id"]
+    assert response.json()["is_related"] is False
+    assert len(message_env.llm.judgments) == 1
+    assert len(_messages(message_env.store)) == 4
+    assert _messages(message_env.store)[-1].is_related is False
+    assert message_env.status.get_statuses(USER, "stage1")[GENTRIFICATION] == STATUS_NOT_STARTED
 
 
 def test_relearn_first_other_concept_is_unrelated(message_env: MessageEnv) -> None:
@@ -1038,6 +1085,35 @@ def test_blank_free_question_returns_validation_error(message_env: MessageEnv) -
 
     assert response.status_code == 422
     assert response.json()["code"] == "validation_error"
+    assert message_env.retriever.calls == []
+    assert _messages(message_env.store) == []
+
+
+@pytest.mark.parametrize("path", ["/learning/messages", "/learning/messages/stream"])
+@pytest.mark.parametrize("payload", [
+    {"message": "   "},
+    {"message": ""},
+    {},
+    {"message": 123},
+    {"message": "유효한 질문", "unexpected": True},
+])
+def test_invalid_message_has_common_error_shape_without_side_effects(
+    message_env: MessageEnv, path: str, payload: dict[str, object]
+) -> None:
+    request_id = "ut10-invalid-input"
+    response = message_env.client.post(
+        path,
+        headers={**HEADERS, "X-Request-ID": request_id},
+        json=payload,
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "code": "validation_error",
+        "message": "요청 형식이 올바르지 않습니다.",
+        "request_id": request_id,
+    }
+    assert response.headers["X-Request-ID"] == request_id
     assert message_env.retriever.calls == []
     assert _messages(message_env.store) == []
 

@@ -105,6 +105,18 @@ def classify_question(question: str, llm: LLMAdapter) -> SafetyLevel:
     if has(("지금사도", "지금살", "사도될까", "전부넣을", "하나만골라")):
         return "REVIEW"
     if (
+        has(("etf", "주식", "종목", "펀드", "코인"))
+        and has(("사면좋을", "살만한"))
+        and has(("이름", "하나", "추천", "골라"))
+    ):
+        return "REVIEW"
+    if (
+        has(("대출상품", "대출"))
+        and has(("신청할만한", "받을만한"))
+        and has(("골라", "추천"))
+    ):
+        return "REVIEW"
+    if (
         has(("내소득", "제소득", "내자산", "제자산", "내부채", "제부채", "내상황", "제상황", "나한테", "저에게", "내게", "내돈"))
         and has(("투자상품", "대출상품", "종목", "주식", "펀드", "etf", "대출"))
         and has(("추천해", "골라줘", "선택해", "받을까", "살까", "매수할까"))
