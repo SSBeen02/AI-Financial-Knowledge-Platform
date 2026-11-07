@@ -135,6 +135,8 @@ def test_fss_profile_uses_200_candidates_and_keeps_book_source() -> None:
         calls.append({**kwargs, "sparse": sparse})
         if kwargs["collection"] == "sisa_terms":
             return [Point("sisa_1", 0.7)]
+        if kwargs["collection"] != "fss_practical_finance_4e_3p_kure_v1":
+            return []
         return [
             Point("book_1", 0.5, {"chunk_id": "book_1", "title": "신용관리", "content": "신용점수 설명"}),
             Point("book_2", 0.333, {"chunk_id": "book_2", "title": "은행의 기원", "content": "은행 설명"}),
@@ -152,6 +154,51 @@ def test_fss_profile_uses_200_candidates_and_keeps_book_source() -> None:
     assert [source.concept_id for source in result.sources] == ["sisa_1", "book_1", "book_2"]
     assert result.sources[1].text == "신용점수 설명"
     assert to_source_out(result.sources[1]).label == "대학생을 위한 실용금융(제4판)_금융감독원_2024"
+
+
+def test_bok_uses_dense_and_preserves_citation_metadata() -> None:
+    from chatbot.config import SEARCH_PROFILES
+
+    search, calls = _search_factory({
+        "sisa_terms": [Point("sisa_1", 0.72)],
+        "bok_economic_financial_terms_2026_kure_v1_rrf": [Point(
+            "bok_1", 0.68,
+            {"document_id": "bok_1", "term": "SOFR", "content_markdown": "SOFR 설명",
+             "printed_page": 402, "source_url": "https://www.bok.or.kr/example"},
+        )],
+    })
+    profiles = {
+        "sisa_terms": SEARCH_PROFILES["sisa_terms"],
+        "bok_economic_financial_terms_2026_kure_v1_rrf": SEARCH_PROFILES["bok_economic_financial_terms_2026_kure_v1_rrf"],
+    }
+    result = Retriever(object(), object(), _settings(), profiles=profiles, search_fn=search).search("SOFR")
+    assert calls == [
+        ("sisa_terms", "dense", 5),
+        ("bok_economic_financial_terms_2026_kure_v1_rrf", "dense", 5),
+    ]
+    assert result.band == "high" and result.top_score == 0.72
+    assert result.sources[1].text == "SOFR 설명"
+    source = to_source_out(result.sources[1]).model_dump()
+    assert source["term"] == "SOFR"
+    assert source["printed_page"] == 402
+    assert source["source_url"] == "https://www.bok.or.kr/example"
+
+
+def test_three_default_sources_keep_their_own_slots() -> None:
+    search, calls = _search_factory({
+        "sisa_terms": [Point(f"sisa_{n}", 0.7 - n * 0.01) for n in range(4)],
+        "fss_practical_finance_4e_3p_kure_v1": [Point(f"fss_{n}", 0.5) for n in range(3)],
+        "bok_economic_financial_terms_2026_kure_v1_rrf": [Point(f"bok_{n}", 0.68) for n in range(3)],
+    })
+    result = Retriever(object(), object(), _settings(), search_fn=search, sparse=object()).search("금융")
+    assert [doc.concept_id for doc in result.sources] == [
+        "sisa_0", "sisa_1", "sisa_2", "fss_0", "fss_1", "bok_0", "bok_1",
+    ]
+    assert calls == [
+        ("sisa_terms", "dense", 5),
+        ("fss_practical_finance_4e_3p_kure_v1", "hybrid", 5),
+        ("bok_economic_financial_terms_2026_kure_v1_rrf", "dense", 5),
+    ]
 
 
 def test_fss_malformed_section_uses_chapter_title() -> None:
@@ -185,20 +232,44 @@ def test_fss_qdrant_query_uses_dense_and_bm25_with_rrf() -> None:
             assert [(item.using, item.limit) for item in kwargs["prefetch"]] == [("dense", 200), ("bm25", 200)]
             assert kwargs["query"] == models.RrfQuery(rrf=models.Rrf(k=2, weights=[1.0, 1.0]))
             assert kwargs["limit"] == 5
-            return SimpleNamespace(points=[SimpleNamespace(id="chunk-1", score=0.5, payload={
-                "source_id": "chapter-1", "chunk_index": 1, "section": "1.1 신용",
-                "content_markdown": "신용의 의미", "book_title": "대학생을 위한 실용금융",
-            })])
+            assert kwargs["with_vectors"] == ["dense"]
+            return SimpleNamespace(points=[
+                SimpleNamespace(id="chunk-1", score=0.5, vector={"dense": [0.1, 0.2]}, payload={
+                    "source_id": "chapter-1", "chunk_index": 1, "section": "1.1 신용",
+                    "content_markdown": "신용의 의미", "book_title": "대학생을 위한 실용금융",
+                }),
+                SimpleNamespace(id="chunk-2", score=0.75, vector={"dense": [0.2, -0.1]}, payload={
+                    "section": "무관한 항목", "content_markdown": "다른 내용",
+                }),
+            ])
 
     from chatbot.config import SEARCH_PROFILES
     profile = SEARCH_PROFILES["fss_practical_finance_4e_3p_kure_v1"]
     retriever = Retriever(Client(), Dense(), _settings(), sparse=Sparse())
     points = retriever._search_named_sparse("신용관리", "fss_practical_finance_4e_3p_kure_v1", profile)
+    assert [point.id for point in points] == ["chunk-1"]
     from chatbot.retrieval import _retrieved
     doc = _retrieved(points[0], "fss_practical_finance_4e_3p_kure_v1", profile["label"])
     assert doc.concept_id == "chunk-1"
     assert doc.term == "1.1 신용"
     assert doc.text == "신용의 의미"
+
+
+def test_named_sparse_search_rejects_another_collection_model() -> None:
+    from chatbot.config import SEARCH_PROFILES
+
+    class Sparse:
+        collection = "fss_practical_finance_4e_3p_kure_v1"
+
+    profile = {**SEARCH_PROFILES["bok_economic_financial_terms_2026_kure_v1_rrf"],
+               "mode": "hybrid", "sparse_vector": "bm25"}
+    retriever = Retriever(object(), object(), _settings(), sparse=Sparse())
+    try:
+        retriever._search_named_sparse("질문", "bok_economic_financial_terms_2026_kure_v1_rrf", profile)
+    except RetrievalError as exc:
+        assert "희소 인코더" in exc.detail
+    else:
+        raise AssertionError("교재 BM25 모델을 한국은행 컬렉션에 재사용하면 안 됩니다.")
 
 
 def test_empty_concept_source_is_low_band() -> None:

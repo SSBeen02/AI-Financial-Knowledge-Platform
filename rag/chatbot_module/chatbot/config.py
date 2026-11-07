@@ -19,6 +19,7 @@ class SearchProfile(TypedDict):
     concept_source: bool
     prefetch_k: NotRequired[int]
     sparse_vector: NotRequired[str]
+    min_dense_score: NotRequired[float]
 
 
 SEARCH_PROFILES: dict[str, SearchProfile] = {
@@ -38,6 +39,14 @@ SEARCH_PROFILES: dict[str, SearchProfile] = {
         "concept_source": False,
         "prefetch_k": 200,
         "sparse_vector": "bm25",
+        "min_dense_score": 0.50,
+    },
+    "bok_economic_financial_terms_2026_kure_v1_rrf": {
+        "mode": "dense",
+        "k": 5,
+        "slots": 2,
+        "label": "2026_경제금융용어 800선_한국은행",
+        "concept_source": False,
     },
 }
 

@@ -651,6 +651,7 @@ def _persist_prepared_message(
             retrieval,
             current_concept_id=session.concept_id if session is not None else None,
             minimum_score=prepared.display_source_min_score,
+            answer=answer,
         )
     ]
     pair = store.save_message_pair(
@@ -995,6 +996,9 @@ def _learning_turns(messages: list[MessageRecord]) -> list[LearningTurnOut]:
                 collection=str(source.get("collection") or ""),
                 label=str(source.get("label") or ""),
                 images=source.get("images") if isinstance(source.get("images"), list) else None,
+                term=str(source.get("term")) if source.get("term") is not None else None,
+                printed_page=source.get("printed_page") if type(source.get("printed_page")) is int else None,
+                source_url=str(source.get("source_url")) if source.get("source_url") else None,
             )
             for source in (message.sources or [])
         ]
@@ -1063,6 +1067,7 @@ def _display_sources(
     *,
     current_concept_id: str | None,
     minimum_score: float,
+    answer: str | None = None,
 ) -> list[RetrievedDoc]:
     """화면용 출처만 고른다. LLM 근거 및 저장용 sources에는 영향이 없다."""
     if retrieval.band == "low":
@@ -1081,12 +1086,16 @@ def _display_sources(
 
     selected: list[RetrievedDoc] = []
     seen: set[tuple[str, str]] = set()
+    first_sentence = re.split(r"(?<=[.!?。])\s+", answer or "", maxsplit=1)[0]
     for source in candidates:
         key = (source.collection, source.concept_id)
         if key in seen:
             continue
+        cited_definition = bool(first_sentence) and _definition_term_matches(
+            first_sentence, source.term, source.aliases
+        )
         if (source.concept_id == current_concept_id or source.collection == FSS_COLLECTION
-                or source.score >= minimum_score):
+                or source.score >= minimum_score or cited_definition):
             selected.append(source)
             seen.add(key)
     return selected

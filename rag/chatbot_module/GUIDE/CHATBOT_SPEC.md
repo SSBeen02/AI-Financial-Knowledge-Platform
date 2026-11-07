@@ -353,8 +353,10 @@ SEARCH_PROFILES = {
     "sisa_terms": {"mode": "dense", "k": 5, "slots": 3, "label": "재정경제부_시사경제용어 정보 (공공데이터포털)",
                    "concept_source": True},   # 개념 감지·학습 개념은 이 소스에서만
     "fss_practical_finance_4e_3p_kure_v1": {"mode": "hybrid", "k": 5, "slots": 2,
-        "prefetch_k": 200, "sparse_vector": "bm25",
+        "prefetch_k": 200, "sparse_vector": "bm25", "min_dense_score": 0.50,
         "label": "대학생을 위한 실용금융(제4판)_금융감독원_2024", "concept_source": False},
+    "bok_economic_financial_terms_2026_kure_v1_rrf": {"mode": "dense", "k": 5,
+        "slots": 2, "label": "2026_경제금융용어 800선_한국은행", "concept_source": False},
 }
 ```
 - `retrieval.py` 는 `SEARCH_PROFILES` 를 순회하며 각 컬렉션을 **자기 mode로** 검색한다 (`rag_common.search` 재사용).
@@ -362,7 +364,7 @@ SEARCH_PROFILES = {
 - **범위 밖 판별(band)** 은 `concept_source=True` 인 소스의 **Dense 최고 점수**로만 계산한다 (기준값 0.50/0.45가 이 기준으로 검증됨). 다른 소스가 hybrid여도 판별 기준은 바뀌지 않는다.
 - **개념 감지·현재 개념 조회·관련성 판정**은 `concept_source=True` 소스만 사용한다.
 - 응답의 `sources` 와 학습 맥락의 근거에는 **컬렉션명과 label** 을 함께 기록한다 (출처 표기·퀴즈 참고용).
-- 현재는 `sisa_terms`와 금융감독원 교재 컬렉션을 등록한다. 소스가 1개일 때도 같은 코드 경로로 동작해야 한다.
+- 현재는 `sisa_terms`, 금융감독원 교재, 한국은행 2026 용어집 컬렉션을 등록한다. 소스가 1개일 때도 같은 코드 경로로 동작해야 한다.
 - 기존 `sisa_terms` payload 보강 스크립트는 기본 dry-run으로 변경 예정 건수만 출력하고 `--apply`에서만
   누락된 `chunk_id`, `concept_ids`, `doc_version`, `source=시사경제용어사전`을 저장한다. 재임베딩은 하지 않는다.
 
@@ -504,7 +506,7 @@ install_learning_error_handlers(app)
 14. **추론 강도**: `LLM_REASONING_EFFORT`의 코드 기본값은 빈 값이다. 빈 값이면 OpenAI의 `reasoning`과 Upstage Chat Completions의 최상위 `reasoning_effort`를 모두 생략한다. `.env.example`에는 `low` 예시와 모델 미지원 시 비우라는 주석을 둔다.
 15. **low band 근거**: `band=low`이면 응답 `sources`는 빈 배열이다. `band`와 `top_score`는 유지하며, 검색 결과는 답변 근거로 사용하지 않는다.
 16. **외부 호출 실패의 원자성**: 완성된 user/assistant 쌍만 저장한다. Qdrant 또는 LLM 호출 실패는 HTTP 502로 반환하고 메시지를 저장하지 않는다. 새 세션 생성과 `mark_in_progress()`는 LLM 답변 생성이 성공한 뒤에만 실행해 외부 호출 실패 시 세션·개념 상태가 바뀌지 않게 한다.
-17. **화면 표시용 출처**: 메시지 응답에 `display_sources`를 추가한다. `sources`는 LLM에 전달한 전체 근거로 유지하고, 화면 복원을 위해 `display_sources`도 별도 저장한다. `band=low`이면 `display_sources=[]`이며, 그 외에는 현재 세션 개념 문서가 검색됐으면 항상 포함하고 다른 문서는 `DISPLAY_SOURCE_MIN_SCORE`(기본 `0.60`) 이상만 포함한다.
+17. **화면 표시용 출처**: 메시지 응답에 `display_sources`를 추가한다. `sources`는 LLM에 전달한 전체 근거로 유지하고, 화면 복원을 위해 `display_sources`도 별도 저장한다. `band=low`이면 `display_sources=[]`이며, 그 외에는 현재 세션 개념 문서와 답변 첫 정의 문장에 인용된 근거 문서를 검색 점수와 무관하게 포함한다. 그 밖의 시사·한국은행 Dense 문서는 `DISPLAY_SOURCE_MIN_SCORE`(기본 `0.60`) 이상만 포함한다. 교재 RRF 출처는 58항을 따른다.
 18. **임베딩 의존성 고정**: `rag_common.py`는 수정하지 않고, 새 환경에서도 현재 검증된 조합이 재현되도록 `sentence-transformers==6.1.0`으로 고정한다.
 19. **퀴즈 결과 단일 기록**: `quiz-result`는 완료되어 학습 맥락의 `quiz_status`가 `pending`인 세션에만 허용한다. active 세션이나 이미 `passed`/`failed` 결과가 기록된 세션은 409로 거절하며 기존 결과를 덮어쓰지 않는다.
 20. **SSE 원자성**: 비스트리밍과 스트리밍은 같은 메시지 준비·분기·검증·저장 함수를 공유한다. 스트리밍 중 LLM 오류가 나면 `error` 이벤트로 끝내고, 클라이언트가 중간에 연결을 끊으면 이벤트 생성을 중단한다. 두 경우 모두 메시지 저장, 세션 생성, `mark_in_progress()`를 수행하지 않는다. 모델 스트림이 끝까지 성공하고 연결이 유지된 경우에만 상태를 반영한 뒤 `done`을 보내며, `done` 메타데이터에는 `display_sources`를 포함한다.
@@ -545,4 +547,5 @@ install_learning_error_handlers(app)
 55. **답변 표시 정리·공공데이터 출처(53보다 우선)**: LLM 답변은 일반 텍스트로 제공하고 마크다운 강조 기호와 이모지·이모티콘을 제거한다. `CHAT_EMOJI`는 이전 환경 설정 호환용으로만 읽고 이모지를 허용하지 않는다. 비스트리밍 응답, SSE 토큰을 이어 붙인 결과, 저장 답변에 같은 정리 결과를 사용한다. SSE는 모델 출력의 문장 끝이나 줄바꿈에서 정리된 구간을 즉시 토큰으로 전송하고 출처·조건부 AI 고지를 마지막 토큰으로 전송한다. 범위 밖 안내는 기존 `notice` 필드를 유지하며 SSE에서는 `done.notice`로 전송한다. `sisa_terms`의 사용자 표시 출처는 공공데이터포털의 `재정경제부_시사경제용어 정보`임을 드러내는 `재정경제부_시사경제용어 정보 (공공데이터포털)`로 통일하고, 기존 축약 라벨의 저장 기록도 조회할 때 새 라벨로 표시한다. 모델이 작성한 출처 줄은 제거하고 검색 근거의 라벨로 서버가 최종 출처를 붙인다. `free` 모드는 모델이 출처를 표기한 경우에만 붙인다.
 56. **금융교육 입력 안전 판정**: 메시지 입력을 공통 준비 단계에서 `ALLOW`/`REVIEW`/`BLOCK`으로 분류한다. 금칙어 단독으로 차단하지 않고 불법 실행 의도, 교육·예방 문맥, 개인별 권유 문맥을 함께 본다. 명확한 문맥은 규칙으로 판정하고 애매한 위험 표현만 기존 LLM 어댑터로 분류한다. LLM 분류 실패·형식 오류는 `REVIEW`로 처리한다. `ALLOW`는 기존 검색·답변·학습 흐름을 유지한다. `REVIEW`는 검색·답변 LLM·학습 상태 변경 없이 일반적인 판단 기준을 서버 문구로 안내하고, `BLOCK`은 실행 방법 대신 예방·피해 대응 정보를 서버 문구로 안내한다. 두 등급 모두 학습 세션 밖의 완성된 user/assistant 쌍으로 저장하며 `BLOCK` 질문은 고정 문구로 대체한다. API 응답과 SSE `done`은 `safety_level`을 포함한다. 주민번호·카드번호·계좌번호·연락처·이메일·표식이 있는 인증번호 등의 입력은 검색·LLM·저장 전에 비식별화한다.
 57. **권유 제한과 조건부 AI 고지**: 모든 답변 생성 프롬프트는 특정 금융상품의 매수·매도 지시, 소득·자산·부채에 따른 개인 맞춤 투자상품 추천, 특정 대출상품 추천 및 대출 실행·한도 확대 권유를 금지한다. 일반적인 상품 구조·위험·비용·금리·상환 조건·비교 기준의 교육 설명은 허용한다. 고정 문구 `AI 작성, 투자 조언 아님`은 애플리케이션이 질문의 개인별 투자·대출 판단 의도 또는 특정 상품의 비교·위험 분석 의도와 실제 답변의 판단·위험·비용 내용을 함께 확인한 경우에만 답변 끝에 한 번 붙인다. 단순 개념·구조·저축·소비·신용관리·사기 예방 설명과 BLOCK·오류 응답에는 붙이지 않는다. 모델이 문구를 출력해도 서버가 제거한 뒤 조건에 맞을 때만 붙인다. 비스트리밍·SSE 토큰·저장 답변은 같은 결과를 사용한다.
-58. **금융감독원 교재 검색 추가**: `fss_practical_finance_4e_3p_kure_v1`의 502개 청크를 답변 보조 근거로 검색한다. KURE-v1 Dense와 Kiwi BM25 Sparse를 각각 상위 200개까지 검색하고 Qdrant 동일 가중 RRF(k=2)로 결합한다. BM25 질의는 적재 당시의 `data/fss_hybrid_sparse_model.json` 어휘 ID·IDF와 동일한 Kiwi 형태소 규칙을 사용한다. 상위 5개 중 최대 2개를 답변 근거와 화면 출처에 포함하며 RRF 점수에 Dense 유사도 임계값을 적용하지 않는다. 사용자 표시 출처는 `대학생을 위한 실용금융(제4판)_금융감독원_2024`다. 이 소스는 `concept_source=False`이며 개념 감지·band 기준·학습 상태는 기존 `sisa_terms` Dense 검색을 유지한다. 교재의 `section`이 본문 문장처럼 길면 `chapter_title`을 제목으로 쓴다. 제공된 평가 결과는 기존 30문항 MRR@10 0.928, 추가 10문항 0.925이며 이 구현에서 재측정한 값은 아니다.
+58. **금융감독원 교재 검색 추가**: `fss_practical_finance_4e_3p_kure_v1`의 502개 청크를 답변 보조 근거로 검색한다. KURE-v1 Dense와 Kiwi BM25 Sparse를 각각 상위 200개까지 검색하고 Qdrant 동일 가중 RRF(k=2)로 결합한다. BM25 질의는 적재 당시의 `data/fss_hybrid_sparse_model.json` 어휘 ID·IDF와 동일한 Kiwi 형태소 규칙을 사용한다. RRF 상위 5개 청크의 KURE-v1 Dense 유사도를 확인하고 0.50 이상인 것 중 최대 2개만 답변 근거와 화면 출처에 포함한다. 이 기준은 교재의 무관한 RRF 상위 결과를 줄이기 위한 후처리이며, RRF 순위와 화면에 반환하는 RRF 점수는 유지한다. 사용자 표시 출처는 `대학생을 위한 실용금융(제4판)_금융감독원_2024`다. 이 소스는 `concept_source=False`이며 개념 감지·band 기준·학습 상태는 기존 `sisa_terms` Dense 검색을 유지한다. 교재의 `section`이 본문 문장처럼 길면 `chapter_title`을 제목으로 쓴다. 제공된 기존 30문항 MRR@10 0.928, 추가 10문항 0.925는 이 후처리 전 평가이며 재측정하지 않았다.
+59. **한국은행 2026 용어집 검색 추가**: `bok_economic_financial_terms_2026_kure_v1_rrf`의 790개 청크를 KURE-v1 정규화 Dense 임베딩으로 검색한다. 상위 5개 중 최대 2개를 기존 소스 결과에 이어 답변 근거로 전달한다. `payload.content_markdown`을 본문으로 사용하고 `term`, 정수형 `printed_page`, HTTP(S) `source_url`을 `sources`·`display_sources`·학습 맥락의 선택적 출처 메타데이터로 전달한다. 사용자 표시 label은 `2026_경제금융용어 800선_한국은행`이다. 이 소스는 `concept_source=False`이며 기존 `sisa_terms`의 band·개념 감지·학습 상태 판정 기준을 바꾸지 않는다. 추후 hybrid 비교를 켤 때는 적재 당시의 별도 어휘·IDF 모델과 동일한 Kiwi 규칙을 사용한다.
