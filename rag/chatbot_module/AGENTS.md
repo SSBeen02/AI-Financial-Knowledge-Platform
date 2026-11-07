@@ -44,7 +44,7 @@
   - 퀴즈 기록 없이 학습 중인 세션 → `normal`
   - `quiz_pending` 중 active 세션 존재는 불변 조건 위반 → 409
   - quiz_pending 안내는 `CHAT_TONE`을 따름. 기본 하오체: `현재 {term} 개념의 퀴즈 결과를 기다리는 중이오.`
-- 검색: Dense 단독(KURE-v1), 하이브리드·리랭커 사용 안 함
+- 검색: `sisa_terms`는 Dense 단독(KURE-v1)으로 유지한다. `fss_practical_finance_4e_3p_kure_v1`은 KURE-v1 Dense와 Kiwi BM25 Sparse의 상위 200개씩을 Qdrant 동일 가중 RRF(k=2)로 결합한다. 리랭커는 사용하지 않는다.
 - band: 최고 점수 ≥ `BAND_HIGH`(0.50) high / ≥ `BAND_LOW`(0.45) mid / 미만 low — concept_source 소스의 Dense 점수로만 판정
 - 개념 캐시는 서버 시작 시 1회만 로드, 요청마다 Qdrant에서 개념을 조회하지 않음
 - 메시지는 user/assistant 두 행, 응답 `message_id` 는 assistant 행

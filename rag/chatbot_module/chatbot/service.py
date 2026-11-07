@@ -42,7 +42,7 @@ from chatbot.relevance import (
     normalize_term,
 )
 
-from chatbot.retrieval import ConceptCache, CachedConcept, RetrievalResult, RetrievedDoc, Retriever, PUBLIC_DATA_SOURCE_LABEL, display_source_label, normalize_search_query, to_source_out
+from chatbot.retrieval import ConceptCache, CachedConcept, RetrievalResult, RetrievedDoc, Retriever, PUBLIC_DATA_SOURCE_LABEL, FSS_COLLECTION, display_source_label, normalize_search_query, to_source_out
 from chatbot.safety import classify_question, limited_answer, redact_sensitive
 from chatbot.schemas import (
     ChatMode,
@@ -1085,7 +1085,8 @@ def _display_sources(
         key = (source.collection, source.concept_id)
         if key in seen:
             continue
-        if source.concept_id == current_concept_id or source.score >= minimum_score:
+        if (source.concept_id == current_concept_id or source.collection == FSS_COLLECTION
+                or source.score >= minimum_score):
             selected.append(source)
             seen.add(key)
     return selected
@@ -1366,7 +1367,7 @@ def _ensure_answer_suffixes(
     if retrieval.band == "low":
         # low 검색 근거는 쓰지 않는다. 관련 학습 대화는 현재 개념 캐시만 근거로 쓴다.
         result = re.sub(
-            r"(?m)^\s*(?:참고한 사전 항목\s*:|※\s*(?:핵심 정의는|보충 설명은)).*$",
+            r"(?m)^\s*(?:참고한 (?:사전 항목|자료)\s*:|※\s*(?:핵심 정의는|보충 설명은)).*$",
             "",
             result,
         )
@@ -1395,6 +1396,17 @@ def _ensure_answer_suffixes(
             return f"{result}\n\n핵심 정의 출처: {', '.join(dict.fromkeys(entries))}"
         if not retrieval.sources:
             return result
+        if any(source.collection == FSS_COLLECTION for source in retrieval.sources):
+            labels = ", ".join(dict.fromkeys(
+                display_source_label(source.label, source.collection)
+                for source in retrieval.sources
+            ))
+            note = (
+                "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했어요"
+                if chat_tone == "modern"
+                else "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했소"
+            )
+            return f"{result}\n\n참고한 자료: {labels}\n{note}"
         terms = ", ".join(dict.fromkeys(source.term for source in retrieval.sources))
         note = (
             "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했어요"

@@ -20,6 +20,7 @@ _status_service: SqlConceptStatusService | None = None
 _chat_store: SqlChatStore | None = None
 _qdrant: Any | None = None
 _dense: Any | None = None
+_sparse: Any | None = None
 _concept_cache: ConceptCache | None = None
 _retriever: Retriever | None = None
 _llm_adapter: LLMAdapter | None = None
@@ -69,6 +70,15 @@ def get_dense_encoder() -> Any:
     return _dense
 
 
+def get_sparse_encoder() -> Any:
+    global _sparse
+    if _sparse is None:
+        from chatbot.fss_sparse import FssSparseEncoder
+
+        _sparse = FssSparseEncoder()
+    return _sparse
+
+
 def get_concept_cache() -> ConceptCache:
     global _concept_cache
     if _concept_cache is None:
@@ -84,7 +94,11 @@ def get_concept_cache() -> ConceptCache:
 def get_retriever() -> Retriever:
     global _retriever
     if _retriever is None:
-        _retriever = Retriever(get_qdrant_client(), get_dense_encoder(), get_cached_settings())
+        settings = get_cached_settings()
+        sparse = get_sparse_encoder() if any(
+            profile["mode"] != "dense" for profile in settings.search_profiles.values()
+        ) else None
+        _retriever = Retriever(get_qdrant_client(), get_dense_encoder(), settings, sparse=sparse)
     return _retriever
 
 

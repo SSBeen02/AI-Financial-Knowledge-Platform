@@ -76,7 +76,7 @@ def build_answer_prompt(
 ) -> Prompt:
     current_term = current_concept.term if current_concept is not None else "없음"
     band_instruction = {
-        "high": "제공된 검색 근거를 우선 사용해 답하세요.",
+        "high": "제공된 검색 근거 중 질문에 직접 관련된 내용만 우선 사용해 답하세요.",
         "mid": "검색 근거가 질문과 직접 관련 있을 때만 사용하고, 무리하게 연결하지 마세요.",
         "low": (
             "검색 근거를 사용하지 말고 일반 지식으로만 답하세요."

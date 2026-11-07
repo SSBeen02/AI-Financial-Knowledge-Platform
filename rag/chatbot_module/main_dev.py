@@ -18,6 +18,7 @@ from chatbot.deps import (
     get_concept_cache,
     get_concept_status_service,
     get_dense_encoder,
+    get_sparse_encoder,
     get_llm_adapter,
     get_qdrant_client,
     get_retriever,
@@ -37,6 +38,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     get_concept_status_service()
     get_qdrant_client()
     get_dense_encoder()
+    get_sparse_encoder()
     get_concept_cache()
     get_retriever()
     get_llm_adapter()
