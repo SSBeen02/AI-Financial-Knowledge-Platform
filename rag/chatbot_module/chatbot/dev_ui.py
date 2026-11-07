@@ -161,8 +161,33 @@ DEV_CHAT_HTML = r"""<!doctype html>
     state.selectedConceptTerm = null;
     renderSelectedConcept();
   }
-  function sourceText(sources) {
-    return (sources || []).map((source) => `${source.term} · ${source.label} · ${Number(source.score).toFixed(3)}`).join("\n");
+  function appendSources(item, entries) {
+    if (!entries || !entries.length) return;
+    const sources = document.createElement("div");
+    sources.className = "sources";
+    sources.textContent = "화면 출처";
+    for (const source of entries) {
+      const row = document.createElement("div");
+      const page = source.printed_page == null ? "" : ` · ${source.printed_page}쪽`;
+      row.appendChild(document.createTextNode(
+        `${source.term} · ${source.label}${page} · ${Number(source.score).toFixed(3)}`
+      ));
+      if (source.source_url) {
+        try {
+          const url = new URL(source.source_url);
+          if (url.protocol === "https:" || url.protocol === "http:") {
+            const link = document.createElement("a");
+            link.href = url.href;
+            link.target = "_blank";
+            link.rel = "noopener noreferrer";
+            link.textContent = " · 원문";
+            row.appendChild(link);
+          }
+        } catch (_) { /* 잘못된 원문 URL은 링크로 만들지 않는다. */ }
+      }
+      sources.appendChild(row);
+    }
+    item.appendChild(sources);
   }
   function addMessage(role, content, metadata = null) {
     const item = document.createElement("div");
@@ -175,13 +200,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
       meta.className = "meta";
       meta.textContent = `is_related=${metadata.is_related} · band=${metadata.band || "-"}`;
       item.appendChild(meta);
-      const text = sourceText(metadata.display_sources);
-      if (text) {
-        const sources = document.createElement("div");
-        sources.className = "sources";
-        sources.textContent = `화면 출처\n${text}`;
-        item.appendChild(sources);
-      }
+      appendSources(item, metadata.display_sources);
     }
     $("chat").appendChild(item);
     $("chat").scrollTop = $("chat").scrollHeight;
@@ -365,13 +384,7 @@ DEV_CHAT_HTML = r"""<!doctype html>
       meta.className = "meta";
       meta.textContent = `is_related=${doneMetadata.is_related} · band=${doneMetadata.band}`;
       assistant.item.appendChild(meta);
-      const text = sourceText(doneMetadata.display_sources);
-      if (text) {
-        const sources = document.createElement("div");
-        sources.className = "sources";
-        sources.textContent = `화면 출처\n${text}`;
-        assistant.item.appendChild(sources);
-      }
+      appendSources(assistant.item, doneMetadata.display_sources);
       addNotice(assistant.item, doneMetadata.notice);
       addSuggestion(assistant.item, doneMetadata.suggested_concept);
       await refreshState();

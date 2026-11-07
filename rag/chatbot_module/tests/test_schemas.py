@@ -15,6 +15,19 @@ def test_source_omits_images_when_absent() -> None:
         label="시사경제용어사전",
     ).model_dump()
     assert "images" not in dumped
+    assert "printed_page" not in dumped
+    assert "source_url" not in dumped
+
+
+def test_source_keeps_bok_page_and_url() -> None:
+    dumped = SourceOut(
+        concept_id="bok_1", term="SOFR", score=0.71,
+        collection="bok_economic_financial_terms_2026_kure_v1_rrf",
+        label="2026_경제금융용어 800선_한국은행",
+        printed_page=402, source_url="https://www.bok.or.kr/example",
+    ).model_dump()
+    assert dumped["printed_page"] == 402
+    assert dumped["source_url"] == "https://www.bok.or.kr/example"
 
 
 def test_source_keeps_images_when_present() -> None:

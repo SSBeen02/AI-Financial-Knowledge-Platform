@@ -15,6 +15,8 @@ STOPWORDS = {"것", "수", "등", "때", "이", "그", "하다", "되다", "있�
 class FssSparseEncoder:
     """업로드 당시의 어휘 ID와 IDF를 그대로 사용한다."""
 
+    collection = "fss_practical_finance_4e_3p_kure_v1"
+
     def __init__(self, model_path: Path = MODEL_PATH) -> None:
         from kiwipiepy import Kiwi
 

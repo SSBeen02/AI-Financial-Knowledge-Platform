@@ -88,3 +88,18 @@ def test_mixed_sources_footer_lists_labels_once() -> None:
     assert answer.count("대학생을 위한 실용금융(제4판)_금융감독원_2024") == 1
     assert "참고한 자료:" in answer
     assert "제2금융권" not in answer
+
+
+def test_bok_dense_source_uses_existing_display_threshold() -> None:
+    label = "2026_경제금융용어 800선_한국은행"
+    docs = [
+        _retrieved(SimpleNamespace(id="bok-1", payload={"term": "SOFR", "content_markdown": "본문"}, score=0.68),
+                   "bok_economic_financial_terms_2026_kure_v1_rrf", label),
+        _retrieved(SimpleNamespace(id="bok-2", payload={"term": "콜금리", "content_markdown": "본문"}, score=0.55),
+                   "bok_economic_financial_terms_2026_kure_v1_rrf", label),
+    ]
+    assert _display_sources(_result(*docs), current_concept_id=None, minimum_score=0.6) == docs[:1]
+    assert _display_sources(
+        _result(*docs), current_concept_id=None, minimum_score=0.6,
+        answer="콜금리는 금융기관끼리 빌린 돈에 붙는 금리이오.",
+    ) == docs

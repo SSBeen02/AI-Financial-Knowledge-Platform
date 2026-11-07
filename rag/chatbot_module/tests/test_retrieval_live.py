@@ -28,7 +28,7 @@ def test_live_opportunity_cost_search() -> None:
     dense = DenseEncoder(settings.dense_model)
     result = Retriever(client, dense, settings, sparse=SparseEncoder()).search("기회비용이 뭐야?")
     assert result.sources
-    assert len(result.sources) <= 5
+    assert len(result.sources) <= 7
     assert result.band == judge_band(result.top_score, high=settings.band_high, low=settings.band_low)
     assert result.top_score == result.sources[0].score
     assert result.sources[0].collection == settings.qdrant_collection

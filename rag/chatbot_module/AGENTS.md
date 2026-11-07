@@ -44,7 +44,7 @@
   - 퀴즈 기록 없이 학습 중인 세션 → `normal`
   - `quiz_pending` 중 active 세션 존재는 불변 조건 위반 → 409
   - quiz_pending 안내는 `CHAT_TONE`을 따름. 기본 하오체: `현재 {term} 개념의 퀴즈 결과를 기다리는 중이오.`
-- 검색: `sisa_terms`는 Dense 단독(KURE-v1)으로 유지한다. `fss_practical_finance_4e_3p_kure_v1`은 KURE-v1 Dense와 Kiwi BM25 Sparse의 상위 200개씩을 Qdrant 동일 가중 RRF(k=2)로 결합한다. 리랭커는 사용하지 않는다.
+- 검색: `sisa_terms`와 `bok_economic_financial_terms_2026_kure_v1_rrf`는 Dense 단독(KURE-v1)이다. `fss_practical_finance_4e_3p_kure_v1`은 KURE-v1 Dense와 Kiwi BM25 Sparse의 상위 200개씩을 Qdrant 동일 가중 RRF(k=2)로 결합한다. 리랭커는 사용하지 않는다.
 - band: 최고 점수 ≥ `BAND_HIGH`(0.50) high / ≥ `BAND_LOW`(0.45) mid / 미만 low — concept_source 소스의 Dense 점수로만 판정
 - 개념 캐시는 서버 시작 시 1회만 로드, 요청마다 Qdrant에서 개념을 조회하지 않음
 - 메시지는 user/assistant 두 행, 응답 `message_id` 는 assistant 행
@@ -74,7 +74,7 @@
 - LLM: OpenAI 어댑터. `LLM_MODEL`, `LLM_RELEVANCE_MODEL`(미지정·빈 값이면 `LLM_MODEL`)
   - **추론 강도(reasoning effort)를 설정값 `LLM_REASONING_EFFORT` 로 분리**. 코드 기본값은 빈 값(파라미터 생략), `.env.example`은 `low`
   - 답변 최대 토큰도 설정값으로 분리
-- 화면 표시는 `display_sources`를 사용한다. 현재 세션 개념은 검색됐으면 항상 표시하고, 다른 문서는 `DISPLAY_SOURCE_MIN_SCORE`(기본 0.60) 이상만 표시한다. `sources`는 LLM 전체 근거 및 저장용으로 그대로 유지한다.
+- 화면 표시는 `display_sources`를 사용한다. 현재 세션 개념과 답변의 첫 정의 문장에서 실제 인용한 근거는 검색됐으면 표시한다. 다른 시사·한국은행 Dense 문서는 `DISPLAY_SOURCE_MIN_SCORE`(기본 0.60) 이상만 표시한다. 실용금융 교재는 RRF 순위 이후 Dense 유사도 0.50 이상인 청크만 답변 근거와 화면에 포함한다.
 - `CHAT_TONE`은 `hao`(기본, 읽기 쉬운 학당 훈장 하오체) 또는 `modern`(해요체)이며 답변과 범위 밖·재학습·퀴즈 대기 안내에 일관되게 적용한다.
 
 ## 6단계 구현 요점 (학습 완료·학습 맥락·퀴즈 결과, 완료)

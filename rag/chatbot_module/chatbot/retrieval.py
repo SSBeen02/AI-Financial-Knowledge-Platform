@@ -86,6 +86,8 @@ class RetrievedDoc:
     images: tuple[str, ...] | None
     stages: tuple[str, ...]
     aliases: tuple[str, ...] = ()
+    printed_page: int | None = None
+    source_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -204,6 +206,10 @@ class Retriever:
         """공용 검색 함수를 바꾸지 않고 교재의 bm25 벡터 이름을 사용한다."""
         from qdrant_client import models
         from rag_common import DENSE_NAME
+        import numpy as np
+
+        if getattr(self._sparse, "collection", collection) != collection:
+            raise RetrievalError(f"{collection}에 맞는 희소 인코더가 설정되지 않았습니다.")
 
         dense_query = self._dense.encode([query])[0].tolist()
         sparse_query = self._sparse.encode_query(query)
@@ -219,8 +225,25 @@ class Retriever:
             query=models.RrfQuery(rrf=models.Rrf(k=2, weights=[1.0, 1.0])),
             limit=profile["k"],
             with_payload=True,
+            with_vectors=[DENSE_NAME] if "min_dense_score" in profile else False,
         )
-        return response.points
+        if "min_dense_score" not in profile:
+            return response.points
+        query_vector = np.asarray(dense_query, dtype=np.float32)
+        query_norm = np.linalg.norm(query_vector)
+        selected = []
+        for point in response.points:
+            vector = (point.vector or {}).get(DENSE_NAME) if isinstance(point.vector, dict) else None
+            if vector is None:
+                raise RetrievalError(f"{collection}의 Dense 벡터를 검색 결과에서 읽지 못했습니다.")
+            document_vector = np.asarray(vector, dtype=np.float32)
+            denominator = query_norm * np.linalg.norm(document_vector)
+            if denominator == 0:
+                continue
+            similarity = float(np.dot(query_vector, document_vector) / denominator)
+            if similarity >= profile["min_dense_score"]:
+                selected.append(point)
+        return selected
 
     def _dense_top(self, query: str, collection: str, profile: SearchProfile, hits: list[RetrievedDoc]) -> float:
         if profile["mode"] == "dense":
@@ -236,6 +259,8 @@ def to_source_out(doc: RetrievedDoc) -> SourceOut:
         collection=doc.collection,
         label=display_source_label(doc.label, doc.collection),
         images=list(doc.images) if doc.images is not None else None,
+        printed_page=doc.printed_page,
+        source_url=doc.source_url,
     )
 
 
@@ -329,6 +354,8 @@ def _retrieved(point: Any, collection: str, label: str) -> RetrievedDoc:
         images=_images(payload),
         stages=_stages(payload),
         aliases=_aliases(payload),
+        printed_page=payload.get("printed_page") if type(payload.get("printed_page")) is int else None,
+        source_url=(url if (url := str(payload.get("source_url") or "")).startswith(("https://", "http://")) else None),
     )
 
 
