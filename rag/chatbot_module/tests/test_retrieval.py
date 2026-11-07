@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
+import numpy as np
+from qdrant_client import models
+
 from chatbot.config import Settings
 from chatbot.retrieval import (
     ConceptCache,
@@ -123,6 +128,79 @@ def test_profiles_merge_by_slots_and_band_ignores_other_sources() -> None:
     assert calls == [("sisa_terms", "dense", 2), ("textbook", "dense", 3)]
 
 
+def test_fss_profile_uses_200_candidates_and_keeps_book_source() -> None:
+    calls: list[dict] = []
+
+    def search(_client, _query, _dense, sparse, **kwargs):
+        calls.append({**kwargs, "sparse": sparse})
+        if kwargs["collection"] == "sisa_terms":
+            return [Point("sisa_1", 0.7)]
+        return [
+            Point("book_1", 0.5, {"chunk_id": "book_1", "title": "신용관리", "content": "신용점수 설명"}),
+            Point("book_2", 0.333, {"chunk_id": "book_2", "title": "은행의 기원", "content": "은행 설명"}),
+        ]
+
+    sparse = object()
+    result = Retriever(object(), object(), _settings(), search_fn=search, sparse=sparse).search("신용관리")
+    assert calls[0]["mode"] == "dense"
+    assert calls[1] == {
+        "mode": "hybrid", "k": 5,
+        "collection": "fss_practical_finance_4e_3p_kure_v1",
+        "prefetch_k": 200, "sparse": sparse,
+    }
+    assert result.band == "high"
+    assert [source.concept_id for source in result.sources] == ["sisa_1", "book_1", "book_2"]
+    assert result.sources[1].text == "신용점수 설명"
+    assert to_source_out(result.sources[1]).label == "대학생을 위한 실용금융(제4판)_금융감독원_2024"
+
+
+def test_fss_malformed_section_uses_chapter_title() -> None:
+    from chatbot.retrieval import _retrieved
+
+    point = Point("book_1", 0.5, {
+        "section": "어음인수, 상호부금,7 보호예수8 등이 있다. 겸영업무는 다른 업종의 업무 중 은행이 영위",
+        "chapter_title": "금융상품, 금융서비스와 금융회사",
+        "content_markdown": "은행은 다양한 업무를 맡는다.",
+    })
+    doc = _retrieved(point, "fss_practical_finance_4e_3p_kure_v1", "교재")
+    assert doc.term == "금융상품, 금융서비스와 금융회사"
+    point.payload["section"] = "은행은 어떤 종류일까요?"
+    assert _retrieved(point, "fss_practical_finance_4e_3p_kure_v1", "교재").term == "금융상품, 금융서비스와 금융회사"
+
+
+def test_fss_qdrant_query_uses_dense_and_bm25_with_rrf() -> None:
+    class Dense:
+        def encode(self, texts):
+            assert texts == ["신용관리"]
+            return np.array([[0.1, 0.2]])
+
+    class Sparse:
+        def encode_query(self, query):
+            assert query == "신용관리"
+            return models.SparseVector(indices=[12], values=[1.0])
+
+    class Client:
+        def query_points(self, **kwargs):
+            assert kwargs["collection_name"] == "fss_practical_finance_4e_3p_kure_v1"
+            assert [(item.using, item.limit) for item in kwargs["prefetch"]] == [("dense", 200), ("bm25", 200)]
+            assert kwargs["query"] == models.RrfQuery(rrf=models.Rrf(k=2, weights=[1.0, 1.0]))
+            assert kwargs["limit"] == 5
+            return SimpleNamespace(points=[SimpleNamespace(id="chunk-1", score=0.5, payload={
+                "source_id": "chapter-1", "chunk_index": 1, "section": "1.1 신용",
+                "content_markdown": "신용의 의미", "book_title": "대학생을 위한 실용금융",
+            })])
+
+    from chatbot.config import SEARCH_PROFILES
+    profile = SEARCH_PROFILES["fss_practical_finance_4e_3p_kure_v1"]
+    retriever = Retriever(Client(), Dense(), _settings(), sparse=Sparse())
+    points = retriever._search_named_sparse("신용관리", "fss_practical_finance_4e_3p_kure_v1", profile)
+    from chatbot.retrieval import _retrieved
+    doc = _retrieved(points[0], "fss_practical_finance_4e_3p_kure_v1", profile["label"])
+    assert doc.concept_id == "chunk-1"
+    assert doc.term == "1.1 신용"
+    assert doc.text == "신용의 의미"
+
+
 def test_empty_concept_source_is_low_band() -> None:
     search, _calls = _search_factory({"sisa_terms": []})
     result = Retriever(object(), object(), _settings(), profiles={"sisa_terms": SISA}, search_fn=search).search("오늘 날씨")
@@ -197,7 +275,7 @@ def test_concept_cache_keeps_legacy_qdrant_doc_id_compatibility() -> None:
 def test_retrieved_document_accepts_legacy_qdrant_doc_id() -> None:
     point = Point("sisa_745", 0.72, {"doc_id": "sisa_745", "term": "기회비용", "text": "본문"})
     search, _calls = _search_factory({"sisa_terms": [point]})
-    result = Retriever(object(), object(), _settings(), search_fn=search).search("기회비용")
+    result = Retriever(object(), object(), _settings(), profiles={"sisa_terms": SISA}, search_fn=search).search("기회비용")
     assert result.concept_hits[0].concept_id == "sisa_745"
 
 
@@ -218,6 +296,7 @@ def test_retrieved_document_keeps_aliases_for_explicit_notice_matching() -> None
         object(),
         object(),
         settings,
+        profiles={"sisa_terms": SISA},
         search_fn=lambda *args, **kwargs: [point],
         dense_score_fn=lambda *args, **kwargs: 0.72,
     )

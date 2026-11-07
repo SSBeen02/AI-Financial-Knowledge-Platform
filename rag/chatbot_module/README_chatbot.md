@@ -865,6 +865,10 @@ extra/excluded 용어, low band 질문을 성장·퀴즈 반영 여부와 함께
 화면 출처에는 `sources`가 아니라 **`display_sources`**를 사용한다. `sources`는 LLM에 전달한 전체
 근거와 퀴즈 맥락 저장용이며, 화면 노출 임계값이 적용되지 않는다.
 `sisa_terms`의 표시 출처는 [공공데이터포털의 재정경제부_시사경제용어 정보](https://www.data.go.kr/data/15006052/fileData.do)다.
+교재 컬렉션의 `score`는 RRF 순위 점수이며 `sisa_terms`의 Dense 유사도와 비교할 수 없다.
+백엔드는 교재의 상위 5개 RRF 결과 중 최대 2개를 `sources`와 `display_sources`에 넣는다. 교재의 BM25 질의는 `data/fss_hybrid_sparse_model.json`의 어휘 ID·IDF를 사용하므로 이 파일을 배포 산출물에 포함한다.
+프론트는 두 컬렉션에 같은 점수 임계값을 다시 적용하지 않고 `display_sources`를 그대로 표시한다.
+출처 이름은 `label`을 사용하고, `term`에는 교재의 절·장 제목이 올 수 있다.
 
 ### 6.3 새로고침 시 대화 복원
 
@@ -907,6 +911,8 @@ Stage 5는 앞 단계와 겹치는 개념도 `(concept_id, stage5)`로 별도 �
 ## 7. 검색 소스 추가 체크리스트
 
 명세 6.5의 확장 절차다.
+
+현재 `sisa_terms`는 KURE-v1 Dense 단독으로 검색하고, `fss_practical_finance_4e_3p_kure_v1`은 KURE-v1 Dense와 Kiwi BM25 Sparse 상위 200개씩을 Qdrant 동일 가중 RRF(k=2)로 결합한다. 교재 검색 결과 최대 2개를 기존 용어집 결과 최대 3개와 함께 답변 근거로 제공한다. 교재 BM25 질의는 적재 당시의 `data/fss_hybrid_sparse_model.json` 어휘 ID·IDF와 Kiwi 형태소 규칙을 사용한다. 교재 출처 표시는 `대학생을 위한 실용금융(제4판)_금융감독원_2024`다. 학습 개념 감지와 band 판정은 용어집 Dense 점수만 사용한다. 실측 컬렉션은 502개 포인트이고 벡터 이름은 `dense`/`bm25`다. 교재 payload의 `content_markdown`을 본문, `subsection`/`section`/`chapter_title`을 제목으로 읽되 문장처럼 긴 제목은 장 제목으로 바꾸며, 식별자는 Qdrant 포인트 ID를 사용한다.
 
 1. 새 문서를 청크 JSONL로 만들고 각 payload에 `concept_id`, `term`, `text`, `source`, `stages`를 넣는다.
    기존 Qdrant payload의 `doc_id`는 하위 호환으로 읽지만 새 데이터와 애플리케이션 코드는
