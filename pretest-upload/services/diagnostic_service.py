@@ -13,7 +13,7 @@ from services.errors import DiagnosticNotFoundError, IdempotencyConflictError, I
 from services.grading import grade_attempt
 from services.llm_report import generate_llm_report
 from services.question_bank import load_questions
-from services.report_summary import add_lowest_stage_summary
+from services.report_summary import add_lowest_stage_summary, normalize_report_labels
 
 logger = logging.getLogger("diagnostics")
 _service: "DiagnosticService | None" = None
@@ -125,6 +125,27 @@ class DiagnosticService:
         except Exception:
             logger.exception("리포트 실패 상태 저장 실패: diagnostic_id=%s", attempt_id)
 
+    def prepare_report_retry(self, report_id: str, user_id: str) -> bool:
+        """실패한 리포트만 processing으로 되돌립니다. 이미 생성 중이거나 완료면 False입니다."""
+        attempt = self._repository.get_attempt(report_id, user_id)
+        if attempt is None:
+            raise ReportNotFoundError()
+        if attempt["status"] != "failed":
+            if attempt["status"] == "pending" or not attempt.get("summary"):
+                raise InvalidAnswersError({"message": "답안을 제출한 뒤에 리포트를 다시 생성할 수 있습니다."})
+            return False
+        if not attempt.get("summary"):
+            raise InvalidAnswersError({"message": "채점 결과가 없어 리포트를 다시 생성할 수 없습니다."})
+        now = utc_now_iso()
+        updated = self._repository.update_attempt(report_id, user_id, "failed", {
+            "status": "processing",
+            "error": None,
+            "llm_report": None,
+            "submitted_at": now,
+            "updated_at": now,
+        })
+        return updated is not None
+
     def get_report(self, report_id: str, user_id: str) -> ReportResponse:
         attempt = self._repository.get_attempt(report_id, user_id)
         if attempt is None:
@@ -145,9 +166,11 @@ class DiagnosticService:
                 result[key] = copy.deepcopy(attempt[key])
         if attempt["status"] != "completed":
             result.pop("llm_report", None)
+        if attempt["status"] != "failed":
+            result.pop("error", None)
         if isinstance(result.get("llm_report"), dict):
             result["llm_report"].pop("unpassed_concepts", None)
-        response = ReportResponse.model_validate(result)
+        response = ReportResponse.model_validate(normalize_report_labels(result))
         if response.llm_report is not None and response.domain_scores:
             response.llm_report = add_lowest_stage_summary(
                 response.llm_report, [row.model_dump() for row in response.domain_scores]

@@ -3,6 +3,25 @@ from math import floor
 
 from schemas.llm_report import LlmReportAnalysis
 
+LEGACY_DOMAIN_LABELS = {
+    "사회경제·소비생활": "사회경제현상과 소비생활",
+    "금융·투자": "금융과 투자",
+    "거시경제·통화·재정": "거시경제와 통화·재정정책",
+    "국제경제·산업·기술": "국제경제와 산업·기술동향",
+}
+
+
+def normalize_report_labels(value):
+    """표시용 복사본에서만 이전 도메인 명칭을 갱신한다."""
+    if isinstance(value, dict):
+        return {key: normalize_report_labels(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [normalize_report_labels(item) for item in value]
+    if isinstance(value, str):
+        for old, new in LEGACY_DOMAIN_LABELS.items():
+            value = value.replace(old, new)
+    return value
+
 # 화면의 영역별 스테이지 표기. 학습 상태나 스테이지 배정을 변경하지 않는다.
 REPORT_STAGE_ORDER = {
     "socioeconomic_phenomena_consumer_life": 1,

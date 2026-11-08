@@ -14,8 +14,6 @@ from services.errors import LlmReportError
 from services.report_summary import add_lowest_stage_summary
 
 logger = logging.getLogger("diagnostics")
-GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-
 from services.report_parallel import STYLE_PROMPT
 SYSTEM_PROMPT = STYLE_PROMPT + """\n기존 JSON 구조를 유지하시오. 등급·점수·문항 ID는 입력과 일치시켜야 하오. 총평은 2문장, 영역 진단은 1~2문장, 오답 분석은 실제 선택과 정답의 차이 및 단서를 2문장으로 설명하시오. 학습 권장은 낮은 점수부터 동점이면 입력 영역 순서로 두고, 취약 영역이 없으면 첫 최저점 영역의 유지 방향 하나만 두시오."""
 
@@ -26,8 +24,6 @@ def describe_llm_mode() -> str:
     mode = _resolved_mode(settings)
     if mode == "local":
         return "local"
-    if mode == "gemini":
-        return f"gemini:{settings.gemini_model}"
     return f"openai:{settings.openai_model}"
 
 
@@ -39,11 +35,6 @@ def generate_llm_report(graded: dict, *, budget: float = 28.0) -> LlmReportAnaly
         return generate_local_report(graded)
     from openai import OpenAI
 
-    if mode == "gemini":
-        if not settings.gemini_api_key:
-            raise LlmReportError("GEMINI_API_KEY가 없어 맞춤 리포트를 생성하지 못했습니다.")
-        with OpenAI(api_key=settings.gemini_api_key, base_url=GEMINI_BASE_URL, timeout=60.0, max_retries=1) as client:
-            return generate_openai_report(client, graded, settings.gemini_model, provider="Gemini")
     if not settings.openai_api_key:
         raise LlmReportError("OPENAI_API_KEY가 없어 맞춤 리포트를 생성하지 못했습니다.")
     from services.report_parallel import generate_parallel_report, REPORT_BUDGET_SECONDS
@@ -98,6 +89,14 @@ def generate_local_report(graded: dict) -> LlmReportAnalysis:
         recommendations=[],
     )
     return align_llm_report(draft, graded)
+
+
+def _option_explanation(item: dict, answer: int) -> str:
+    details = item["explanation"].get("options_detail") or []
+    # 이전 기록의 해설이 일부만 있을 때 다른 보기의 해설을 붙이지 않는다.
+    if len(details) != len(item["options"]):
+        return ""
+    return details[answer - 1]
 
 
 def build_llm_input(graded: dict) -> dict:
@@ -207,19 +206,21 @@ def align_llm_report(report: LlmReportAnalysis, graded: dict) -> LlmReportAnalys
 
 def _resolved_mode(settings) -> str:
     mode = settings.llm_report_mode
-    if mode not in {"auto", "openai", "gemini", "local"}:
-        raise LlmReportError("LLM_REPORT_MODE는 auto, openai, gemini, local 중 하나여야 합니다.")
+    if mode not in {"auto", "openai", "local"}:
+        raise LlmReportError("LLM_REPORT_MODE는 auto, openai, local 중 하나여야 합니다.")
     if mode == "local":
         return "local"
     if mode == "openai":
         return "openai"
-    if mode == "gemini":
-        return "gemini"
-    if settings.gemini_api_key:
-        return "gemini"
     if settings.openai_api_key:
         return "openai"
     return "local"
+
+
+def _wrong_answer_hint(item: dict) -> str:
+    selected = item["options"][item["selected_answer"] - 1].partition(")")[2].strip() or item["options"][item["selected_answer"] - 1]
+    correct = item["options"][item["correct_answer"] - 1].partition(")")[2].strip() or item["options"][item["correct_answer"] - 1]
+    return f"선택한 답은 {selected}, 정답은 {correct}이오. {_haoche(item['explanation']['correct'])}"
 
 
 def _domain_diagnosis(row: dict) -> str:
@@ -228,6 +229,24 @@ def _domain_diagnosis(row: dict) -> str:
     if correct == total:
         return f"이번 영역의 {total}문항을 모두 맞혔소. 이 문항에서 확인한 개념을 정확히 구분했소."
     return f"이번 영역의 {total}문항 중 {correct}문항을 맞혔습니다. 아래 오답에서 선택한 보기와 정답의 차이를 확인해 보세요."
+
+
+def _study_guide(row: dict, wrong: list[dict], maintain: bool, question_results: list[dict]) -> tuple[str, str]:
+    """모델 설명이 없을 때 실제 보기와 해설로 한 문단을 구성합니다."""
+    source = [item for item in (question_results if maintain else wrong) if item["domain"] == row["domain"]]
+    focus = f"{row['domain_label']} 개념 구분과 접근"
+    if not source:
+        return focus, f"{row['domain_label']}의 이번 결과는 출제된 문항 범위에서 해석할 수 있소. 개념을 구분할 때는 이름보다 적용 대상과 조건이 기준이 되오. 문제에 제시된 단서와 보기의 조건을 연결하는 접근이 유용하오."
+    item = source[0]
+    concept = item["concept"]
+    correct = item["options"][item["correct_answer"] - 1]
+    selected = item["options"][item["selected_answer"] - 1]
+    opening = f"{concept}에서는 이번 문항의 정답인 {correct}를 판단하는 기준을 유지하는 것이 핵심입니다." if maintain else f"{concept}에서는 선택한 {selected}와 정답인 {correct}의 구분 기준을 중심으로 보완할 수 있습니다."
+    explanation = item["explanation"]["correct"].strip()
+    if explanation and explanation[-1] not in ".!?。":
+        explanation += "."
+    ending = f"{concept} 문제에 접근할 때는 질문의 조건이 {correct}의 설명과 맞는지를 우선 확인하는 것이 유리합니다."
+    return focus, _haoche(" ".join([opening, explanation, "비슷한 이름의 보기라도 적용 대상과 성립 조건이 같지는 않다는 점을 구분해두어야 합니다.", ending]))
 
 
 def _align_recommendations(
@@ -269,41 +288,6 @@ def _align_recommendations(
             )
         )
     return recommendations
-
-
-def _option_explanation(item: dict, answer: int) -> str:
-    details = item["explanation"].get("options_detail") or []
-    # 이전 기록의 해설이 일부만 있을 때 다른 보기의 해설을 붙이지 않는다.
-    if len(details) != len(item["options"]):
-        return ""
-    return details[answer - 1]
-
-
-
-def _wrong_answer_hint(item: dict) -> str:
-    selected = item["options"][item["selected_answer"] - 1].partition(")")[2].strip() or item["options"][item["selected_answer"] - 1]
-    correct = item["options"][item["correct_answer"] - 1].partition(")")[2].strip() or item["options"][item["correct_answer"] - 1]
-    return f"선택한 답은 {selected}, 정답은 {correct}이오. {_haoche(item['explanation']['correct'])}"
-
-
-def _study_guide(row: dict, wrong: list[dict], maintain: bool, question_results: list[dict]) -> tuple[str, str]:
-    """모델 설명이 없을 때 실제 보기와 해설로 한 문단을 구성합니다."""
-    source = [item for item in (question_results if maintain else wrong) if item["domain"] == row["domain"]]
-    focus = f"{row['domain_label']} 개념 구분과 접근"
-    if not source:
-        return focus, f"{row['domain_label']}의 이번 결과는 출제된 문항 범위에서 해석할 수 있소. 개념을 구분할 때는 이름보다 적용 대상과 조건이 기준이 되오. 문제에 제시된 단서와 보기의 조건을 연결하는 접근이 유용하오."
-    item = source[0]
-    concept = item["concept"]
-    correct = item["options"][item["correct_answer"] - 1]
-    selected = item["options"][item["selected_answer"] - 1]
-    opening = f"{concept}에서는 이번 문항의 정답인 {correct}를 판단하는 기준을 유지하는 것이 핵심입니다." if maintain else f"{concept}에서는 선택한 {selected}와 정답인 {correct}의 구분 기준을 중심으로 보완할 수 있습니다."
-    explanation = item["explanation"]["correct"].strip()
-    if explanation and explanation[-1] not in ".!?。":
-        explanation += "."
-    ending = f"{concept} 문제에 접근할 때는 질문의 조건이 {correct}의 설명과 맞는지를 우선 확인하는 것이 유리합니다."
-    return focus, _haoche(" ".join([opening, explanation, "비슷한 이름의 보기라도 적용 대상과 성립 조건이 같지는 않다는 점을 구분해두어야 합니다.", ending]))
-
-
 
 
 def _haoche(text: str) -> str:

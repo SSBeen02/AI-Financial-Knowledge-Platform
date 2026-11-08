@@ -11,7 +11,11 @@ from schemas.llm_report import (
 )
 from services.errors import LlmReportError
 from services.grading import grade_attempt
-from services.llm_report import _resolved_mode, align_llm_report, generate_openai_report
+from services.llm_report import (
+    _resolved_mode,
+    align_llm_report,
+    generate_openai_report,
+)
 
 
 def _question(question_id: str, domain: str, answer: int = 1) -> dict:
@@ -135,21 +139,43 @@ class OpenAiReportParseTest(unittest.TestCase):
 
 
 class ResolveModeTest(unittest.TestCase):
-    def test_auto_prefers_gemini_key_then_openai_then_local(self):
-        self.assertEqual(_resolved_mode(_settings("auto", gemini="g")), "gemini")
+    def test_auto_uses_openai_key_or_local(self):
         self.assertEqual(_resolved_mode(_settings("auto", openai="o")), "openai")
         self.assertEqual(_resolved_mode(_settings("auto")), "local")
-        self.assertEqual(_resolved_mode(_settings("gemini")), "gemini")
-        self.assertEqual(_resolved_mode(_settings("local", gemini="g")), "local")
+        self.assertEqual(_resolved_mode(_settings("openai")), "openai")
+        self.assertEqual(_resolved_mode(_settings("local", openai="o")), "local")
+
+    def test_unknown_mode_is_rejected(self):
+        with self.assertRaises(LlmReportError):
+            _resolved_mode(_settings("unsupported"))
 
 
-def _settings(mode: str, openai: str | None = None, gemini: str | None = None):
-    return type(
-        "Settings",
-        (),
-        {"llm_report_mode": mode, "openai_api_key": openai, "gemini_api_key": gemini},
-    )()
+def _settings(mode: str, openai: str | None = None):
+    return type("Settings", (), {"llm_report_mode": mode, "openai_api_key": openai})()
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReportEvidenceTest(unittest.TestCase):
+    def test_actual_selected_option_explanation_is_sent(self):
+        from services.llm_report import build_llm_input
+        q = _question("a1", "finance_investment")
+        q["explanation"]["options_detail"] = ["correct clue", "selected clue", "third", "fourth"]
+        row = build_llm_input(grade_attempt([q], {"a1": 2}))["wrong_answers"][0]
+        self.assertEqual(row["selected_option"], "2) b")
+        self.assertEqual(row["selected_option_explanation"], "selected clue")
+        self.assertEqual(row["correct_option_explanation"], "correct clue")
+
+    def test_legacy_incomplete_explanations_are_not_misattributed(self):
+        from services.llm_report import build_llm_input
+        row = build_llm_input(_graded())["wrong_answers"][0]
+        self.assertEqual(row["selected_option_explanation"], "")
+
+    def test_local_fallback_uses_actual_answer_pair(self):
+        from services.llm_report import generate_local_report
+        report = generate_local_report(_graded())
+        text = report.wrong_answer_analysis.items[0].vulnerability
+        self.assertIn("b", text)
+        self.assertIn("a", text)

@@ -71,6 +71,34 @@
       border-bottom: 1px solid #eee7dc;
     }
     .vulnerable { color: #9d1c1c; }
+    .progress {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      color: #5c564e;
+      font-size: 14px;
+    }
+    .dots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .dots button {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      background: #efeae2;
+      color: #1d1a16;
+    }
+    .dots button.answered { box-shadow: inset 0 0 0 2px #0b5f4a; }
+    .dots button.current { background: #0b5f4a; color: white; }
+    .pager {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
     .report-section { margin-top: 24px; }
     .report-intro { font-size: 17px; line-height: 1.8; margin: 12px 0; max-width: 70ch; }
     .domain-note, .answer-note { padding: 14px 0; border-bottom: 1px solid #eee7dc; }
@@ -84,7 +112,7 @@
 <body>
   <header>
     <h1>사전테스트 미니 테스트</h1>
-    <p class="hint">시작, 제출, 리포트 조회로 백엔드 동작을 확인합니다. API 문서는 <a href="/docs">/docs</a> 입니다.</p>
+    <p class="hint">마지막 문제에서 결과 보기로 넘어가면 리포트가 만들어집니다. 생성이 실패하면 다시 생성 버튼으로 같은 채점 결과의 리포트를 요청합니다. 개념 확인 화면은 <a href="/quiz">/quiz</a>, API 문서는 <a href="/docs">/docs</a> 입니다.</p>
   </header>
 
   <div class="toolbar">
@@ -98,7 +126,7 @@
   <section id="result"></section>
 
   <script>
-    const state = { diagnosticId: null, reportId: null, questions: [], submissionKey: null, reportStatus: "pending", answers: [] };
+    const state = { diagnosticId: null, reportId: null, questions: [], submissionKey: null, reportStatus: "pending", answers: [], currentIndex: 0, phase: "questions" };
     let pollTimer = null;
     function saveState() { try { sessionStorage.setItem("pretest-state", JSON.stringify(state)); } catch {} }
 
@@ -110,11 +138,22 @@
     const questionsNode = document.querySelector("#questions");
     const resultNode = document.querySelector("#result");
 
-    questionsNode.addEventListener("change", () => { state.answers = collectAnswers(); saveState(); });
+    questionsNode.addEventListener("change", (event) => {
+      const input = event.target;
+      if (!(input instanceof HTMLInputElement) || input.type !== "radio") return;
+      const question = state.questions[state.currentIndex];
+      if (!question) return;
+      rememberAnswer(question.id, Number(input.value));
+      saveState();
+      renderCurrentQuestion();
+    });
     startButton.addEventListener("click", startDiagnostic);
     fillButton.addEventListener("click", selectFirstOptions);
     submitButton.addEventListener("click", submitAnswers);
-    reportButton.addEventListener("click", loadReport);
+    reportButton.addEventListener("click", () => {
+      if (state.reportStatus === "failed") retryReport();
+      else loadReport();
+    });
 
     function setStatus(message, isError) {
       statusNode.textContent = message;
@@ -130,11 +169,13 @@
         state.reportId = null;
         state.submissionKey = null;
         state.answers = [];
+        state.currentIndex = 0;
+        state.phase = "questions";
         state.reportStatus = "pending";
         clearTimeout(pollTimer);
         state.questions = body.questions;
         resultNode.replaceChildren();
-        renderQuestions(body.questions);
+        renderCurrentQuestion();
         saveState();
         setStatus(`진단 ${body.id} 이 시작되었습니다. 문항 ${body.total_questions}개, 사용자 ${body.user_id}`);
       } catch (error) {
@@ -145,11 +186,12 @@
     }
 
     function selectFirstOptions() {
-      for (const input of questionsNode.querySelectorAll('input[value="1"]')) {
-        input.checked = true;
-      }
-      state.answers = collectAnswers();
+      state.answers = state.questions.map((question) => ({
+        question_id: question.id,
+        selected_answer: 1,
+      }));
       saveState();
+      renderCurrentQuestion();
       setStatus("모든 문항을 1번으로 선택했습니다.");
     }
 
@@ -157,9 +199,12 @@
       clearTimeout(pollTimer);
       const answers = collectAnswers();
       if (answers.length !== state.questions.length) {
+        const missingIndex = state.questions.findIndex((question) => !answerFor(question.id));
+        if (missingIndex >= 0) showQuestion(missingIndex);
         setStatus("모든 문항에 보기를 선택한 뒤 제출해 주세요.", true);
         return;
       }
+      showReportPage("답안을 제출하고 리포트를 만드는 중입니다.");
       setBusy(true);
       state.submissionKey ||= crypto.randomUUID();
       saveState();
@@ -193,18 +238,35 @@
       }
     }
 
-    async function loadReport() {
+    async function finishTest() {
+      const current = state.questions[state.currentIndex];
+      if (current && !answerFor(current.id)) {
+        setStatus("이 문항의 보기를 선택한 뒤 결과 페이지로 이동해 주세요.", true);
+        return;
+      }
+      const missingIndex = state.questions.findIndex((question) => !answerFor(question.id));
+      if (missingIndex >= 0) {
+        showQuestion(missingIndex);
+        setStatus("모든 문항에 보기를 선택한 뒤 결과 페이지로 이동해 주세요.", true);
+        return;
+      }
+      if (state.reportStatus === "pending" && !state.reportId) {
+        await submitAnswers();
+        return;
+      }
+      showReportPage("리포트 페이지로 이동합니다.");
+      await loadReport();
+    }
+
+    async function retryReport() {
       clearTimeout(pollTimer);
+      showReportPage("리포트를 다시 생성하는 중입니다.");
       setBusy(true);
-      setStatus("리포트를 조회하는 중입니다.");
       try {
-        const body = await request(`/reports/${state.diagnosticId}`);
-        state.reportStatus = body.status;
-        if (body.status !== "pending") state.reportId = body.id;
-        saveState();
-        renderReport(body);
+        const body = await request(`/reports/${state.diagnosticId}/retry`, { method: "POST" });
+        applyReport(body);
         if (body.status === "processing") pollTimer = setTimeout(loadReport, 1500);
-        setStatus(`리포트 ${body.id} 를 불러왔습니다. 상태 ${body.status}`);
+        setStatus(body.status === "failed" ? "리포트 생성에 실패했습니다. 다시 생성 버튼을 눌러 주세요." : `리포트 상태: ${body.status}`, body.status === "failed");
       } catch (error) {
         setStatus(error.message, true);
       } finally {
@@ -212,44 +274,152 @@
       }
     }
 
+    async function loadReport() {
+      clearTimeout(pollTimer);
+      if (state.phase !== "report") showReportPage("리포트를 조회하는 중입니다.");
+      setBusy(true);
+      setStatus("리포트를 조회하는 중입니다.");
+      try {
+        const body = await request(`/reports/${state.diagnosticId}`);
+        applyReport(body);
+        if (body.status === "processing") pollTimer = setTimeout(loadReport, 1500);
+        setStatus(
+          body.status === "failed"
+            ? "리포트 생성에 실패했습니다. 다시 생성 버튼을 눌러 주세요."
+            : `리포트 ${body.id} 를 불러왔습니다. 상태 ${body.status}`,
+          body.status === "failed"
+        );
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function showReportPage(message) {
+      state.phase = "report";
+      questionsNode.replaceChildren();
+      saveState();
+      if (message) setStatus(message);
+      const section = document.createElement("section");
+      section.className = "card";
+      section.append(heading("리포트"), paragraph(message || "리포트를 준비하고 있습니다."));
+      resultNode.replaceChildren(section);
+      resultNode.scrollIntoView({ block: "nearest" });
+    }
+
+    function applyReport(body) {
+      state.reportStatus = body.status;
+      if (body.status !== "pending") state.reportId = body.id;
+      state.phase = "report";
+      questionsNode.replaceChildren();
+      saveState();
+      renderReport(body);
+    }
+
+    function answerFor(questionId) {
+      return state.answers.find((answer) => answer.question_id === questionId) || null;
+    }
+
+    function rememberAnswer(questionId, selectedAnswer) {
+      const existing = answerFor(questionId);
+      if (existing) existing.selected_answer = selectedAnswer;
+      else state.answers.push({ question_id: questionId, selected_answer: selectedAnswer });
+    }
+
     function collectAnswers() {
       const answers = [];
       for (const question of state.questions) {
-        const selected = questionsNode.querySelector(`input[name="${CSS.escape(cssName(question.id))}"]:checked`);
-        if (!selected) continue;
+        const saved = answerFor(question.id);
+        if (!saved) continue;
         answers.push({
           question_id: question.id,
-          selected_answer: Number(selected.value),
+          selected_answer: saved.selected_answer,
         });
       }
       return answers;
     }
 
-    function renderQuestions(questions) {
+    function showQuestion(index) {
+      state.currentIndex = index;
+      saveState();
+      renderCurrentQuestion();
+      questionsNode.scrollIntoView({ block: "nearest" });
+    }
+
+    function renderCurrentQuestion() {
       questionsNode.replaceChildren();
-      questions.forEach((question, index) => {
-        const article = document.createElement("article");
-        article.className = "question";
-        const meta = document.createElement("p");
-        meta.className = "meta";
-        meta.textContent = `${index + 1}. ${question.domain_label} · 난이도 ${question.difficulty}`;
-        const title = document.createElement("h2");
-        title.textContent = question.question;
-        const options = document.createElement("div");
-        options.className = "options";
-        question.options.forEach((option, optionIndex) => {
-          const label = document.createElement("label");
-          label.className = "option";
-          const input = document.createElement("input");
-          input.type = "radio";
-          input.name = cssName(question.id);
-          input.value = String(optionIndex + 1);
-          label.append(input, document.createTextNode(option));
-          options.append(label);
-        });
-        article.append(meta, title, options);
-        questionsNode.append(article);
+      const questions = state.questions;
+      if (questions.length === 0) return;
+      if (state.currentIndex < 0 || state.currentIndex >= questions.length) state.currentIndex = 0;
+      const index = state.currentIndex;
+      const question = questions[index];
+      const saved = answerFor(question.id);
+
+      const progress = document.createElement("div");
+      progress.className = "progress";
+      const position = document.createElement("span");
+      position.textContent = `${index + 1} / ${questions.length}`;
+      const answered = document.createElement("span");
+      answered.textContent = `답한 문항 ${collectAnswers().length}개`;
+      progress.append(position, answered);
+
+      const dots = document.createElement("div");
+      dots.className = "dots";
+      questions.forEach((item, dotIndex) => {
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.textContent = String(dotIndex + 1);
+        dot.classList.toggle("current", dotIndex === index);
+        dot.classList.toggle("answered", Boolean(answerFor(item.id)));
+        dot.setAttribute("aria-label", `${dotIndex + 1}번 문항`);
+        dot.addEventListener("click", () => showQuestion(dotIndex));
+        dots.append(dot);
       });
+
+      const article = document.createElement("article");
+      article.className = "question";
+      const meta = document.createElement("p");
+      meta.className = "meta";
+      meta.textContent = `${index + 1}. ${question.domain_label} · 난이도 ${question.difficulty}`;
+      const title = document.createElement("h2");
+      title.textContent = question.question;
+      const options = document.createElement("div");
+      options.className = "options";
+      question.options.forEach((option, optionIndex) => {
+        const label = document.createElement("label");
+        label.className = "option";
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = cssName(question.id);
+        input.value = String(optionIndex + 1);
+        input.checked = saved?.selected_answer === optionIndex + 1;
+        label.append(input, document.createTextNode(option));
+        options.append(label);
+      });
+
+      const pager = document.createElement("div");
+      pager.className = "pager";
+      const previous = document.createElement("button");
+      previous.id = "prev";
+      previous.type = "button";
+      previous.className = "secondary";
+      previous.textContent = "이전 문제";
+      previous.disabled = index === 0;
+      previous.addEventListener("click", () => showQuestion(index - 1));
+      const next = document.createElement("button");
+      next.id = "next";
+      next.type = "button";
+      const isLast = index === questions.length - 1;
+      next.textContent = isLast ? "결과 보기" : "다음 문제";
+      next.addEventListener("click", () => {
+        if (isLast) finishTest();
+        else showQuestion(index + 1);
+      });
+      pager.append(previous, next);
+
+      article.append(meta, title, options, pager);
+      questionsNode.append(progress, dots, article);
     }
 
     function renderSubmitResult(body) {
@@ -276,6 +446,7 @@
         );
         if (body.domain_scores) section.append(scoreList(body.domain_scores));
         if (body.error) section.append(paragraph(body.error.message));
+        if (body.status === "failed") section.append(retryButton());
         resultNode.replaceChildren(section);
         return;
       }
@@ -337,6 +508,14 @@
       }
       section.append(learning);
       resultNode.replaceChildren(section);
+    }
+
+    function retryButton() {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "리포트 다시 생성";
+      button.addEventListener("click", retryReport);
+      return button;
     }
 
     function inStageOrder(rows) {
@@ -403,6 +582,16 @@
       fillButton.disabled = isBusy || state.questions.length === 0;
       submitButton.disabled = isBusy || state.questions.length === 0 || Boolean(state.reportId) || state.reportStatus !== "pending";
       reportButton.disabled = isBusy || !state.diagnosticId;
+      reportButton.textContent = state.reportStatus === "failed" ? "리포트 다시 생성" : "3. 리포트 조회";
+      for (const button of questionsNode.querySelectorAll(".dots button, #retry-report")) {
+        button.disabled = isBusy;
+      }
+      const previous = questionsNode.querySelector("#prev");
+      const next = questionsNode.querySelector("#next");
+      if (previous) previous.disabled = isBusy || state.currentIndex <= 0;
+      if (next) next.disabled = isBusy;
+      const retry = resultNode.querySelector("button");
+      if (retry) retry.disabled = isBusy;
     }
 
     async function request(path, options) {
@@ -425,13 +614,17 @@
       const saved = JSON.parse(sessionStorage.getItem("pretest-state") || "null");
       if (saved && saved.diagnosticId && Array.isArray(saved.questions)) {
         Object.assign(state, saved);
-        renderQuestions(state.questions);
-        for (const answer of state.answers || []) {
-          const input = questionsNode.querySelector(`input[name="${CSS.escape(cssName(answer.question_id))}"][value="${answer.selected_answer}"]`);
-          if (input) input.checked = true;
+        if (!Number.isInteger(state.currentIndex)) state.currentIndex = 0;
+        if (state.phase !== "questions" && state.phase !== "report") state.phase = "questions";
+        if (state.reportStatus && state.reportStatus !== "pending") state.phase = "report";
+        if (state.phase === "report") {
+          questionsNode.replaceChildren();
+          setBusy(false);
+          loadReport();
+        } else {
+          renderCurrentQuestion();
+          setBusy(false);
         }
-        setBusy(false);
-        loadReport();
       }
     } catch { sessionStorage.removeItem("pretest-state"); }
   </script>

@@ -15,7 +15,7 @@ from dependencies import get_current_user_id
 from database.repository import InMemoryDiagnosticRepository
 from schemas.diagnostic import SubmitRequest
 from services.diagnostic_service import DiagnosticService
-from services.errors import IdempotencyConflictError, ReportNotFoundError, DiagnosticStorageError
+from services.errors import IdempotencyConflictError, InvalidAnswersError, ReportNotFoundError, DiagnosticStorageError
 from services.question_bank import load_questions
 
 
@@ -78,6 +78,30 @@ class SubmissionFlowTest(unittest.TestCase):
         self.assertEqual(report.summary.score, 100)
         self.assertEqual(report.error.code, "REPORT_GENERATION_FAILED")
         self.assertFalse(self.submit()[1])
+
+    def test_failed_report_retry_runs_generation_again(self):
+        self.submit()
+        with patch("services.diagnostic_service.generate_llm_report", side_effect=RuntimeError("SDK setup failure")):
+            self.service.generate_report(self.started.id, "user-a")
+        started = self.service.prepare_report_retry(self.started.id, "user-a")
+        self.assertTrue(started)
+        self.assertEqual(self.service.get_report(self.started.id, "user-a").status, "processing")
+        self.assertFalse(self.service.prepare_report_retry(self.started.id, "user-a"))
+        self.service.generate_report(self.started.id, "user-a")
+        report = self.service.get_report(self.started.id, "user-a")
+        self.assertEqual(report.status, "completed")
+        self.assertIsNone(report.error)
+        self.assertIsNotNone(report.llm_report)
+
+    def test_completed_report_retry_does_not_restart(self):
+        self.submit()
+        self.service.generate_report(self.started.id, "user-a")
+        self.assertFalse(self.service.prepare_report_retry(self.started.id, "user-a"))
+        self.assertEqual(self.service.get_report(self.started.id, "user-a").status, "completed")
+
+    def test_pending_report_retry_is_rejected(self):
+        with self.assertRaises(InvalidAnswersError):
+            self.service.prepare_report_retry(self.started.id, "user-a")
 
     def test_expired_job_is_failed_and_late_completion_cannot_overwrite(self):
         self.submit()

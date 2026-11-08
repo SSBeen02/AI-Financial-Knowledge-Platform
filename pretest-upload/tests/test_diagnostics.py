@@ -127,6 +127,7 @@ class DiagnosticApiTest(unittest.TestCase):
                 "/diagnostics",
                 "/diagnostics/{id}/submit",
                 "/reports/{id}",
+                "/reports/{id}/retry",
             },
         )
         start_parameters = spec["paths"]["/diagnostics"]["post"].get("parameters", [])
@@ -273,6 +274,15 @@ class DiagnosticApiTest(unittest.TestCase):
         )
         self.assertEqual(again.status_code, 200)
         self.assertEqual(again.json()["status"], "failed")
+
+        retried = self.client.post(f"/reports/{started['id']}/retry")
+        self.assertEqual(retried.status_code, 202, retried.text)
+        self.assertEqual(retried.json()["status"], "processing")
+        self.assertNotIn("error", retried.json())
+        completed = self.client.get(f"/reports/{started['id']}")
+        self.assertEqual(completed.status_code, 200)
+        self.assertEqual(completed.json()["status"], "completed")
+        self.assertIn("llm_report", completed.json())
 
     def test_unknown_diagnostic_is_not_found(self):
         response = self.client.post(
