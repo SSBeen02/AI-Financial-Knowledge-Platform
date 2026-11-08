@@ -2,6 +2,8 @@ import json
 import threading
 from pathlib import Path
 
+from services.domains import DOMAIN_CATALOG
+
 QUESTION_FILE = Path(__file__).resolve().parent.parent / "data" / "pretest_questions_v2.json"
 REQUIRED_FIELDS = {
     "id",
@@ -56,6 +58,12 @@ def _read_questions(path: Path) -> list[dict]:
     seen: set[str] = set()
     for index, question in enumerate(questions, start=1):
         _validate_question(index, question, seen)
+    expected_counts = {domain: 6 for domain in DOMAIN_CATALOG}
+    if count_by_domain(questions) != expected_counts:
+        raise QuestionBankError("문제은행은 지정된 4개 도메인별 6문항, 총 24문항이어야 합니다.")
+    concepts = [question["concept"].strip() for question in questions]
+    if len(concepts) != len(set(concepts)):
+        raise QuestionBankError("문제은행의 핵심 개념은 문항마다 달라야 합니다.")
     return questions
 
 
@@ -76,12 +84,14 @@ def _validate_question(index: int, question: dict, seen: set[str]) -> None:
     for field in ("domain", "category", "concept", "question"):
         if not isinstance(question[field], str) or not question[field].strip():
             raise QuestionBankError(f"{question_id}의 {field} 값이 올바르지 않습니다.")
+    if question["domain"] not in DOMAIN_CATALOG:
+        raise QuestionBankError(f"{question_id}의 domain은 지정된 영문 슬러그여야 합니다.")
 
     if isinstance(question["difficulty"], bool) or not isinstance(question["difficulty"], int):
         raise QuestionBankError(f"{question_id}의 난이도가 올바르지 않습니다.")
 
     options = question["options"]
-    if not isinstance(options, list) or not options or not all(isinstance(item, str) and item for item in options):
+    if not isinstance(options, list) or len(options) != 4 or not all(isinstance(item, str) and item.strip() for item in options):
         raise QuestionBankError(f"{question_id}의 보기가 올바르지 않습니다.")
 
     answer = question["answer"]

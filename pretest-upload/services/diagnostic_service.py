@@ -98,11 +98,11 @@ class DiagnosticService:
             elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(attempt["submitted_at"].replace("Z", "+00:00"))).total_seconds()
             if elapsed >= REPORT_DEADLINE_SECONDS:
                 from services.report_parallel import ReportDeadlineError
-                raise ReportDeadlineError("리포트 처리 대기 시간이 목표를 초과했소.")
+                raise ReportDeadlineError("리포트 처리 대기 시간이 처리 기한을 초과했소.")
             llm = generate_llm_report(graded, budget=min(28.0, REPORT_DEADLINE_SECONDS - elapsed))
             if (datetime.now(timezone.utc) - datetime.fromisoformat(attempt["submitted_at"].replace("Z", "+00:00"))).total_seconds() >= REPORT_DEADLINE_SECONDS:
                 from services.report_parallel import ReportDeadlineError
-                raise ReportDeadlineError("리포트 생성 목표 시간을 초과했소.")
+                raise ReportDeadlineError("리포트 생성 처리 기한을 초과했소.")
             # 조회의 기준은 개별 컬럼. report는 이전 데이터 호환용으로 유지한다.
             self._repository.update_attempt(attempt_id, user_id, "processing", {
                 "status": "completed", "llm_report": llm.model_dump(),
@@ -112,7 +112,7 @@ class DiagnosticService:
             from services.report_parallel import ReportDeadlineError
             logger.exception("리포트 작업 실패: diagnostic_id=%s", attempt_id)
             timed_out = isinstance(exc, ReportDeadlineError)
-            self._fail(attempt_id, user_id, "REPORT_GENERATION_TIMEOUT" if timed_out else "REPORT_GENERATION_FAILED", "리포트 생성 목표 시간을 초과했소. 채점 결과는 보존되어 있소." if timed_out else "리포트를 생성하지 못했소. 채점 결과는 보존되어 있소.")
+            self._fail(attempt_id, user_id, "REPORT_GENERATION_TIMEOUT" if timed_out else "REPORT_GENERATION_FAILED", "리포트 생성 처리 기한을 초과했소. 채점 결과는 보존되어 있소." if timed_out else "리포트를 생성하지 못했소. 채점 결과는 보존되어 있소.")
         finally:
             logger.info("report_service_total diagnostic_id=%s seconds=%.4f", attempt_id, time.perf_counter() - started)
 

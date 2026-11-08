@@ -89,11 +89,11 @@ def generate_parallel_report(client, graded: dict, model: str, observer: Callabl
         queued = time.perf_counter()
         remaining = deadline - queued
         if remaining <= 0 or not _API_SLOTS.acquire(timeout=max(0, remaining)):
-            raise ReportDeadlineError("리포트 생성 목표 시간을 초과했소. 잠시 후 다시 요청할 수 있소.")
+            raise ReportDeadlineError("리포트 생성 처리 기한을 초과했소. 잠시 후 다시 요청할 수 있소.")
         try:
             remaining = deadline - time.perf_counter()
             if remaining <= 0:
-                raise ReportDeadlineError("리포트 생성 목표 시간을 초과했소.")
+                raise ReportDeadlineError("리포트 생성 처리 기한을 초과했소.")
             api_started = time.perf_counter()
             completion = client.beta.chat.completions.parse(model=model, messages=[{"role": "system", "content": STYLE_PROMPT + "\n" + instruction}, {"role": "user", "content": json.dumps(payload, ensure_ascii=False, separators=(",", ":"))}], response_format=schema, timeout=remaining)
             if not completion.choices:
@@ -127,7 +127,7 @@ def generate_parallel_report(client, graded: dict, model: str, observer: Callabl
             if future.exception() is not None:
                 raise future.exception()
         if pending:
-            raise ReportDeadlineError("리포트 생성 목표 시간을 초과했소. 채점 결과는 보존되어 있소.")
+            raise ReportDeadlineError("리포트 생성 처리 기한을 초과했소. 채점 결과는 보존되어 있소.")
         parsed = {name: future.result() for name, future in futures.items()}
     except LlmReportError:
         raise
