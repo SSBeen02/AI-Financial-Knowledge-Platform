@@ -1,0 +1,35 @@
+..............퀴즈 생성 실패 quiz_set_id=4e9d0919-fc8c-4520-b3f3-adef211e02f3 concept_id=inflation stage_id=None source=dynamic attempts=1 elapsed_ms=108
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 432, in create_quiz_set
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_quizzes.py", line 329, in counting_failure
+    raise RuntimeError("generation failed")
+RuntimeError: generation failed
+..퀴즈 생성 실패 quiz_set_id=edb3e373-bb0d-463f-a5de-7bd734e2fba8 concept_id=inflation stage_id=None source=dynamic attempts=1 elapsed_ms=104
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 432, in create_quiz_set
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_quizzes.py", line 63, in failing_generator
+    raise RuntimeError("generation failed")
+RuntimeError: generation failed
+..학습 관리 미연결: 결과 보고 submission_id=1aa2b246-5291-4477-a45a-051cbbe5d7eb
+....학습 관리 미연결: 결과 보고 submission_id=ea58cd22-a602-4a12-ad28-18ec24af64bb
+학습 관리 미연결: 결과 보고 submission_id=ea58cd22-a602-4a12-ad28-18ec24af64bb
+......학습 관리 미연결: 결과 보고 submission_id=9e65a15b-a5dc-4989-88b0-fb41052ab1d0
+학습 관리 미연결: 결과 보고 submission_id=87dbe5b5-7ae6-4adf-8cd3-94aa67a36006
+.....퀴즈 생성 실패 quiz_set_id=fa29cd9a-cae2-409a-9104-eb1a24f13ec9 concept_id=sisa_1281 stage_id=stage1 source=dynamic attempts=1 elapsed_ms=37
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 432, in create_quiz_set
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_team_quiz_adapter.py", line 108, in fail
+    raise RuntimeError("simulated generation failure")
+RuntimeError: simulated generation failure
+...........
+----------------------------------------------------------------------
+Ran 44 tests in 12.989s
+
+OK
+{"tests_run": 44, "all_passed": true, "failures": 0, "errors": 0, "windows_event_loop_initialization_retries": 0, "note": "Retries apply only to OS WinError 10014 before a test starts; assertions and test bodies are not retried."}

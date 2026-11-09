@@ -1,0 +1,25 @@
+{
+  "scope": "actual HTML; mocked APIs; sessionStorage; not deployed chatbot",
+  "results": [
+    {
+      "case": "reload_preserves_answers_and_position",
+      "passed": true
+    },
+    {
+      "case": "failed_submit_preserves_draft_and_retry_key_then_clears_on_success",
+      "passed": true
+    },
+    {
+      "case": "relearning_link_carries_concept_and_stage",
+      "passed": true
+    },
+    {
+      "case": "corrupt_draft_does_not_break_page",
+      "passed": true
+    },
+    {
+      "case": "integration_destination_hook_is_used",
+      "passed": true
+    }
+  ]
+}

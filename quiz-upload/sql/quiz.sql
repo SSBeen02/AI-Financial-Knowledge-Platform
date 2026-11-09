@@ -15,7 +15,7 @@ create table if not exists public.quiz_sets (
 );
 
 comment on table public.quiz_sets is
-  'Gemini가 만든 OX 2문항과 상황형 1문항. 정답은 questions JSON에만 있고 조회 API에서는 빼서 반환합니다.';
+  'Stage 1~4 동적 생성 및 Stage 5 고정 OX 2문항과 상황형 1문항. 정답은 questions JSON에만 있고 조회 API에서는 빼서 반환합니다.';
 
 create unique index if not exists quiz_sets_user_session_idx
   on public.quiz_sets (user_id, learning_session_id);
@@ -34,7 +34,8 @@ create table if not exists public.quiz_submissions (
   correct_count integer not null,
   is_passed boolean not null,
   created_at timestamptz not null,
-  unique (user_id, idempotency_key)
+  unique (user_id, idempotency_key),
+  constraint uq_quiz_submissions_quiz_set unique (quiz_set_id)
 );
 
 comment on table public.quiz_submissions is

@@ -1,0 +1,8 @@
+{
+  "tests_run": 56,
+  "all_passed": true,
+  "failures": 0,
+  "errors": 0,
+  "windows_event_loop_initialization_retries": 0,
+  "note": "Retries apply only to OS WinError 10014 before a test starts; assertions and test bodies are not retried."
+}

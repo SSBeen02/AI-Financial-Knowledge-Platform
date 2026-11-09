@@ -149,6 +149,40 @@ class QuizConcurrencyTest(unittest.IsolatedAsyncioTestCase):
             queries_after_rollback=state['queries_after_rollback'], same_submission_id=True,
             same_result=True, stored_submissions=count, passed=True))
 
+    async def test_different_keys_concurrent_submission_still_stores_one_result(self):
+        service = QuizService(AsyncMock(return_value=copy.deepcopy(SAMPLE)))
+        async with self.factory() as session:
+            quiz = await service.create_quiz_set(session, user_id='race-user', session_id='submit-session',
+                concept_id='test-concept', stage_id='stage1', learning_context='test')
+        state = self.state()
+        answers = [dict(question_index=i, answer=a) for i, a in enumerate(['O','O','B'],1)]
+
+        async def request(key):
+            async with self.factory(info={'race': state, 'target': QuizSubmission}) as session:
+                return await service.submit_quiz_answers(session, user_id='race-user', quiz_set_id=quiz.id,
+                    submitted_answers=copy.deepcopy(answers), idempotency_key=key)
+
+        notify = AsyncMock()
+        with patch('app.services.quiz_service.report_quiz_result', notify):
+            first, second = await asyncio.wait_for(asyncio.gather(request('key-a'), request('key-b')), timeout=20)
+        self.verify_collision(state, 'quiz_submissions')
+        self.assertEqual(first.submission_id, second.submission_id)
+        self.assertEqual(first.model_dump(), second.model_dump())
+        self.assertEqual(first.correct_count, 3)
+        self.assertTrue(first.is_passed)
+        self.assertEqual(notify.await_count, 2)
+        self.assertEqual({call.kwargs['submission_id'] for call in notify.await_args_list}, {first.submission_id})
+        async with self.factory() as session:
+            count = await session.scalar(select(func.count()).select_from(QuizSubmission))
+            saved = await session.get(QuizSubmission, first.submission_id)
+            self.assertEqual(count, 1)
+            self.assertEqual(saved.correct_count, 3)
+            self.assertTrue(saved.is_passed)
+        RESULTS.append(dict(case='다른 키 동시 제출', database='SQLite', request_count=2,
+            unique_error=state['integrity_errors'][0], rollback_count=state['rollbacks'],
+            queries_after_rollback=state['queries_after_rollback'], same_submission_id=True,
+            same_result=True, stored_submissions=count, passed=True))
+
 
 if __name__ == '__main__':
     sys.stdout.reconfigure(encoding='utf-8')

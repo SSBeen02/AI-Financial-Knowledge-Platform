@@ -1,0 +1,8 @@
+Trial 1: 분업과 특화; generation=12.484s; grade=0.0139; structure=True
+Trial 2: 기회비용; generation=11.227s; grade=0.007; structure=True
+Trial 3: 희소성; generation=7.723s; grade=0.0081; structure=True
+Trial 4: 고정비와 변동비; generation=11.139s; grade=not measured; structure=True
+Trial 5: 가계 예산; generation=6.205s; grade=not measured; structure=True
+Trial 6: 수요와 공급; generation=13.645s; grade=not measured; structure=True
+Trial 7: 물가와 구매력; generation=6.929s; grade=not measured; structure=True
+Timeout simulation: True

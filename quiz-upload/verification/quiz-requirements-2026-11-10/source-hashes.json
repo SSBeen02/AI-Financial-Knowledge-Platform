@@ -1,0 +1,8 @@
+{
+  "app/services/quiz_service.py": "1f51b37e809e48cb370e802b9a7caa89e6b6349da67689586f437c6803d4e3e1",
+  "app/models/quiz.py": "93c6b23b76273b363eea86687654c25d2df93de4f8f9c604e99c0db1c5ba9086",
+  "app/db.py": "c4f16e2353b1324e801690b85df25cca583d157758c0a0b720cee07536a17c26",
+  "quiz.html": "038dc3e8e8c398a13b361e5018a46e6434643c5b6b485e89661a845c0cf5904f",
+  "sql/quiz_002_first_submission.sql": "6fdca233fdd09a06e083e4f6f7095b6cbefcd81b36a36efa3b8d7b9ccde5ef94",
+  "sql/quiz_003_client_access.sql": "4db64313270d63795f2ce4ed5802b4099f617c71e2e7645f60946cba6d06cd2f"
+}

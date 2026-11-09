@@ -1,0 +1,117 @@
+..............퀴즈 생성 실패 quiz_set_id=a083f581-264d-45c6-ad79-1d0449e83302 concept_id=inflation stage_id=None source=dynamic attempts=1 elapsed_ms=73
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_quizzes.py", line 331, in counting_failure
+    raise RuntimeError("generation failed")
+RuntimeError: generation failed
+..퀴즈 생성 실패 quiz_set_id=38fc1cb3-32fc-486b-939b-a8ebdcb7cbee concept_id=inflation stage_id=None source=dynamic attempts=1 elapsed_ms=84
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_quizzes.py", line 63, in failing_generator
+    raise RuntimeError("generation failed")
+RuntimeError: generation failed
+..학습 관리 미연결: 결과 보고 submission_id=590fbfb9-bf57-4bdc-970b-c7f26488449b
+....학습 관리 미연결: 결과 보고 submission_id=3a12ebbb-0324-457a-a44d-2d8e1c9f0b0e
+학습 관리 미연결: 결과 보고 submission_id=3a12ebbb-0324-457a-a44d-2d8e1c9f0b0e
+......학습 관리 미연결: 결과 보고 submission_id=97c7bdb1-dbfb-4428-98a5-b429e05f2705
+학습 관리 미연결: 결과 보고 submission_id=bd46a5e3-2b30-42ec-824e-210e97569ccf
+.....퀴즈 생성 실패 quiz_set_id=85c016f1-05eb-4c55-9328-622df80fedf8 concept_id=sisa_1281 stage_id=stage1 source=dynamic attempts=1 elapsed_ms=42
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_team_quiz_adapter.py", line 108, in fail
+    raise RuntimeError("simulated generation failure")
+RuntimeError: simulated generation failure
+...............퀴즈 생성 실패 quiz_set_id=b2b5431e-f2ba-419e-ab81-cf841032c48c concept_id=concept stage_id=stage1 source=dynamic attempts=3 elapsed_ms=35
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 466, in generate_validated
+    candidate = normalize_questions(raw_questions)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 202, in normalize_questions
+    raise ValueError("퀴즈는 3문항이어야 합니다.")
+ValueError: 퀴즈는 3문항이어야 합니다.
+..퀴즈 생성 실패 quiz_set_id=261abe0c-aef9-4cce-848c-ad0557d3a1b7 concept_id=concept stage_id=stage1 source=dynamic attempts=1 elapsed_ms=56
+Traceback (most recent call last):
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_quiz_requirements.py", line 78, in slow
+    try: await asyncio.sleep(10)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 665, in sleep
+    return await future
+           ^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 519, in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\timeouts.py", line 115, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError
+..퀴즈 생성 실패 quiz_set_id=c591d079-c1fe-49a2-ae10-c67d6052f806 concept_id=concept stage_id=stage5 source=stage5 attempts=0 elapsed_ms=13
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 438, in create_quiz_set
+    questions = normalize_questions(raw_questions)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 202, in normalize_questions
+    raise ValueError("퀴즈는 3문항이어야 합니다.")
+ValueError: 퀴즈는 3문항이어야 합니다.
+.퀴즈 생성 실패 quiz_set_id=7c4fd2e3-b67e-4ed3-997b-207efdfd5c44 concept_id=concept stage_id=stage1 source=dynamic attempts=1 elapsed_ms=38
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\unittest\mock.py", line 2291, in _execute_mock_call
+    raise effect
+RuntimeError: transport failure
+...
+----------------------------------------------------------------------
+Ran 56 tests in 13.410s
+
+OK
+{"tests_run": 56, "all_passed": true, "failures": 0, "errors": 0, "windows_event_loop_initialization_retries": 0, "note": "Retries apply only to OS WinError 10014 before a test starts; assertions and test bodies are not retried."}

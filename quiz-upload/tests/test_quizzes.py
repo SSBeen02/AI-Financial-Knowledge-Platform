@@ -196,8 +196,10 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(passed.json()["correct_count"], 2)
         self.assertTrue(passed.json()["is_passed"])
 
+        # A new learning attempt has a new set; the same set cannot change its first result.
+        retry_quiz = await self._create(concept_id="retry-boundary", session_id="retry-boundary")
         failed = await self.client.post(
-            f"/api/v1/quiz-sets/{created.id}/submit",
+            f"/api/v1/quiz-sets/{retry_quiz.id}/submit",
             json={"submitted_answers": _answers("X", "X", "B"), "idempotency_key": "one"},
         )
         self.assertEqual(failed.status_code, 200, failed.text)
@@ -477,7 +479,7 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
                 learning_session_id="session-9",
                 learning_context="복리 설명",
             )
-        factory.assert_called_once_with(api_key="test-key-not-real", timeout=40.0, max_retries=1)
+        factory.assert_called_once_with(api_key="test-key-not-real", timeout=30.0, max_retries=1)
         self.assertEqual(questions, SAMPLE_QUESTIONS)
         args = parse.call_args.kwargs
         self.assertEqual(args["model"], "gpt-4o-mini")

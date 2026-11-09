@@ -1,0 +1,78 @@
+[
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\__init__.py",
+    "Hash": "BD23DB5C04A0FF4A2B05E97FA715CAA83B9DF59E637F440B6AAD116E5B9B2BFC"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\db.py",
+    "Hash": "C4F16E2353B1324E801690B85DF25CCA583D157758C0A0B720CEE07536A17C26"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\errors.py",
+    "Hash": "5E8EA7C025019845A2974AC0EBB8F299A4F1FABFCA26FAA38A9748BFD61C9357"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\timeutil.py",
+    "Hash": "5AFC807640ACE027635B37C51AC79A8A524A8DA89DBD5976C8DAA2C25B4CBA62"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\api\\__init__.py",
+    "Hash": "81877D16C59097B6E499CD720D6A1C9455D3F94AE3FD066489801E15854274C4"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\api\\deps.py",
+    "Hash": "8F0AB0A3824A95292E1D57E352BC5D0B4C2A8E549FEA4055FCFE364C07121BEE"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\api\\v1\\__init__.py",
+    "Hash": "42A717E84865F9DDFA2EF9F6652076508559A17CBBF0D081601AD44AB008B1F0"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\api\\v1\\endpoints\\__init__.py",
+    "Hash": "4E3793EE766F52473FBE24F529D9E8CA63625AB44C71D3E3723738DE2ABB11D3"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\api\\v1\\endpoints\\quizzes.py",
+    "Hash": "703071C1F4BF7FF77975B31A00C4C819CE9A9E21EC82E3A5A9A480DFB928E292"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\models\\__init__.py",
+    "Hash": "A7B8F8F15CE101D15E578F71A72AF1FFF826161DC636F4BF00EB29903B6B658E"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\models\\quiz.py",
+    "Hash": "93C6B23B76273B363EEA86687654C25D2DF93DE4F8F9C604E99C0DB1C5BA9086"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\schemas\\__init__.py",
+    "Hash": "4D9BB9AE75C586D7708DF93CE95809DE70AF5B48D048F428F282CCFC766070DF"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\schemas\\quiz.py",
+    "Hash": "A4233B4213741769F2030DA3F2AC75BBF15A978CFB6A0ABFF50E7D8561D8C1E3"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\services\\__init__.py",
+    "Hash": "426712D5FD221F3B4E7FFD5C0B55AD1B8748AD4C32EDE67BF8F856569B1D2CD5"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\services\\learning_callbacks.py",
+    "Hash": "BA6BB034E399A593AE9BCEC0142C420F1AE22C85BF32D52EB8BBA4BEF6C0E723"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\services\\quiz_service.py",
+    "Hash": "1F51B37E809E48CB370E802B9A7CAA89E6B6349DA67689586F437C6803D4E3E1"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\services\\quiz_tone.py",
+    "Hash": "FCC90A1E9BC0ABEB24E3DE02B1A14C441F98AC8491FCA48FFB0E26B7D02F559C"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\services\\stage5_bank.py",
+    "Hash": "40C15E4B187ADBC9AD3C15F845137BDEB3703F2D0060C0193B6953FAAE69BA72"
+  },
+  {
+    "Path": "C:\\Github\\AI-Financial-Knowledge-Platform\\quiz-upload\\app\\services\\team_quiz.py",
+    "Hash": "441646337F38C9FEF06B1440A7EECD347050843E43D59E01936843C6637378B4"
+  }
+]

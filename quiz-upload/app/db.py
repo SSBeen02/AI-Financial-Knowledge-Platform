@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
@@ -124,6 +124,14 @@ async def init_quiz_models() -> None:
 
     async with get_engine().begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
+        def verify_first_submission(sync_connection):
+            inspector = inspect(sync_connection)
+            constraints = inspector.get_unique_constraints("quiz_submissions")
+            indexes = inspector.get_indexes("quiz_submissions")
+            return any(c.get("column_names") == ["quiz_set_id"] for c in constraints) or any(
+                i.get("unique") and i.get("column_names") == ["quiz_set_id"] for i in indexes)
+        if not await connection.run_sync(verify_first_submission):
+            raise RuntimeError("퀴즈당 최초 제출 유일 제약이 없습니다. 기존 DB를 백업·중복 검사한 뒤 quiz_002_first_submission.sql 또는 SQLite 마이그레이션을 적용하세요. create_all은 기존 테이블 제약을 갱신하지 않습니다.")
 
 
 @asynccontextmanager

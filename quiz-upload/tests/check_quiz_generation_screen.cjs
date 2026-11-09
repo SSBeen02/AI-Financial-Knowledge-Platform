@@ -4,7 +4,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const { chromium } = require(process.env.QUIZ_TEST_PLAYWRIGHT_PATH || 'playwright');
 const root = path.resolve(__dirname, '..');
-const out = path.join(root, 'verification/quiz-unit-2026-11-08');
+const out = path.join(root, 'verification/quiz-update-2026-11-10');
 fs.mkdirSync(out, { recursive: true });
 const html = fs.readFileSync(path.join(root, 'quiz.html'), 'utf8');
 const questions = [1, 2, 3].map(i => ({question_index: i, question_type: i === 3 ? 'situation' : 'ox',
@@ -14,7 +14,7 @@ const results = [];
 (async () => {
   const browser = await chromium.launch({headless:true, channel:'chrome'});
   try {
-    for (const state of ['failed', 'pending', 'processing', 'completed', 'broken-completed']) {
+    for (const state of ['failed', 'pending', 'processing', 'completed', 'broken-completed', 'missing-id', 'blank-id']) {
       const page = await browser.newPage({viewport:{width:1100,height:800}});
       const errors = [];
       page.on('pageerror', e => errors.push(e.message));
@@ -27,7 +27,18 @@ const results = [];
           await route.fulfill({json:body});
         } else await route.fulfill({contentType:'text/html; charset=utf-8',body:html});
       });
-      await page.goto('http://127.0.0.1:18019/quiz?quiz_set_id=screen-test');
+      await page.goto('http://127.0.0.1:18019/quiz' + (state === 'missing-id' ? '' : state === 'blank-id' ? '?quiz_set_id=%20%20' : '?quiz_set_id=screen-test'));
+      if (['missing-id','blank-id'].includes(state)) {
+        await page.getByText("퀴즈 정보가 없습니다. 학습 화면에서 '학습 완료'를 눌러 퀴즈를 시작해 주세요.",{exact:true}).waitFor();
+        assert.equal(requests,0);
+        assert.equal(await page.locator('.choice').count(),0);
+        assert.equal(await page.locator('#submit').count(),0);
+        assert.deepEqual(errors,[]);
+        results.push({state,passed:true,api_requests:requests});
+        console.log('PASS',state);
+        await page.close();
+        continue;
+      }
       if (state === 'failed') {
         await page.getByText('퀴즈 생성에 실패했습니다. 학습 화면에서 퀴즈를 다시 요청해 주세요.', {exact:true}).waitFor();
         assert.equal(await page.locator('.choice').count(), 0);

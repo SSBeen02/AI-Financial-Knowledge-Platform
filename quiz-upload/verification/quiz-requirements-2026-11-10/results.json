@@ -1,0 +1,511 @@
+{
+  "started_at": "2026-11-09T17:40:50.646568+00:00",
+  "database": "temporary SQLite",
+  "model": "gpt-6-luna",
+  "samples": [
+    {
+      "trial": 1,
+      "term": "분업과 특화",
+      "context": "분업은 생산 과정을 나누어 맡는 것이고, 특화는 특정 업무에 집중하는 것이다. 역할 분담은 숙련도를 높일 수 있지만 모든 상황에서 효율을 보장하지 않는다.",
+      "generation_seconds": 12.484,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "생산 과정을 나누어 맡기는 것을 분업이라 하오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "분업은 생산 과정을 나누어 맡는 것이오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "특화는 특정 업무에 집중하는 것이오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "특화는 특정 업무에 집중하는 것이오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "한 팀이 작업을 역할별로 나누었지만, 일부 구성원의 숙련도가 오르지 않고 전체 진행도 늦어지고 있소. 이때 가장 적절한 행동은 무엇이오?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "역할을 나눈 상태를 그대로 유지한다"
+            },
+            {
+              "key": "B",
+              "text": "업무 배분과 진행 방식을 다시 살핀다"
+            },
+            {
+              "key": "C",
+              "text": "모든 구성원에게 같은 업무를 맡긴다"
+            },
+            {
+              "key": "D",
+              "text": "한 구성원에게 모든 업무를 맡긴다"
+            }
+          ],
+          "answer": "B",
+          "explanation": "역할 분담이 언제나 효율을 보장하는 것은 아니므로, 상황에 맞게 업무 배분과 진행 방식을 살펴야 하오."
+        }
+      ],
+      "structure_ok": true,
+      "grading_seconds": 0.0139,
+      "grading_status": 200,
+      "grading_ok": true
+    },
+    {
+      "trial": 2,
+      "term": "기회비용",
+      "context": "기회비용은 어떤 선택을 하면서 포기한 대안 중 가장 가치가 큰 대안의 가치이다. 포기한 모든 대안의 가치를 합산하지 않는다.",
+      "generation_seconds": 11.227,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "기회비용은 어떤 선택을 하면서 포기한 대안 중 가장 가치가 큰 대안의 가치이오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "기회비용은 포기한 대안 가운데 가장 가치가 큰 대안의 가치이오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "선택한 대상 자체의 가치가 기회비용이오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "기회비용은 선택한 대상의 가치가 아니라 포기한 대안 중 가장 가치가 큰 대안의 가치이오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "당신은 여러 활동 중 하나를 선택했고, 포기한 활동 가운데 영화 보기가 가장 가치가 크다고 판단하오. 이 선택의 기회비용은 무엇으로 보아야 하오?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "선택한 활동의 가치"
+            },
+            {
+              "key": "B",
+              "text": "포기한 활동의 가치 전부를 합한 것"
+            },
+            {
+              "key": "C",
+              "text": "영화 보기의 가치"
+            },
+            {
+              "key": "D",
+              "text": "가장 가치가 낮은 포기 활동의 가치"
+            }
+          ],
+          "answer": "C",
+          "explanation": "기회비용은 포기한 활동의 가치를 모두 더한 것이 아니라, 그중 가장 가치가 큰 영화 보기의 가치이오."
+        }
+      ],
+      "structure_ok": true,
+      "grading_seconds": 0.007,
+      "grading_status": 200,
+      "grading_ok": true
+    },
+    {
+      "trial": 3,
+      "term": "희소성",
+      "context": "희소성은 사람들의 욕구에 비해 이용할 수 있는 자원이 제한되어 있는 상태이다. 자원이 제한되어 있기 때문에 선택이 필요하다.",
+      "generation_seconds": 7.723,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "사람들의 욕구에 비해 이용할 수 있는 자원이 제한되어 있으면 희소성이 있는 상태이오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "희소성은 사람들의 욕구에 비해 이용할 수 있는 자원이 제한된 상태이오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "이용할 수 있는 자원이 제한되어 있어도 선택은 필요하지 않소?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "자원이 제한되어 있기 때문에 무엇을 택할지 선택이 필요하오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "하고 싶은 일이 여러 가지인데 이용할 수 있는 자원이 제한되어 있소. 이런 상황에서 알맞은 행동은 무엇이오?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "자원이 제한되어 있음을 고려해 할 일을 선택한다"
+            },
+            {
+              "key": "B",
+              "text": "원하는 일을 모두 할 수 있다고 생각한다"
+            },
+            {
+              "key": "C",
+              "text": "자원이 제한되어도 선택은 필요 없다고 판단한다"
+            },
+            {
+              "key": "D",
+              "text": "욕구가 있으면 자원도 충분하다고 여긴다"
+            }
+          ],
+          "answer": "A",
+          "explanation": "자원이 제한되어 있으면 모든 욕구를 그대로 충족하기 어려우므로 선택해야 하오."
+        }
+      ],
+      "structure_ok": true,
+      "grading_seconds": 0.0081,
+      "grading_status": 200,
+      "grading_ok": true
+    },
+    {
+      "trial": 4,
+      "term": "고정비와 변동비",
+      "context": "고정비는 일정한 범위에서 생산량에 따라 변하지 않는 비용이다. 변동비는 생산량이 달라짐에 따라 변하는 비용이다. 매장 임대료는 고정비의 예, 제품별 재료비는 변동비의 예이다.",
+      "generation_seconds": 11.139,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "생산량이 달라져도 일정한 범위에서는 매장 임대료가 변하지 않는 비용이라고 보아야 하오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "고정비는 일정한 범위에서 생산량에 따라 변하지 않는 비용이며, 매장 임대료가 그 예이오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "제품별 재료비는 생산량이 달라져도 변하지 않는 비용이오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "제품별 재료비는 생산량이 달라짐에 따라 변하는 변동비의 예이오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "생산량을 늘리려 하오. 매장 임대료와 제품별 재료비를 어떤 기준으로 구분하겠소?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "매장 임대료는 고정비, 제품별 재료비는 변동비로 구분한다"
+            },
+            {
+              "key": "B",
+              "text": "매장 임대료는 변동비, 제품별 재료비는 고정비로 구분한다"
+            },
+            {
+              "key": "C",
+              "text": "두 비용 모두 고정비로 구분한다"
+            },
+            {
+              "key": "D",
+              "text": "두 비용 모두 변동비로 구분한다"
+            }
+          ],
+          "answer": "A",
+          "explanation": "일정한 범위에서 생산량에 따라 변하지 않는 임대료는 고정비이고, 생산량에 따라 달라지는 제품별 재료비는 변동비이오."
+        }
+      ],
+      "structure_ok": true
+    },
+    {
+      "trial": 5,
+      "term": "가계 예산",
+      "context": "가계 예산은 예상 수입과 지출을 미리 계획하는 것이다. 지출이 수입보다 많으면 지출 조정 등의 검토가 필요하다. 예산 계획에는 실제 지출 확인도 도움이 된다.",
+      "generation_seconds": 6.205,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "가계 예산은 예상 수입과 지출을 미리 계획하는 것이오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "가계 예산은 예상 수입과 지출을 미리 계획하는 것이오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "가계 예산을 세울 때 실제 지출을 확인하는 일은 도움이 되지 않소?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "실제 지출을 확인하면 예산 계획에 도움이 되오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "예상 수입보다 지출이 많은 예산을 세웠소. 무엇을 검토하는 것이 알맞겠소?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "지출 조정 등 예산을 다시 검토한다"
+            },
+            {
+              "key": "B",
+              "text": "지출 계획을 그대로 둔다"
+            },
+            {
+              "key": "C",
+              "text": "실제 지출 확인을 생략한다"
+            },
+            {
+              "key": "D",
+              "text": "예상 수입과 지출을 확인하지 않는다"
+            }
+          ],
+          "answer": "A",
+          "explanation": "지출이 수입보다 많으면 지출 조정 등을 검토할 필요가 있소."
+        }
+      ],
+      "structure_ok": true
+    },
+    {
+      "trial": 6,
+      "term": "수요와 공급",
+      "context": "다른 조건이 일정할 때 가격이 오르면 수요량은 감소하고 공급량은 증가하는 경향이 있다. 가격 자체 변화에 따른 수요량 변화와 다른 조건 변화로 인한 수요 곡선 이동은 구분한다.",
+      "generation_seconds": 13.645,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "다른 조건이 일정할 때 가격이 오르면 수요량은 감소하고 공급량은 증가하는 경향이 있소. 맞소?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "다른 조건이 일정하면 가격 상승에 따라 수요량은 감소하고 공급량은 증가하는 경향이 있소."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "가격 자체가 변해 수요량이 달라진 경우, 그것만으로 수요 곡선이 이동했다고 보아야 하오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "가격 자체의 변화에 따른 수요량 변화와 다른 조건의 변화에 따른 수요 곡선 이동은 구분해야 하오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "어떤 상품의 가격은 그대로인데 다른 조건이 바뀌어 수요 곡선이 이동한 상황이오. 이를 분석할 때 가장 알맞은 행동을 고르겠소?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "가격 변화에 따른 수요량 변화로만 해석한다"
+            },
+            {
+              "key": "B",
+              "text": "가격은 그대로이므로 수요 곡선도 그대로라고 본다"
+            },
+            {
+              "key": "C",
+              "text": "다른 조건의 변화에 따른 수요 곡선 이동으로 구분한다"
+            },
+            {
+              "key": "D",
+              "text": "가격이 그대로여도 공급량 증가로 해석한다"
+            }
+          ],
+          "answer": "C",
+          "explanation": "가격 자체가 아니라 다른 조건의 변화로 수요 곡선이 이동한 것이므로 두 변화를 구분해야 하오."
+        }
+      ],
+      "structure_ok": true
+    },
+    {
+      "trial": 7,
+      "term": "물가와 구매력",
+      "context": "물가는 여러 상품과 서비스의 전반적인 가격 수준이다. 소득이 일정할 때 물가가 전반적으로 오르면 같은 돈으로 살 수 있는 양이 줄어 구매력이 낮아진다.",
+      "generation_seconds": 6.929,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "소득이 일정한데 물가가 전반적으로 오르면 같은 돈으로 살 수 있는 양은 줄어드오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "소득이 일정한 상태에서 전반적인 물가가 오르면 같은 돈으로 살 수 있는 양이 줄어 구매력이 낮아지오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "물가는 한 가지 상품의 가격만을 뜻하오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "물가는 여러 상품과 서비스의 전반적인 가격 수준을 뜻하오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "소득은 그대로인데 여러 상품과 서비스의 가격 수준이 전반적으로 높아졌소. 이 상황을 어떻게 이해해야 하오?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "같은 돈으로 살 수 있는 양이 줄어 구매력이 낮아진다"
+            },
+            {
+              "key": "B",
+              "text": "같은 돈으로 살 수 있는 양이 늘어 구매력이 높아진다"
+            },
+            {
+              "key": "C",
+              "text": "물가는 한 상품의 가격만 가리키므로 구매력과 관계없다"
+            },
+            {
+              "key": "D",
+              "text": "소득이 일정하면 물가가 변해도 구매력은 항상 같다"
+            }
+          ],
+          "answer": "A",
+          "explanation": "소득이 일정할 때 물가가 전반적으로 오르면 같은 돈으로 살 수 있는 양이 줄어 구매력이 낮아지오."
+        }
+      ],
+      "structure_ok": true
+    }
+  ],
+  "timeout": {
+    "injected_error": "APITimeoutError",
+    "sdk_timeout": 30.0,
+    "sdk_max_retries": 1,
+    "returned_status": "failed",
+    "stored_status": "failed",
+    "stored_questions": [],
+    "get_status": 200,
+    "get_body_status": "failed",
+    "passed": true,
+    "note": "Temporary SQLite and simulated SDK timeout. The separate headless browser tests use controlled API responses."
+  }
+}

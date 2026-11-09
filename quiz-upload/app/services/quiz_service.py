@@ -7,15 +7,18 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
+import time
 import unicodedata
 import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any
 from difflib import SequenceMatcher
 
+from pydantic import ValidationError
 from openai import AsyncOpenAI
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -48,6 +51,9 @@ logger = logging.getLogger("quiz")
 PASS_CORRECT_COUNT = 2
 PAGE_SIZE = 20
 NOVELTY_GENERATION_ATTEMPTS = 2
+MAX_GENERATION_ATTEMPTS = 3  # 최초 1회 + 형식 재생성 최대 2회
+GENERATION_TIMEOUT_SECONDS = 60.0
+AI_REQUEST_TIMEOUT_SECONDS = 30.0
 OX_TRUE = {"O", "TRUE", "Y", "YES", "맞다", "정답"}
 OX_FALSE = {"X", "FALSE", "N", "NO", "틀리다", "오답"}
 
@@ -63,6 +69,8 @@ questions 배열은 길이 3입니다.
 모든 prompt의 문장과 질문은 반드시 현대 하오체(~하오/~이오/~있소/~하겠소?)로 씁니다.
 OX choices의 text는 각각 "O", "X"만 씁니다. 맞소·아니오·맞아요 등의 설명은 붙이지 않습니다.
 상황형 choices의 text는 현대식 평서문(~한다/~이다) 또는 간결한 명사구로 씁니다. 보기에는 하오체를 쓰지 않습니다.
+prompt와 choices에는 정답이나 해설을 표시하지 않습니다. 정답은 answer, 해설은 explanation에만 씁니다.
+특정 종목·금융상품을 추천하거나 매수·매도·가입을 권유하는 문장은 쓰지 않습니다. 개념과 판단 근거만 설명합니다.
 explanation은 정답인 이유를 짧고 친절한 현대 하오체로 씁니다.
 해설의 모든 문장은 '~하오', '~되오', '~있소', '~이오'처럼 끝냅니다. 합니다체·해요체와 섞지 않습니다.
 학습 맥락의 previous_questions는 이전에 제공한 문제입니다. 새 3문항 모두 다른 질문·판단 근거·상황으로 출제합니다.
@@ -80,6 +88,10 @@ ANSWER_DISCLOSURE = re.compile(
 def _validate_public_text(text: str) -> None:
     if ANSWER_DISCLOSURE.search(text):
         raise ValueError("문제 또는 보기에 정답·해설 표시가 포함되어 있습니다.")
+
+class QuizFormatError(RuntimeError):
+    """The AI response could not be parsed as the quiz schema."""
+
 
 class DuplicateQuizQuestionError(ValueError):
     """A regenerated set must not serve a previously used question."""
@@ -150,15 +162,18 @@ async def generate_quiz_with_openai(
     settings = load_settings()
     if not settings.openai_api_key:
         raise RuntimeError("OPENAI_API_KEY가 없어 퀴즈를 생성하지 못했습니다.")
-    async with AsyncOpenAI(api_key=settings.openai_api_key, timeout=40.0, max_retries=1) as client:
-        completion = await client.beta.chat.completions.parse(
-            model=settings.openai_model,
-            messages=[
-                {"role": "system", "content": QUIZ_SYSTEM_PROMPT},
-                {"role": "user", "content": _user_prompt(concept_id, learning_session_id, learning_context)},
-            ],
-            response_format=GeneratedQuizPayload,
-        )
+    async with AsyncOpenAI(api_key=settings.openai_api_key, timeout=AI_REQUEST_TIMEOUT_SECONDS, max_retries=1) as client:
+        try:
+            completion = await client.beta.chat.completions.parse(
+                model=settings.openai_model,
+                messages=[
+                    {"role": "system", "content": QUIZ_SYSTEM_PROMPT},
+                    {"role": "user", "content": _user_prompt(concept_id, learning_session_id, learning_context)},
+                ],
+                response_format=GeneratedQuizPayload,
+            )
+        except ValidationError as exc:
+            raise QuizFormatError("OpenAI 문항 형식을 검증하지 못했습니다.") from exc
     if not completion.choices:
         raise RuntimeError("OpenAI 응답에 퀴즈가 없습니다.")
     message = completion.choices[0].message
@@ -166,7 +181,7 @@ async def generate_quiz_with_openai(
         raise RuntimeError("OpenAI가 퀴즈 생성을 거절했습니다.")
     parsed = getattr(message, "parsed", None)
     if not isinstance(parsed, GeneratedQuizPayload):
-        raise RuntimeError("OpenAI 응답을 구조화된 퀴즈로 읽지 못했습니다.")
+        raise QuizFormatError("OpenAI 응답을 구조화된 퀴즈로 읽지 못했습니다.")
     return [item.model_dump() for item in parsed.questions]
 
 
@@ -182,6 +197,7 @@ def _normalize_ox_answer(answer: str) -> str | None:
 
 def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """OX 2개와 상황형 1개만 저장합니다."""
+    raw_questions = [item.model_dump() for item in GeneratedQuizPayload(questions=raw_questions).questions]
     if len(raw_questions) != 3:
         raise ValueError("퀴즈는 3문항이어야 합니다.")
 
@@ -231,6 +247,11 @@ def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, A
             keys = [choice["key"] for choice in choices]
             if len(keys) != len(set(keys)):
                 raise ValueError("상황형 보기 키가 중복되었습니다.")
+            if sorted(keys) != ["A", "B", "C", "D"]:
+                raise ValueError("상황형 보기는 A~D 4개여야 합니다.")
+            labels = [re.sub(r"\s+", "", unicodedata.normalize("NFKC", c["text"])).casefold() for c in choices]
+            if len(set(labels)) != 4:
+                raise ValueError("상황형 보기 내용이 중복되었습니다.")
             if answer not in keys:
                 raise ValueError("상황형 정답이 보기에 없습니다.")
 
@@ -406,6 +427,10 @@ class QuizService:
                 message="퀴즈를 저장하지 못했습니다. 개념은 미통과(in_progress) 상태입니다.",
             ) from exc
 
+        started = time.perf_counter()
+        stage_for_log = quiz.stage_id
+        source = "stage5" if stage_for_log == "stage5" else "dynamic"
+        attempts = 0
         try:
             if quiz.stage_id == "stage5":
                 from app.services.stage5_bank import fixed_questions
@@ -420,21 +445,39 @@ class QuizService:
                 )
                 previous = [question for group in (await session.execute(statement)).scalars().all() for question in (group or [])]
                 excluded = list(previous)
-                for attempt in range(NOVELTY_GENERATION_ATTEMPTS):
-                    raw_questions = await self._generator(
-                        concept_id=concept_id,
-                        learning_session_id=session_id,
-                        learning_context=_context_with_previous(learning_context, excluded),
-                    )
-                    questions = normalize_questions(raw_questions)
-                    try:
-                        _check_new_questions(questions, previous)
-                    except DuplicateQuizQuestionError:
-                        if attempt + 1 == NOVELTY_GENERATION_ATTEMPTS:
-                            raise
-                        excluded.extend(questions)
-                    else:
-                        break
+
+                async def generate_validated():
+                    nonlocal attempts
+                    duplicates = 0
+                    for attempt in range(MAX_GENERATION_ATTEMPTS):
+                        attempts = attempt + 1
+                        # Network/timeout retries belong to the SDK, not this format loop.
+                        try:
+                            raw_questions = await self._generator(
+                                concept_id=concept_id,
+                                learning_session_id=session_id,
+                                learning_context=_context_with_previous(learning_context, excluded),
+                            )
+                        except QuizFormatError:
+                            if attempts == MAX_GENERATION_ATTEMPTS:
+                                raise
+                            continue
+                        try:
+                            candidate = normalize_questions(raw_questions)
+                            _check_new_questions(candidate, previous)
+                        except DuplicateQuizQuestionError:
+                            duplicates += 1
+                            if duplicates >= NOVELTY_GENERATION_ATTEMPTS or attempts == MAX_GENERATION_ATTEMPTS:
+                                raise
+                            excluded.extend(candidate)
+                        except ValueError:
+                            if attempts == MAX_GENERATION_ATTEMPTS:
+                                raise
+                        else:
+                            return candidate
+                    raise ValueError("올바른 문항을 생성하지 못했습니다.")
+
+                questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
             quiz.questions = questions
             quiz.status = QuizSetStatus.COMPLETED.value
             await session.commit()
@@ -442,6 +485,10 @@ class QuizService:
             await session.rollback()
             failed = await session.get(QuizSet, quiz_id)
             if failed is None:
+                logger.error(
+                    "퀴즈 생성 실패(상태 저장 불가) quiz_set_id=%s concept_id=%s stage_id=%s source=%s attempts=%s elapsed_ms=%d",
+                    quiz_id, concept_id, stage_for_log, source, attempts, _elapsed_ms(started),
+                )
                 raise QuizGenerationError(
                     quiz_set_id=quiz_id,
                     concept_id=concept_id,
@@ -450,10 +497,17 @@ class QuizService:
             failed.questions = []
             failed.status = QuizSetStatus.FAILED.value
             await session.commit()
-            logger.exception("퀴즈 생성 실패 concept_id=%s quiz_set_id=%s", concept_id, quiz_id)
+            logger.exception(
+                "퀴즈 생성 실패 quiz_set_id=%s concept_id=%s stage_id=%s source=%s attempts=%s elapsed_ms=%d",
+                quiz_id, concept_id, stage_for_log, source, attempts, _elapsed_ms(started),
+            )
             await _notify_generation_failed(session_id, user_id=user_id)
             return _created_quiz(failed)
 
+        logger.info(
+            "퀴즈 생성 완료 quiz_set_id=%s concept_id=%s stage_id=%s source=%s attempts=%s elapsed_ms=%d",
+            quiz_id, concept_id, stage_for_log, source, attempts, _elapsed_ms(started),
+        )
         return _created_quiz(quiz)
 
     async def get_quiz_set(self, session: AsyncSession, *, quiz_set_id: str, user_id: str) -> QuizSetPublicResponse:
@@ -481,6 +535,12 @@ class QuizService:
         if quiz.status != QuizSetStatus.COMPLETED.value:
             raise quiz_not_ready()
 
+        first = await self._submission_for_quiz(session, user_id, quiz_set_id)
+        if first is not None:
+            await _notify_quiz_result(quiz, first)
+            return _submit_response(quiz, first)
+
+        started = time.perf_counter()
         stored_answers = _ordered_answers(submitted_answers)
         flags, correct_count, is_passed = _grade(list(quiz.questions or []), stored_answers)
         submission = QuizSubmission(
@@ -500,14 +560,20 @@ class QuizService:
         except IntegrityError:
             await session.rollback()
             raced = await self._submission_by_key(session, user_id, idempotency_key)
+            if raced is not None and raced.quiz_set_id != quiz_set_id:
+                raise idempotency_conflict()
+            if raced is None:
+                raced = await self._submission_for_quiz(session, user_id, quiz_set_id)
             if raced is None:
                 raise
-            if raced.quiz_set_id != quiz_set_id:
-                raise idempotency_conflict()
             quiz = await self._owned_quiz(session, quiz_set_id, user_id)
             await _notify_quiz_result(quiz, raced)
             return _submit_response(quiz, raced)
 
+        logger.info(
+            "퀴즈 채점 완료 quiz_set_id=%s submission_id=%s correct_count=%s passed=%s elapsed_ms=%d",
+            quiz_set_id, submission.id, correct_count, is_passed, _elapsed_ms(started),
+        )
         await _notify_quiz_result(quiz, submission)
         return _submit_response(quiz, submission)
 
@@ -564,6 +630,13 @@ class QuizService:
             raise quiz_not_found()
         return quiz
 
+    async def _submission_for_quiz(self, session: AsyncSession, user_id: str, quiz_set_id: str) -> QuizSubmission | None:
+        statement = select(QuizSubmission).where(
+            QuizSubmission.user_id == user_id,
+            QuizSubmission.quiz_set_id == quiz_set_id,
+        ).order_by(QuizSubmission.created_at, QuizSubmission.id).limit(1)
+        return (await session.execute(statement)).scalars().first()
+
     async def _submission_by_key(
         self,
         session: AsyncSession,
@@ -575,6 +648,10 @@ class QuizService:
             QuizSubmission.idempotency_key == idempotency_key,
         )
         return (await session.execute(statement)).scalar_one_or_none()
+
+
+def _elapsed_ms(started: float) -> int:
+    return int((time.perf_counter() - started) * 1000)
 
 
 async def _notify_generation_failed(session_id: str, *, user_id: str) -> None:
