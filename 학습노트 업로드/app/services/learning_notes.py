@@ -32,6 +32,7 @@ class ReviewRecord(BaseModel):
 
 
 class NoteQuestion(LearningNoteItem):
+    attempt_number: int
     reviews: list[ReviewRecord]
 
 
@@ -41,6 +42,7 @@ class ConceptGroup(BaseModel):
     stage_ids: list[str | None]
     term: str
     latest_at: str
+    total_attempts: int
     concept_status: Literal["not_started", "in_progress", "passed"] | None
     questions: list[NoteQuestion]
 
@@ -82,8 +84,16 @@ async def list_concepts(
         stmt = stmt.where(QuizSet.stage_id == stage_id)
     if concept_id:
         stmt = stmt.where(QuizSet.concept_id == concept_id)
+    rows = (await session.execute(stmt)).all()
+    # 필터를 적용하기 전에 회차를 매겨 오답/정답 화면에서도 같은 번호를 유지한다.
+    attempt_numbers, stage_attempts, concept_attempts = {}, {}, {}
+    for quiz, submission in reversed(rows):
+        key = (quiz.concept_id, quiz.stage_id)
+        stage_attempts[key] = stage_attempts.get(key, 0) + 1
+        attempt_numbers[submission.id] = stage_attempts[key]
+        concept_attempts[quiz.concept_id] = concept_attempts.get(quiz.concept_id, 0) + 1
     groups = {}
-    for quiz, submission in (await session.execute(stmt)).all():
+    for quiz, submission in rows:
         for item in _note_items(quiz, submission):
             if note_filter == "wrong" and item.is_correct is not False:
                 continue
@@ -93,10 +103,10 @@ async def list_concepts(
             if key not in groups:
                 groups[key] = dict(concept_id=quiz.concept_id, stage_id=quiz.stage_id,
                                    term=next((q["term"] for q in quiz.questions if q.get("term")), concept_names().get(quiz.concept_id, quiz.concept_id)),
-                                   latest_at=item.created_at, stage_ids=[], questions=[])
+                                   latest_at=item.created_at, total_attempts=concept_attempts[quiz.concept_id], stage_ids=[], questions=[])
             if quiz.stage_id not in groups[key]["stage_ids"]:
                 groups[key]["stage_ids"].append(quiz.stage_id)
-            groups[key]["questions"].append(item.model_dump())
+            groups[key]["questions"].append(dict(item.model_dump(), attempt_number=attempt_numbers[submission.id]))
     total = len(groups)
     # 전체 개념을 가나다순으로 정렬한 다음 페이지를 나눈다.
     ordered = sorted(groups.values(), key=lambda g: (
