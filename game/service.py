@@ -1,6 +1,7 @@
 """사용자별 이벤트 반영과 게임 상태 조회. 모든 변경은 캐릭터 잠금 안에서 수행한다."""
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Protocol
 from uuid import uuid4
 
@@ -126,8 +127,9 @@ class GameService:
                     UserAccessoryRow(character_id=cid, accessory_id=accessory_id),
                 ])
             result = PurchaseResult(status=status, accessory_id=accessory_id, coin_balance=state.coin_balance)
-            session.add(PurchaseRequestRow(character_id=cid, idempotency_key=key,
-                                           accessory_id=accessory_id, result=result.model_dump(mode="json")))
+            if status == "success":
+                session.add(PurchaseRequestRow(character_id=cid, idempotency_key=key,
+                                               accessory_id=accessory_id, result=result.model_dump(mode="json")))
             return result
         return self.uow.run(work)
 
@@ -203,7 +205,8 @@ class GameService:
         if payload.get("user_id") != user_id:
             raise ValueError("다른 사용자의 이벤트입니다.")
         event_id = payload.get("event_id")
-        if not isinstance(event_id, str) or not 1 <= len(event_id) <= 100:
+        if (not isinstance(event_id, str) or not 1 <= len(event_id) <= 100
+                or event_id != event_id.strip()):
             raise ValueError("이벤트 ID가 필요합니다.")
 
         def work(session):
@@ -240,11 +243,15 @@ class GameService:
                         session.flush()
                     else:
                         raise ValueError("현재 스테이지보다 앞선 이벤트입니다.")
+                message = None
                 if event.event_type == "stage_completed":
                     self._complete(session, character.character_id, state, event, stage)
                 elif event.first_pass:
+                    progress = session.get(StoryProgressRow, (character.character_id, stage))
+                    if stage == state.current_stage and progress and event.passed_count < progress.passed_concept_count:
+                        message = "이전 진행 개수보다 낮아 진행 갱신을 무시했습니다."
                     self._pass(session, character.character_id, state, event, stage)
-                result = EventResult(event_id=event_id, status=EventStatus.PROCESSED)
+                result = EventResult(event_id=event_id, status=EventStatus.PROCESSED, message=message)
             except (ValueError, ValidationError) as exc:
                 # 바깥 트랜잭션을 롤백한 후 거부 이력만 별도 저장한다.
                 raise RejectedEvent(str(exc)) from exc
@@ -367,9 +374,24 @@ class GameService:
             if not batch:
                 break
             advanced = False
-            for item in batch:
-                payload = item.model_dump(mode="json") if hasattr(item, "model_dump") else dict(item)
+            payloads = [item.model_dump(mode="json") if hasattr(item, "model_dump") else dict(item)
+                        for item in batch]
+            def order(payload):
+                try:
+                    value = payload.get("occurred_at")
+                    when = value if isinstance(value, datetime) else datetime.fromisoformat(value.replace("Z", "+00:00"))
+                    if when.tzinfo is None:
+                        when = when.replace(tzinfo=timezone.utc)
+                    when = when.astimezone(timezone.utc)
+                except (AttributeError, TypeError, ValueError, OverflowError):
+                    when = datetime.max.replace(tzinfo=timezone.utc)
                 event_id = payload.get("event_id")
+                return when, 0 if payload.get("event_type") == "concept_passed" else 1, event_id if isinstance(event_id, str) else ""
+            for payload in sorted(payloads, key=order):
+                event_id = payload.get("event_id")
+                if not isinstance(event_id, str) or not 1 <= len(event_id) <= 100 or event_id != event_id.strip():
+                    retry = True
+                    break
                 if event_id in seen:
                     retry = True
                     continue
