@@ -1,0 +1,325 @@
+{
+  "date": "2026-11-10",
+  "source": "C:\\Users\\korie\\Desktop\\나의 경세학당\\verification\\notes_latest_quiz_2026-11-10\\source",
+  "passed": 79,
+  "total": 79,
+  "results": [
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_failed_session_returns_the_same_failure",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_forged_bearer_cannot_impersonate_owner",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_generation_failure_returns_failed_without_passing",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_get_hides_answer_and_explanation",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_learning_notes_outer_join_and_filters",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_openai_missing_key_does_not_request_generation",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_openai_rejects_empty_refused_and_unparsed_responses",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_openai_request_uses_env_key_model_and_schema",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_pass_threshold_and_idempotency",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_processing_quiz_does_not_leak_a_stored_answer",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_production_rejects_unverified_header_and_token",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_retry_session_reports_the_new_session_id",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_same_session_returns_the_existing_three_questions",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_schema_has_no_note_tables",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_two_correct_passes_and_one_correct_fails",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_unknown_quiz_and_foreign_user_use_error_shape",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quizzes.QuizModuleTest.test_verified_provider_and_foreign_submission",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_concurrency.QuizConcurrencyTest.test_concurrent_generation_unique_collision_recovers",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_concurrency.QuizConcurrencyTest.test_concurrent_submission_unique_collision_recovers",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_concurrency.QuizConcurrencyTest.test_different_keys_concurrent_submission_still_stores_one_result",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_logging.QuizLoggingTests.test_failed_generation_logs_and_preserves_failed_state",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_logging.QuizLoggingTests.test_grading_log_records_saved_result_and_excludes_callback_duration",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_logging.QuizLoggingTests.test_prompt_explicitly_separates_answers_and_prohibits_recommendations",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_logging.QuizLoggingTests.test_stage5_logs_source_without_calling_ai",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_logging.QuizLoggingTests.test_success_logs_ids_attempts_and_elapsed_without_context",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_novelty.QuizNoveltyTests.test_all_prior_sets_are_compared_not_only_latest",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_novelty.QuizNoveltyTests.test_different_user_or_concept_does_not_share_history",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_novelty.QuizNoveltyTests.test_failed_grade_relearning_rejects_old_set_and_uses_new_set",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_novelty.QuizNoveltyTests.test_one_repeated_question_rejects_entire_regenerated_set",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_novelty.QuizNoveltyTests.test_persistent_reuse_fails_without_serving_previous_questions",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_novelty.QuizNoveltyTests.test_punctuation_numbers_and_close_rewrites_are_rejected",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_novelty.QuizNoveltyTests.test_same_session_still_returns_same_set_without_regeneration",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_ai_schema_parse_failure_is_regenerated",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_different_key_cannot_replace_first_failed_result",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_exact_four_choices_and_distinct_labels",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_exhausted_format_failures_store_empty_failed_and_notify_once",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_format_failure_recovers_on_third_attempt",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_generation_deadline_cancels_work_before_failed_save",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_required_null_field_is_rejected",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_stage5_invalid_bank_never_regenerates_with_ai",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_transport_error_not_retried_by_format_loop",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.SQLiteMigrationTests.test_duplicate_migration_aborts_without_deleting_records",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_requirements.SQLiteMigrationTests.test_migration_backup_and_unique_index",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_tone.QuizToneTests.test_all_fixed_explanations_are_normalized",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_tone.QuizToneTests.test_all_fixed_questions_have_hao_endings",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_tone.QuizToneTests.test_endings_and_numbers",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_tone.QuizToneTests.test_ox_labels_are_consistent_for_generated_and_fixed_questions",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_tone.QuizToneTests.test_question_polite_endings_regression",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_tone.QuizToneTests.test_questions_use_hao_and_situation_choices_use_modern_style",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_quiz_tone.QuizToneTests.test_situation_choice_endings_and_nouns_regression",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_event_loop_call_is_rejected_without_deadlock",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_grading_reports_pass_fail_and_duplicate_submission_id",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_saved_failure_is_returned_without_retry",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_stage5_uses_fixed_bank_without_generator",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_storage_failure_becomes_contract_error",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_success_and_duplicate_do_not_regenerate",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_learning_notes_legacy.QuizModuleTest.test_concept_groups_fully_filter_tabs_and_exclude_unsubmitted",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_learning_notes_legacy.QuizModuleTest.test_group_keeps_all_questions_and_merges_same_concept_across_stages",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_learning_notes_legacy.QuizModuleTest.test_learning_notes_outer_join_and_filters",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_learning_notes_legacy.QuizModuleTest.test_notes_current_status_is_separate_from_historical_wrong_answer",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_learning_notes_legacy.QuizModuleTest.test_review_is_idempotent_and_does_not_change_original_grade",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_learning_notes_legacy.QuizModuleTest.test_schema_has_no_note_tables",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_learning_notes_ordering.LearningNotesOrderingTests.test_order_before_pagination_and_default_compatibility",
+      "status": "PASS"
+    },
+    {
+      "test": "tests.test_learning_notes_quiz_compatibility.LearningNotesQuizCompatibilityTests.test_first_result_relearning_rounds_and_reviews_remain_separate",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_21_concepts_sorted_before_pagination",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_attempt_numbers_and_total_stay_stable_across_filters",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_concurrent_same_key_different_answer_returns_409",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_concurrent_same_key_same_answer_recovers_existing_result",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_current_status_values_and_one_call_per_concept_stage",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_disconnected_or_missing_stage_returns_null",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_latest_sort_is_global_and_filter_preserves_round_numbers",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_missing_filters_empty_and_invalid_query_422",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_missing_question_submission_and_first_answer",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_ownership_both_tables_and_other_users_review_hidden",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_review_body_validation_no_writes",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_review_wrong_answer_and_roundtrip_history",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_same_key_different_question_or_submission_conflicts",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_status_provider_error_or_invalid_status_is_not_guessed",
+      "status": "PASS"
+    },
+    {
+      "test": "test_learning_notes_gaps.LearningNotesGapTests.test_unanswered_items_and_empty_submissions_are_not_counted",
+      "status": "PASS"
+    }
+  ],
+  "scope": "Isolated SQLite; no actual JWT, Supabase, RLS or performance claim."
+}

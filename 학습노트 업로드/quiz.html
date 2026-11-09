@@ -77,8 +77,14 @@
 
 
   <script>
-    const formatChoice = (choice) => String(choice.key).trim() === String(choice.text).trim()
-      ? choice.key : choice.key + ". " + choice.text;
+    const formatChoice = (choice, questionType) => {
+      const key = String(choice.key).trim();
+      if (questionType === "ox") {
+        if (key === "O") return "O";
+        if (key === "X") return "X";
+      }
+      return key === String(choice.text).trim() ? key : key + ". " + choice.text;
+    };
     const params = new URLSearchParams(location.search);
     if(params.get('mode') === 'review') {
       document.querySelector('header h1').textContent='다시 풀기';
@@ -103,7 +109,7 @@
           const card=el('article','');card.className='question';card.append(el('h2',question.prompt));
           const choices=el('div','');choices.className='choices';let answer='',sending=false;const key=crypto.randomUUID(),buttons=[];
           const submit=el('button','답안 제출');submit.className='submit';submit.disabled=true;
-          for(const choice of question.choices){const b=el('button',formatChoice(choice));b.className='choice';b.setAttribute('aria-pressed','false');b.onclick=()=>{if(sending)return;answer=choice.key;buttons.forEach(x=>{x.classList.toggle('selected',x===b);x.setAttribute('aria-pressed',String(x===b))});submit.disabled=false};buttons.push(b);choices.append(b)}
+          for(const choice of question.choices){const b=el('button',formatChoice(choice,question.question_type));b.className='choice';b.setAttribute('aria-pressed','false');b.onclick=()=>{if(sending)return;answer=choice.key;buttons.forEach(x=>{x.classList.toggle('selected',x===b);x.setAttribute('aria-pressed',String(x===b))});submit.disabled=false};buttons.push(b);choices.append(b)}
           const result=el('section','');result.setAttribute('role','status');
           submit.onclick=async()=>{sending=true;submit.disabled=true;buttons.forEach(b=>b.disabled=true);statusEl.textContent='복습 결과를 저장하는 중입니다.';
             try{const r=await reviewFetch('/api/v1/learning-notes/submissions/'+encodeURIComponent(question.submission_id)+'/questions/'+question.question_index+'/reviews',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answer,idempotency_key:key})});
@@ -119,12 +125,32 @@
       loadReview();
     } else {
 
-    const QUIZ_ID = new URLSearchParams(location.search).get("quiz_set_id") || "91862c9e-1780-4395-9b62-f92eddec113d";
+    const QUIZ_ID = (new URLSearchParams(location.search).get("quiz_set_id") || "").trim();
     const answers = {};
     let quiz = null;
     let submitted = false;
     let currentIndex = 0;
-    const submissionKey = "page-" + crypto.randomUUID();
+    const draftKey = "quiz-draft-v1:" + QUIZ_ID;
+    let submissionKey = "page-" + crypto.randomUUID();
+
+    function saveDraft() {
+      try { sessionStorage.setItem(draftKey, JSON.stringify({answers, currentIndex, submissionKey})); }
+      catch (_) { /* Storage may be disabled; server still protects the first submission. */ }
+    }
+
+    function restoreDraft() {
+      try {
+        const draft = JSON.parse(sessionStorage.getItem(draftKey) || "null");
+        if (!draft || typeof draft !== "object") return;
+        for (const q of quiz.questions) {
+          const answer = draft.answers && draft.answers[q.question_index];
+          if (q.choices.some(c => c.key === answer)) answers[q.question_index] = answer;
+        }
+        if (Number.isInteger(draft.currentIndex) && draft.currentIndex >= 0 && draft.currentIndex < 3
+            && quiz.questions.slice(0, draft.currentIndex).every(q => answers[q.question_index])) currentIndex = draft.currentIndex;
+        if (typeof draft.submissionKey === "string" && draft.submissionKey.length > 0 && draft.submissionKey.length <= 200) submissionKey = draft.submissionKey;
+      } catch (_) { /* Invalid local data must not prevent a quiz from loading. */ }
+    }
 
     async function quizFetch(url, options = {}) {
       const headers = new Headers(options.headers || {});
@@ -168,7 +194,7 @@
           button.dataset.key = choice.key;
           button.classList.toggle("selected", answers[question.question_index] === choice.key);
           button.setAttribute("aria-pressed", answers[question.question_index] === choice.key ? "true" : "false");
-          button.textContent = formatChoice(choice);
+          button.textContent = formatChoice(choice, question.question_type);
           button.addEventListener("click", () => selectAnswer(question.question_index, choice.key));
           choices.appendChild(button);
         });
@@ -187,6 +213,7 @@
           submitAnswers();
         } else {
           currentIndex += 1;
+          saveDraft();
           renderQuiz();
         }
       });
@@ -196,6 +223,7 @@
     function selectAnswer(questionIndex, key) {
       if (submitted) return;
       answers[questionIndex] = key;
+      saveDraft();
       document.querySelectorAll(".question").forEach((card) => {
         const question = quiz.questions[currentIndex];
         card.querySelectorAll(".choice").forEach((button) => {
@@ -222,7 +250,7 @@
         const question = quiz.questions.find((q) => q.question_index === item.question_index);
         const choiceLabel = (key) => {
           const choice = question.choices.find((c) => c.key === key);
-          return choice ? formatChoice(choice) : key;
+          return choice ? formatChoice(choice, question.question_type) : key;
         };
         const answer = document.createElement("p");
         answer.className = "answer-detail";
@@ -236,12 +264,24 @@
       const action = document.createElement("a");
       action.className = "result-action";
       action.textContent = body.is_passed ? "다음 개념 배우기" : "재학습하러 가기";
-      action.href = "/?mode=" + (body.is_passed ? "next" : "relearn");
+      // The integrated chatbot must consume this route or supply its actual destination.
+      const target = new URLSearchParams({mode: body.is_passed ? "next" : "relearn", concept_id: quiz.concept_id});
+      if (quiz.stage_id) target.set("stage_id", quiz.stage_id);
+      action.href = "/?" + target;
+      if (typeof window.quizLearningDestinationProvider === "function") {
+        const destination = window.quizLearningDestinationProvider({passed: body.is_passed, concept_id: quiz.concept_id,
+          stage_id: quiz.stage_id, learning_session_id: quiz.learning_session_id});
+        if (typeof destination === "string" && destination) {
+          const resolved = new URL(destination, location.origin);
+          if (["http:", "https:"].includes(resolved.protocol)) action.href = resolved.href;
+        }
+      }
       quizEl.appendChild(action);
       window.scrollTo({top: 0, behavior: "smooth"});
     }
 
     async function submitAnswers() {
+      saveDraft();
       submitted = true;
       document.querySelector("#submit").disabled = true;
       setStatus("채점하는 중입니다.");
@@ -275,6 +315,7 @@
       result.append(title, detail);
       outcomeEl.appendChild(result);
       renderResults(body);
+      try { sessionStorage.removeItem(draftKey); } catch (_) {}
       setStatus("");
       } catch (error) {
         submitted = false;
@@ -284,6 +325,10 @@
     }
 
     async function loadQuiz() {
+      if (!QUIZ_ID) {
+        setStatus("퀴즈 정보가 없습니다. 학습 화면에서 '학습 완료'를 눌러 퀴즈를 시작해 주세요.", true);
+        return;
+      }
       try {
       const response = await quizFetch("/api/v1/quiz-sets/" + QUIZ_ID);
       const body = await response.json();
@@ -292,6 +337,30 @@
         return;
       }
       quiz = body;
+      quizEl.replaceChildren();
+      outcomeEl.replaceChildren();
+      if (quiz.status === "failed") {
+        setStatus("퀴즈 생성에 실패했습니다. 학습 화면에서 퀴즈를 다시 요청해 주세요.", true);
+        return;
+      }
+      if (quiz.status === "pending" || quiz.status === "processing") {
+        setStatus("퀴즈를 준비하는 중입니다. 잠시 후 다시 확인해 주세요.");
+        const refresh = document.createElement("button");
+        refresh.type = "button";
+        refresh.className = "submit";
+        refresh.textContent = "준비 상태 다시 확인";
+        refresh.addEventListener("click", () => {
+          refresh.disabled = true;
+          loadQuiz();
+        });
+        quizEl.appendChild(refresh);
+        return;
+      }
+      if (quiz.status !== "completed" || !Array.isArray(quiz.questions) || quiz.questions.length !== 3) {
+        setStatus("퀴즈 문제를 확인할 수 없습니다. 학습 화면에서 다시 확인해 주세요.", true);
+        return;
+      }
+      restoreDraft();
       setStatus(quiz.concept_id + " 개념입니다. 보기를 고른 뒤 제출하세요.");
       renderQuiz();
       } catch (error) {
@@ -300,8 +369,8 @@
     }
 
     loadQuiz();
-  
-}
+
+    }
 </script>
 </body>
 </html>

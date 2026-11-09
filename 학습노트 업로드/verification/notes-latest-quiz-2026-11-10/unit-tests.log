@@ -1,0 +1,207 @@
+퀴즈 생성 실패 quiz_set_id=ff99b4ce-66cf-41cf-9e5c-f6997f4e0d91 concept_id=inflation stage_id=None source=dynamic attempts=1 elapsed_ms=11
+Traceback (most recent call last):
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\tests\test_quizzes.py", line 331, in counting_failure
+    raise RuntimeError("generation failed")
+RuntimeError: generation failed
+PASS tests.test_quizzes.QuizModuleTest.test_failed_session_returns_the_same_failure
+PASS tests.test_quizzes.QuizModuleTest.test_forged_bearer_cannot_impersonate_owner
+퀴즈 생성 실패 quiz_set_id=75968ded-d7c9-43c2-a199-fc54e196d227 concept_id=inflation stage_id=None source=dynamic attempts=1 elapsed_ms=10
+Traceback (most recent call last):
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\tests\test_quizzes.py", line 63, in failing_generator
+    raise RuntimeError("generation failed")
+RuntimeError: generation failed
+PASS tests.test_quizzes.QuizModuleTest.test_generation_failure_returns_failed_without_passing
+PASS tests.test_quizzes.QuizModuleTest.test_get_hides_answer_and_explanation
+학습 관리 미연결: 결과 보고 submission_id=634792ee-8f29-45a7-8936-d8252e2725f6
+PASS tests.test_quizzes.QuizModuleTest.test_learning_notes_outer_join_and_filters
+PASS tests.test_quizzes.QuizModuleTest.test_openai_missing_key_does_not_request_generation
+PASS tests.test_quizzes.QuizModuleTest.test_openai_rejects_empty_refused_and_unparsed_responses
+PASS tests.test_quizzes.QuizModuleTest.test_openai_request_uses_env_key_model_and_schema
+학습 관리 미연결: 결과 보고 submission_id=34b7239a-c684-4a1b-9eff-5751cdd55e8e
+학습 관리 미연결: 결과 보고 submission_id=34b7239a-c684-4a1b-9eff-5751cdd55e8e
+PASS tests.test_quizzes.QuizModuleTest.test_pass_threshold_and_idempotency
+PASS tests.test_quizzes.QuizModuleTest.test_processing_quiz_does_not_leak_a_stored_answer
+PASS tests.test_quizzes.QuizModuleTest.test_production_rejects_unverified_header_and_token
+PASS tests.test_quizzes.QuizModuleTest.test_retry_session_reports_the_new_session_id
+PASS tests.test_quizzes.QuizModuleTest.test_same_session_returns_the_existing_three_questions
+PASS tests.test_quizzes.QuizModuleTest.test_schema_has_no_note_tables
+학습 관리 미연결: 결과 보고 submission_id=f07f6fc5-78f3-46ba-a19f-a255857a0152
+학습 관리 미연결: 결과 보고 submission_id=06f9a97e-2031-4e21-8709-974e6659676a
+PASS tests.test_quizzes.QuizModuleTest.test_two_correct_passes_and_one_correct_fails
+PASS tests.test_quizzes.QuizModuleTest.test_unknown_quiz_and_foreign_user_use_error_shape
+PASS tests.test_quizzes.QuizModuleTest.test_verified_provider_and_foreign_submission
+PASS tests.test_quiz_concurrency.QuizConcurrencyTest.test_concurrent_generation_unique_collision_recovers
+PASS tests.test_quiz_concurrency.QuizConcurrencyTest.test_concurrent_submission_unique_collision_recovers
+PASS tests.test_quiz_concurrency.QuizConcurrencyTest.test_different_keys_concurrent_submission_still_stores_one_result
+PASS tests.test_quiz_logging.QuizLoggingTests.test_failed_generation_logs_and_preserves_failed_state
+PASS tests.test_quiz_logging.QuizLoggingTests.test_grading_log_records_saved_result_and_excludes_callback_duration
+PASS tests.test_quiz_logging.QuizLoggingTests.test_prompt_explicitly_separates_answers_and_prohibits_recommendations
+PASS tests.test_quiz_logging.QuizLoggingTests.test_stage5_logs_source_without_calling_ai
+PASS tests.test_quiz_logging.QuizLoggingTests.test_success_logs_ids_attempts_and_elapsed_without_context
+PASS tests.test_quiz_novelty.QuizNoveltyTests.test_all_prior_sets_are_compared_not_only_latest
+PASS tests.test_quiz_novelty.QuizNoveltyTests.test_different_user_or_concept_does_not_share_history
+PASS tests.test_quiz_novelty.QuizNoveltyTests.test_failed_grade_relearning_rejects_old_set_and_uses_new_set
+PASS tests.test_quiz_novelty.QuizNoveltyTests.test_one_repeated_question_rejects_entire_regenerated_set
+PASS tests.test_quiz_novelty.QuizNoveltyTests.test_persistent_reuse_fails_without_serving_previous_questions
+PASS tests.test_quiz_novelty.QuizNoveltyTests.test_punctuation_numbers_and_close_rewrites_are_rejected
+PASS tests.test_quiz_novelty.QuizNoveltyTests.test_same_session_still_returns_same_set_without_regeneration
+PASS tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_ai_schema_parse_failure_is_regenerated
+PASS tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_different_key_cannot_replace_first_failed_result
+PASS tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_exact_four_choices_and_distinct_labels
+퀴즈 생성 실패 quiz_set_id=61a6a83c-53b9-4c53-9a51-327fde319c5b concept_id=concept stage_id=stage1 source=dynamic attempts=3 elapsed_ms=6
+Traceback (most recent call last):
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 466, in generate_validated
+    candidate = normalize_questions(raw_questions)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 202, in normalize_questions
+    raise ValueError("퀴즈는 3문항이어야 합니다.")
+ValueError: 퀴즈는 3문항이어야 합니다.
+PASS tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_exhausted_format_failures_store_empty_failed_and_notify_once
+PASS tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_format_failure_recovers_on_third_attempt
+퀴즈 생성 실패 quiz_set_id=a1e2446a-e6e6-4786-a0b6-5b5b0c5cc1fc concept_id=concept stage_id=stage1 source=dynamic attempts=1 elapsed_ms=33
+Traceback (most recent call last):
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\tests\test_quiz_requirements.py", line 78, in slow
+    try: await asyncio.sleep(10)
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 665, in sleep
+    return await future
+           ^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 519, in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\timeouts.py", line 115, in __aexit__
+    raise TimeoutError from exc_val
+TimeoutError
+PASS tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_generation_deadline_cancels_work_before_failed_save
+PASS tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_required_null_field_is_rejected
+퀴즈 생성 실패 quiz_set_id=f36b347d-2fe4-44c3-ba79-d535a77b25dd concept_id=concept stage_id=stage5 source=stage5 attempts=0 elapsed_ms=2
+Traceback (most recent call last):
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 438, in create_quiz_set
+    questions = normalize_questions(raw_questions)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 202, in normalize_questions
+    raise ValueError("퀴즈는 3문항이어야 합니다.")
+ValueError: 퀴즈는 3문항이어야 합니다.
+PASS tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_stage5_invalid_bank_never_regenerates_with_ai
+퀴즈 생성 실패 quiz_set_id=05db11f9-1b17-4838-ba57-37989d0adbed concept_id=concept stage_id=stage1 source=dynamic attempts=1 elapsed_ms=6
+Traceback (most recent call last):
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\unittest\mock.py", line 2291, in _execute_mock_call
+    raise effect
+RuntimeError: transport failure
+PASS tests.test_quiz_requirements.OriginalQuizRequirementsTests.test_transport_error_not_retried_by_format_loop
+PASS tests.test_quiz_requirements.SQLiteMigrationTests.test_duplicate_migration_aborts_without_deleting_records
+PASS tests.test_quiz_requirements.SQLiteMigrationTests.test_migration_backup_and_unique_index
+PASS tests.test_quiz_tone.QuizToneTests.test_all_fixed_explanations_are_normalized
+PASS tests.test_quiz_tone.QuizToneTests.test_all_fixed_questions_have_hao_endings
+PASS tests.test_quiz_tone.QuizToneTests.test_endings_and_numbers
+PASS tests.test_quiz_tone.QuizToneTests.test_ox_labels_are_consistent_for_generated_and_fixed_questions
+PASS tests.test_quiz_tone.QuizToneTests.test_question_polite_endings_regression
+PASS tests.test_quiz_tone.QuizToneTests.test_questions_use_hao_and_situation_choices_use_modern_style
+PASS tests.test_quiz_tone.QuizToneTests.test_situation_choice_endings_and_nouns_regression
+PASS tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_event_loop_call_is_rejected_without_deadlock
+PASS tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_grading_reports_pass_fail_and_duplicate_submission_id
+퀴즈 생성 실패 quiz_set_id=f3b74107-f75f-44a9-9833-edd6dc0a415d concept_id=sisa_1281 stage_id=stage1 source=dynamic attempts=1 elapsed_ms=5
+Traceback (most recent call last):
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 480, in create_quiz_set
+    questions = await asyncio.wait_for(generate_validated(), timeout=GENERATION_TIMEOUT_SECONDS)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\AppData\Local\Python\pythoncore-3.12-64\Lib\asyncio\tasks.py", line 520, in wait_for
+    return await fut
+           ^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\app\services\quiz_service.py", line 456, in generate_validated
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\korie\Desktop\나의 경세학당\verification\notes_latest_quiz_2026-11-10\source\tests\test_team_quiz_adapter.py", line 108, in fail
+    raise RuntimeError("simulated generation failure")
+RuntimeError: simulated generation failure
+PASS tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_saved_failure_is_returned_without_retry
+PASS tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_stage5_uses_fixed_bank_without_generator
+PASS tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_storage_failure_becomes_contract_error
+PASS tests.test_team_quiz_adapter.TeamQuizAdapterTests.test_success_and_duplicate_do_not_regenerate
+학습 관리 미연결: 결과 보고 submission_id=33707c66-2d56-48cc-a283-56435f386021
+PASS tests.test_learning_notes_legacy.QuizModuleTest.test_concept_groups_fully_filter_tabs_and_exclude_unsubmitted
+학습 관리 미연결: 결과 보고 submission_id=0d2a2dc4-0c08-4bae-b1fd-e5d5014b8dfa
+학습 관리 미연결: 결과 보고 submission_id=959f7276-fca2-4e83-9f7c-33cc36140ad9
+학습 관리 미연결: 결과 보고 submission_id=3ff114f1-0c9d-4af5-a6c5-0faaf3c0005f
+학습 관리 미연결: 결과 보고 submission_id=9ea7b14d-3998-4a70-8d3e-3be12be9b31e
+학습 관리 미연결: 결과 보고 submission_id=8ba738d3-58b9-43b7-ae44-596aee21c751
+학습 관리 미연결: 결과 보고 submission_id=70c6d97a-b727-4e0e-8a4a-adf721a48d7f
+학습 관리 미연결: 결과 보고 submission_id=4f11eea0-a6b0-4813-9d1b-bf1dce659802
+학습 관리 미연결: 결과 보고 submission_id=a329ef65-61e5-4dd7-a6f9-a8da0ce06a4f
+학습 관리 미연결: 결과 보고 submission_id=19edcc4d-c07a-46b9-9e2e-e6c530cee54a
+PASS tests.test_learning_notes_legacy.QuizModuleTest.test_group_keeps_all_questions_and_merges_same_concept_across_stages
+학습 관리 미연결: 결과 보고 submission_id=5db757b5-1e87-42d4-8320-4e64068e107b
+PASS tests.test_learning_notes_legacy.QuizModuleTest.test_learning_notes_outer_join_and_filters
+학습 관리 미연결: 결과 보고 submission_id=17166f63-d439-40e4-9628-f35aa4b19838
+PASS tests.test_learning_notes_legacy.QuizModuleTest.test_notes_current_status_is_separate_from_historical_wrong_answer
+학습 관리 미연결: 결과 보고 submission_id=19dc9405-75fc-40ba-8818-c6344548a116
+PASS tests.test_learning_notes_legacy.QuizModuleTest.test_review_is_idempotent_and_does_not_change_original_grade
+PASS tests.test_learning_notes_legacy.QuizModuleTest.test_schema_has_no_note_tables
+PASS tests.test_learning_notes_ordering.LearningNotesOrderingTests.test_order_before_pagination_and_default_compatibility
+학습 관리 미연결: 결과 보고 submission_id=c32e3f5d-dcdb-429c-bd39-1af5ff9165ea
+학습 관리 미연결: 결과 보고 submission_id=c32e3f5d-dcdb-429c-bd39-1af5ff9165ea
+학습 관리 미연결: 결과 보고 submission_id=f575b10f-5b68-4df3-af07-ddb55fe2d15a
+PASS tests.test_learning_notes_quiz_compatibility.LearningNotesQuizCompatibilityTests.test_first_result_relearning_rounds_and_reviews_remain_separate
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_21_concepts_sorted_before_pagination
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_attempt_numbers_and_total_stay_stable_across_filters
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_concurrent_same_key_different_answer_returns_409
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_concurrent_same_key_same_answer_recovers_existing_result
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_current_status_values_and_one_call_per_concept_stage
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_disconnected_or_missing_stage_returns_null
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_latest_sort_is_global_and_filter_preserves_round_numbers
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_missing_filters_empty_and_invalid_query_422
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_missing_question_submission_and_first_answer
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_ownership_both_tables_and_other_users_review_hidden
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_review_body_validation_no_writes
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_review_wrong_answer_and_roundtrip_history
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_same_key_different_question_or_submission_conflicts
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_status_provider_error_or_invalid_status_is_not_guessed
+PASS test_learning_notes_gaps.LearningNotesGapTests.test_unanswered_items_and_empty_submissions_are_not_counted
+79/79 passed

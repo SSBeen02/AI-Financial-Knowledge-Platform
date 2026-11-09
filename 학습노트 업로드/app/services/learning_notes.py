@@ -70,6 +70,7 @@ async def list_concepts(
     user_id: AuthenticatedUserId,
     session: Annotated[AsyncSession, Depends(get_session)],
     note_filter: Annotated[Literal["all", "wrong", "correct"], Query(alias="filter")] = "all",
+    sort_order: Annotated[Literal["alphabetical", "latest"], Query(alias="sort")] = "alphabetical",
     stage_id: str | None = None,
     concept_id: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -84,23 +85,31 @@ async def list_concepts(
         stmt = stmt.where(QuizSet.stage_id == stage_id)
     if concept_id:
         stmt = stmt.where(QuizSet.concept_id == concept_id)
-    rows = (await session.execute(stmt)).all()
+    rows = []
+    for quiz, submission in (await session.execute(stmt)).all():
+        # 제출 행이 있더라도 답안·채점 결과가 없는 개별 문항은 학습노트에서 제외한다.
+        items = [item for item in _note_items(quiz, submission)
+                 if item.submitted_answer is not None and item.is_correct is not None]
+        if items:
+            rows.append((quiz, submission, items))
     # 필터를 적용하기 전에 회차를 매겨 오답/정답 화면에서도 같은 번호를 유지한다.
     attempt_numbers, stage_attempts, concept_attempts = {}, {}, {}
-    for quiz, submission in reversed(rows):
+    for quiz, submission, items in reversed(rows):
         key = (quiz.concept_id, quiz.stage_id)
         stage_attempts[key] = stage_attempts.get(key, 0) + 1
         attempt_numbers[submission.id] = stage_attempts[key]
         concept_attempts[quiz.concept_id] = concept_attempts.get(quiz.concept_id, 0) + 1
     groups = {}
-    for quiz, submission in rows:
-        for item in _note_items(quiz, submission):
+    latest_times = {}
+    for quiz, submission, items in rows:
+        for item in items:
             if note_filter == "wrong" and item.is_correct is not False:
                 continue
             if note_filter == "correct" and item.is_correct is not True:
                 continue
             key = quiz.concept_id
             if key not in groups:
+                latest_times[key] = submission.created_at
                 groups[key] = dict(concept_id=quiz.concept_id, stage_id=quiz.stage_id,
                                    term=next((q["term"] for q in quiz.questions if q.get("term")), concept_names().get(quiz.concept_id, quiz.concept_id)),
                                    latest_at=item.created_at, total_attempts=concept_attempts[quiz.concept_id], stage_ids=[], questions=[])
@@ -109,9 +118,13 @@ async def list_concepts(
             groups[key]["questions"].append(dict(item.model_dump(), attempt_number=attempt_numbers[submission.id]))
     total = len(groups)
     # 전체 개념을 가나다순으로 정렬한 다음 페이지를 나눈다.
-    ordered = sorted(groups.values(), key=lambda g: (
-        unicodedata.normalize("NFC", g["term"]).strip().casefold(), g["concept_id"]
-    ))
+    if sort_order == "latest":
+        # 응답용 시각은 초 단위일 수 있으므로 DB의 원래 정밀도로 순서를 정한다.
+        ordered = sorted(groups.values(), key=lambda g: (latest_times[g["concept_id"]], g["concept_id"]), reverse=True)
+    else:
+        ordered = sorted(groups.values(), key=lambda g: (
+            unicodedata.normalize("NFC", g["term"]).strip().casefold(), g["concept_id"]
+        ))
     selected = ordered[(page - 1) * 20:page * 20]
     submission_ids = {q["submission_id"] for g in selected for q in g["questions"]}
     reviews = {}

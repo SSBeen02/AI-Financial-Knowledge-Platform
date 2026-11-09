@@ -136,7 +136,7 @@ class TeamQuizAdapterTests(unittest.IsolatedAsyncioTestCase):
             return SAMPLE_QUESTIONS
         adapter = TeamQuizService(asyncio.get_running_loop(), QuizService(generate))
         for passed, choices in [(True, ["O", "O", "A"]), (False, ["X", "X", "B"])]:
-            inputs = dict(self.inputs, session_id="grade-" + str(passed))
+            inputs = dict(self.inputs, session_id="grade-" + str(passed), concept_id="grade-concept-" + str(passed))
             created = await asyncio.to_thread(adapter.create_quiz_set, **inputs)
             kwargs = dict(user_id=inputs["user_id"], quiz_set_id=created.quiz_set_id,
                           submitted_answers=[dict(question_index=i+1, answer=a) for i,a in enumerate(choices)],

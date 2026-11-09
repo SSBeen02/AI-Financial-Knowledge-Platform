@@ -2,7 +2,7 @@
 import json
 from functools import lru_cache
 from pathlib import Path
-from app.services.quiz_tone import explanation_in_hao
+from app.services.quiz_tone import choice_in_modern, explanation_in_hao, question_in_hao
 
 
 @lru_cache(maxsize=1)
@@ -17,8 +17,8 @@ def fixed_questions(concept_id):
         dict(
             question_index=q["question_number"],
             question_type="ox" if q["question_type"] == "OX" else "situation",
-            prompt=q["question"],
-            choices=[dict(key=(text if q["question_type"] == "OX" else "ABCD"[i]), text=text)
+            prompt=question_in_hao(q["question"]),
+            choices=[dict(key=(text if q["question_type"] == "OX" else "ABCD"[i]), text=text if q["question_type"] == "OX" else choice_in_modern(text))
                      for i, text in enumerate(q["options"])],
             answer=q["answer"], explanation=explanation_in_hao(q["explanation"]),
         ) for q in questions

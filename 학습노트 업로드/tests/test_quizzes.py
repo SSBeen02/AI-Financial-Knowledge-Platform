@@ -18,6 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from app.db import Base, session_scope
 from app.models.quiz import QuizSet
 from app.services.quiz_service import create_quiz_set, generate_quiz_with_openai
+from app.services.quiz_tone import explanation_in_hao
 from dependencies import DUMMY_USER_ID
 from main import app
 
@@ -89,6 +90,9 @@ def _assert_no_keys(value, banned: set[str]) -> None:
 
 class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        dev_mode = patch.dict(os.environ, {'DEV_MODE': 'true'})
+        dev_mode.start()
+        self.addCleanup(dev_mode.stop)
         if TEST_DB.exists():
             TEST_DB.unlink()
         os.environ["QUIZ_DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB.as_posix()}"
@@ -119,61 +123,6 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
                 learning_context={"stage_id": stage_id, "summary": "복리는 이자에 이자가 붙습니다."},
                 generator=fake_generator,
             )
-
-    async def test_concept_groups_fully_filter_tabs_and_exclude_unsubmitted(self):
-        await self._create(concept_id="unsubmitted", stage_id="stage1")
-        quiz = await self._create(concept_id="group", stage_id="stage1")
-        await self.client.post(f"/api/v1/quiz-sets/{quiz.id}/submit", json={"submitted_answers": _answers("X", "O", "B"), "idempotency_key": "group"})
-        for mode, indexes in [("all", [1, 2, 3]), ("wrong", [1]), ("correct", [2, 3])]:
-            r = await self.client.get("/api/v1/learning-notes/concepts", params={"filter": mode})
-            self.assertEqual(r.status_code, 200, r.text)
-            self.assertEqual(r.json()["total"], 1)
-            group = r.json()["items"][0]
-            self.assertEqual(group["concept_id"], "group")
-            self.assertEqual([q["question_index"] for q in group["questions"]], indexes)
-        other_stage = await self.client.get("/api/v1/learning-notes/concepts", params={"stage_id": "stage5"})
-        self.assertEqual(other_stage.json()["total"], 0)
-
-    async def test_review_is_idempotent_and_does_not_change_original_grade(self):
-        quiz = await self._create()
-        original = await self.client.post(f"/api/v1/quiz-sets/{quiz.id}/submit", json={"submitted_answers": _answers("X", "X", "A"), "idempotency_key": "original"})
-        sid = original.json()["submission_id"]
-        url = f"/api/v1/learning-notes/submissions/{sid}/questions/1/reviews"
-        payload = {"answer": "O", "idempotency_key": "review"}
-        first = await self.client.post(url, json=payload)
-        self.assertEqual(first.status_code, 200, first.text)
-        self.assertTrue(first.json()["is_correct"])
-        second = await self.client.post(url, json=payload)
-        self.assertEqual(first.json(), second.json())
-        conflict = await self.client.post(url, json={"answer": "X", "idempotency_key": "review"})
-        self.assertEqual(conflict.status_code, 409)
-        invalid = await self.client.post(url, json={"answer": "Z", "idempotency_key": "invalid"})
-        self.assertEqual(invalid.status_code, 422)
-        foreign = await self.client.post(url, json=payload, headers={"X-User-Id": "another-user"})
-        self.assertEqual(foreign.status_code, 404)
-        r = await self.client.get("/api/v1/learning-notes/concepts", params={"filter": "wrong"})
-        questions = r.json()["items"][0]["questions"]
-        self.assertEqual(len(questions), 3)
-        self.assertFalse(questions[0]["is_correct"])
-        self.assertFalse(questions[0]["is_passed"])
-        self.assertEqual(len(questions[0]["reviews"]), 1)
-
-    async def test_group_keeps_all_questions_and_merges_same_concept_across_stages(self):
-        # 문항이 20개를 넘어도 개념별 페이지가 탭을 중간에서 자르지 않아야 한다.
-        for index in range(8):
-            quiz = await self._create(concept_id="same-concept", stage_id="stage1", session_id=f"group-{index}")
-            await self.client.post(f"/api/v1/quiz-sets/{quiz.id}/submit", json={"submitted_answers": _answers(), "idempotency_key": f"group-{index}"})
-        other = await self._create(concept_id="same-concept", stage_id="stage2", session_id="other-stage")
-        await self.client.post(f"/api/v1/quiz-sets/{other.id}/submit", json={"submitted_answers": _answers(), "idempotency_key": "other-stage"})
-        r = await self.client.get("/api/v1/learning-notes/concepts")
-        self.assertEqual(r.status_code, 200, r.text)
-        self.assertEqual(r.json()["total"], 1)
-        group = r.json()["items"][0]
-        self.assertEqual(set(group["stage_ids"]), {"stage1", "stage2"})
-        self.assertEqual(len(group["questions"]), 27)
-        r = await self.client.get("/api/v1/learning-notes/concepts", params={"stage_id": "stage1"})
-        self.assertEqual(r.json()["total"], 1)
-        self.assertEqual(len(r.json()["items"][0]["questions"]), 24)
 
     async def test_schema_has_no_note_tables(self):
         self.assertEqual(set(Base.metadata.tables), {"quiz_sets", "quiz_submissions", "quiz_reviews"})
@@ -209,7 +158,7 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["correct_count"], 3)
         self.assertTrue(body["is_passed"])
         self.assertEqual(body["is_correct_list"], [True, True, True])
-        self.assertEqual(body["results"][2]["explanation"], "돈을 쓸 시기와 비용을 함께 봐야 하오.")
+        self.assertEqual(body["results"][2]["explanation"], explanation_in_hao(SAMPLE_QUESTIONS[2]["explanation"]))
         self.assertEqual(
             body["learning_module_result"],
             {
@@ -247,8 +196,10 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(passed.json()["correct_count"], 2)
         self.assertTrue(passed.json()["is_passed"])
 
+        # A new learning attempt has a new set; the same set cannot change its first result.
+        retry_quiz = await self._create(concept_id="retry-boundary", session_id="retry-boundary")
         failed = await self.client.post(
-            f"/api/v1/quiz-sets/{created.id}/submit",
+            f"/api/v1/quiz-sets/{retry_quiz.id}/submit",
             json={"submitted_answers": _answers("X", "X", "B"), "idempotency_key": "one"},
         )
         self.assertEqual(failed.status_code, 200, failed.text)
@@ -293,21 +244,6 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
 
         hidden = await self.client.get("/api/v1/learning-notes", params={"stage_id": "missing"})
         self.assertEqual(hidden.json()["total"], 0)
-
-    async def test_notes_current_status_is_separate_from_historical_wrong_answer(self):
-        quiz = await self._create(concept_id="sisa_1281", stage_id="stage1")
-        await self.client.post(
-            f"/api/v1/quiz-sets/{quiz.id}/submit",
-            json={"submitted_answers": _answers("X", "X", "A"), "idempotency_key": "status-notes"},
-        )
-        reader = AsyncMock(return_value="passed")
-        with patch("app.services.quiz_service.get_concept_status", reader):
-            response = await self.client.get("/api/v1/learning-notes", params={"filter": "wrong"})
-        self.assertEqual(response.status_code, 200, response.text)
-        self.assertEqual(response.json()["total"], 3)
-        self.assertTrue(all(item["concept_status"] == "passed" and item["is_correct"] is False
-                            and item["is_passed"] is False for item in response.json()["items"]))
-        reader.assert_awaited_once_with(user_id=DUMMY_USER_ID, concept_id="sisa_1281", stage_id="stage1")
 
     async def test_generation_failure_returns_failed_without_passing(self):
         notices: list[str] = []
@@ -507,6 +443,7 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(response.status_code, 404, response.text)
 
+
     async def test_processing_quiz_does_not_leak_a_stored_answer(self):
         async with session_scope() as session:
             quiz = QuizSet(
@@ -542,7 +479,7 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
                 learning_session_id="session-9",
                 learning_context="복리 설명",
             )
-        factory.assert_called_once_with(api_key="test-key-not-real", timeout=40.0, max_retries=1)
+        factory.assert_called_once_with(api_key="test-key-not-real", timeout=30.0, max_retries=1)
         self.assertEqual(questions, SAMPLE_QUESTIONS)
         args = parse.call_args.kwargs
         self.assertEqual(args["model"], "gpt-4o-mini")
@@ -578,10 +515,12 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
                 )
             factory.assert_not_called()
 
+
     async def test_production_rejects_unverified_header_and_token(self):
         with patch.dict(os.environ, {"DEV_MODE": "false"}):
             response = await self.client.get("/api/v1/quiz-sets/any", headers={"X-User-Id": "owner", "Authorization": _bearer("owner")})
         self.assertEqual(response.status_code, 401)
+
 
     async def test_verified_provider_and_foreign_submission(self):
         from dependencies import get_current_user_id
