@@ -165,10 +165,19 @@
       setStatus("사전테스트를 시작하는 중입니다.");
       try {
         const body = await request("/diagnostics", { method: "POST" });
+        if (body.status !== "pending") {
+          state.diagnosticId = body.id;
+          state.reportId = body.id;
+          state.reportStatus = body.status;
+          saveState();
+          await loadReport();
+          return;
+        }
+        const previousAnswers = state.diagnosticId === body.id ? state.answers : [];
         state.diagnosticId = body.id;
         state.reportId = null;
         state.submissionKey = null;
-        state.answers = [];
+        state.answers = previousAnswers;
         state.currentIndex = 0;
         state.phase = "questions";
         state.reportStatus = "pending";
@@ -310,6 +319,7 @@
 
     function applyReport(body) {
       state.reportStatus = body.status;
+      state.retryExhausted = body.retry_count >= body.retry_limit;
       if (body.status !== "pending") state.reportId = body.id;
       state.phase = "report";
       questionsNode.replaceChildren();
@@ -437,6 +447,7 @@
       const llm = body.llm_report;
       const section = document.createElement("section");
       section.className = "card";
+      section.append(paragraph(body.disclaimer || "AI 작성, 투자 조언 아님"));
       if (!llm) {
         section.append(
           heading("리포트"),
@@ -446,7 +457,8 @@
         );
         if (body.domain_scores) section.append(scoreList(body.domain_scores));
         if (body.error) section.append(paragraph(body.error.message));
-        if (body.status === "failed") section.append(retryButton());
+        if (body.status === "failed" && body.retry_count < body.retry_limit) section.append(retryButton());
+        else if (body.status === "failed") section.append(paragraph("재생성 횟수를 모두 사용했습니다. 채점 결과는 유지됩니다."));
         resultNode.replaceChildren(section);
         return;
       }
@@ -581,7 +593,7 @@
       startButton.disabled = isBusy;
       fillButton.disabled = isBusy || state.questions.length === 0;
       submitButton.disabled = isBusy || state.questions.length === 0 || Boolean(state.reportId) || state.reportStatus !== "pending";
-      reportButton.disabled = isBusy || !state.diagnosticId;
+      reportButton.disabled = isBusy || !state.diagnosticId || (state.reportStatus === "failed" && state.retryExhausted);
       reportButton.textContent = state.reportStatus === "failed" ? "리포트 다시 생성" : "3. 리포트 조회";
       for (const button of questionsNode.querySelectorAll(".dots button, #retry-report")) {
         button.disabled = isBusy;

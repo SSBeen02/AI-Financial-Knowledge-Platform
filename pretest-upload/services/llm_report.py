@@ -11,6 +11,7 @@ from schemas.llm_report import (
     WrongAnswerItem,
 )
 from services.errors import LlmReportError
+from services.report_safety import validate_report_safety
 from services.report_summary import add_lowest_stage_summary
 
 logger = logging.getLogger("diagnostics")
@@ -45,6 +46,7 @@ def generate_llm_report(graded: dict, *, budget: float = 28.0) -> LlmReportAnaly
 def generate_openai_report(client, graded: dict, model: str, provider: str = "OpenAI") -> LlmReportAnalysis:
     """OpenAI structured output으로 리포트를 받고, 점수와 오답 목록은 채점 결과에 맞춥니다."""
     payload = build_llm_input(graded)
+    logger.info("report_llm_request %s", json.dumps({"model": model, "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}]}, ensure_ascii=False))
     try:
         completion = client.beta.chat.completions.parse(
             model=model,
@@ -73,6 +75,8 @@ def generate_openai_report(client, graded: dict, model: str, provider: str = "Op
     parsed = getattr(message, "parsed", None)
     if not isinstance(parsed, LlmReportAnalysis):
         raise LlmReportError("LLM 응답을 구조화된 리포트로 읽지 못했습니다.")
+    validate_report_safety(parsed)
+    logger.info("report_llm_response %s", json.dumps({"request_id": getattr(completion, "_request_id", None), "content": parsed.model_dump()}, ensure_ascii=False))
     return align_llm_report(parsed, graded)
 
 
@@ -190,7 +194,7 @@ def align_llm_report(report: LlmReportAnalysis, graded: dict) -> LlmReportAnalys
     if wrong:
         wrong_summary = report.wrong_answer_analysis.summary.strip() or f"틀린 문항은 {len(wrong)}개이오."
     else:
-        wrong_summary = report.wrong_answer_analysis.summary.strip() or "틀린 문항이 없습니다."
+        wrong_summary = report.wrong_answer_analysis.summary.strip() or "틀린 문항이 없소."
 
     aligned = LlmReportAnalysis(
         level_diagnosis=LevelDiagnosis(
@@ -228,7 +232,7 @@ def _domain_diagnosis(row: dict) -> str:
     correct = row["correct_count"]
     if correct == total:
         return f"이번 영역의 {total}문항을 모두 맞혔소. 이 문항에서 확인한 개념을 정확히 구분했소."
-    return f"이번 영역의 {total}문항 중 {correct}문항을 맞혔습니다. 아래 오답에서 선택한 보기와 정답의 차이를 확인해 보세요."
+    return f"이번 영역의 {total}문항 중 {correct}문항을 맞혔소. 아래 오답에서 선택한 보기와 정답의 차이를 살펴보시오."
 
 
 def _study_guide(row: dict, wrong: list[dict], maintain: bool, question_results: list[dict]) -> tuple[str, str]:
@@ -292,7 +296,7 @@ def _align_recommendations(
 
 def _haoche(text: str) -> str:
     """Convert only trusted local fallback text, never rewrite a model's narrative."""
-    replacements = {"확인해 보세요": "살펴보시오", "좋습니다": "좋겠소", "해야 합니다": "해야 하오", "할 수 있습니다": "할 수 있소", "없습니다": "없소", "있습니다": "있소", "맞혔습니다": "맞혔소", "구분했습니다": "구분했소", "됩니다": "되오", "합니다": "하오", "입니다": "이오", "하세요": "하시오"}
+    replacements = {"확인해 보세요": "살펴보시오", "좋습니다": "좋겠소", "해야 합니다": "해야 하오", "할 수 있습니다": "할 수 있소", "없습니다": "없소", "있습니다": "있소", "맞혔습니다": "맞혔소", "구분했습니다": "구분했소", "했습니다": "했소", "커집니다": "커지오", "됩니다": "되오", "합니다": "하오", "입니다": "이오", "하세요": "하시오", "습니다": "소"}
     for old, new in replacements.items():
         text = text.replace(old, new)
     return text

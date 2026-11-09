@@ -21,10 +21,12 @@ ReportStatus = Literal["pending", "processing", "completed", "failed"]
 class StartDiagnosticResponse(BaseModel):
     id: str
     user_id: str
-    status: Literal["pending"]
+    status: ReportStatus
     started_at: str
     total_questions: int
     questions: list[QuestionPublic]
+    resumed: bool = False
+    report_id: str | None = None
 
 
 class AnswerSubmission(BaseModel):
@@ -126,3 +128,6 @@ class ReportResponse(BaseModel):
     error: ReportError | None = None
     vulnerabilities: list[Vulnerability] | None = None
     question_results: list[QuestionResult] | None = None
+    retry_count: int = 0
+    retry_limit: int = 3
+    disclaimer: str = "AI 작성, 투자 조언 아님"

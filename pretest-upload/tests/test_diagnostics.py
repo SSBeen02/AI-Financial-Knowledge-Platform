@@ -81,6 +81,14 @@ class GradingTest(unittest.TestCase):
 
 class DiagnosticApiTest(unittest.TestCase):
     def setUp(self):
+        # 최초 1회 정책이므로 서로 다른 시험은 독립 저장소를 사용한다.
+        from database.repository import InMemoryDiagnosticRepository
+        from services.diagnostic_service import DiagnosticService
+        service = DiagnosticService(load_questions(), InMemoryDiagnosticRepository())
+        for module in ("routers.diagnostics", "routers.reports"):
+            replacement = patch(f"{module}.get_diagnostic_service", return_value=service)
+            replacement.start()
+            self.addCleanup(replacement.stop)
         self.client = TestClient(app)
         self.client.__enter__()
         self.addCleanup(self.client.__exit__, None, None, None)
@@ -117,7 +125,9 @@ class DiagnosticApiTest(unittest.TestCase):
         self.assertEqual(body["total_questions"], 24)
         self.assertRegex(body["started_at"], ISO_UTC)
         self.assertEqual(len(body["questions"]), 24)
-        self.assertEqual(body["questions"][0]["options"][1], "2) 복리")
+        finance_question = next(q for q in body["questions"] if q["id"] == "finance_investment_001")
+        self.assertEqual(finance_question["options"][1], "2) 복리")
+        self.assertEqual(body["questions"][0]["domain"], "socioeconomic_phenomena_consumer_life")
         _assert_no_keys(body, HIDDEN_KEYS)
 
         spec = self.client.get("/openapi.json").json()

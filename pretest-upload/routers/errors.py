@@ -15,6 +15,7 @@ from services.errors import (
     InvalidAnswersError,
     LlmReportError,
     ReportNotFoundError,
+    ReportRetryLimitError,
 )
 
 
@@ -50,6 +51,8 @@ def _invalid_answer_message(exc: InvalidAnswersError) -> str:
 
 
 def describe_diagnostic_error(exc: DiagnosticError) -> tuple[int, str, str]:
+    if isinstance(exc, ReportRetryLimitError):
+        return 429, "REPORT_RETRY_LIMIT_EXCEEDED", "리포트 재생성은 응시당 최대 3회까지 가능하오. 채점 결과는 보존되어 있소."
     if isinstance(exc, AuthenticationRequiredError):
         return 401, "AUTHENTICATION_REQUIRED", "로그인 후 사전테스트를 이용해 주세요."
     if isinstance(exc, IdempotencyConflictError):

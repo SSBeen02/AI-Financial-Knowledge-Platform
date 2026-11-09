@@ -2,6 +2,10 @@ class DiagnosticError(Exception):
     """사전테스트 처리 중 발생하는 도메인 오류."""
 
 
+class ReportRetryLimitError(DiagnosticError):
+    pass
+
+
 class AuthenticationRequiredError(DiagnosticError):
     pass
 

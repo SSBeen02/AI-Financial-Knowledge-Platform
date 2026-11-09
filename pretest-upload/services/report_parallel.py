@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict
 from schemas.llm_report import DomainLevelComment, LevelDiagnosis, LlmReportAnalysis, RecommendationItem, WrongAnswerAnalysis, WrongAnswerItem
 from services.errors import LlmReportError
 from services.report_summary import add_lowest_stage_summary
+from services.report_safety import SAFETY_PROMPT, validate_report_safety
 
 logger = logging.getLogger("diagnostics")
 REPORT_BUDGET_SECONDS = 28.0
@@ -26,6 +27,8 @@ STYLE_PROMPT = f"""경제 사전테스트의 친절한 튜터로서 입력 보�
 대괄호 태그, 불렛, 번호, 마크다운 강조와 숙제형 지시(표 만들기·자기 말로 쓰기·해설 가리고 재풀이)를 쓰지 마시오.
 recommendation은 오답 정의 나열이 아니라 이후 학습 방향과 접근 전략이오. 실제 혼동 지점 → 개념의 본질적인 비교 기준 → 실전 접근 전략을 주제별 3~5문장의 자연스러운 단일 문단으로 연결하시오. 반복 라벨 없이 어미도 다양하게 쓰시오. 학습 권장 문단에서 ~시오로 끝나는 직접 지시는 최대 한 문장만 쓰고, 나머지는 이유와 전략을 설명하는 ~이오/~하오/~좋겠소/~유리하오 등으로 연결하시오. 같은 종결 표현을 3문장 이상 반복하지 마시오. 오답 분석도 모든 항목을 ~가리키오/~단서이오로 끝내지 마시오."""
 
+
+STYLE_PROMPT += "\n" + SAFETY_PROMPT
 
 class _Overview(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -67,7 +70,7 @@ def build_tasks(graded: dict) -> list[tuple[str, dict, type[BaseModel], str]]:
     ranked = sorted((r for r in rows if r["is_vulnerable"]), key=lambda r: r["score"])
     recommended = ranked or ([min(rows, key=lambda r: r["score"])] if rows else [])
     overview = {"score": graded["summary"]["score"], "level": graded["summary"]["level"], "correct": graded["summary"]["correct_count"], "total": graded["summary"]["total_questions"], "domains": [{"label": r["domain_label"], "score": r["score"], "correct": r["correct_count"], "total": r["total_questions"], "missed_concepts": [q["concept"] for q in wrong if q["domain"] == r["domain"]]} for r in rows]}
-    tasks = [("overview", overview, _Overview, "총평 summary는 이번 결과와 우선 방향을 2문장으로, wrong_summary는 오답 분포와 공통 구분 기준을 1~2문장으로 설명하시오. 만점이면 없는 약점을 만들지 마시오.")]
+    tasks = [("overview", overview, _Overview, "총평 summary는 이번 결과와 우선 방향을 2문장으로, wrong_summary는 오답 분포와 공통 구분 기준을 1~2문장으로 설명하시오. 만점이면 없는 약점을 만들지 마시오. 이 작업은 전체 점수와 오답 개념 분포만 요약하며, 실제 선택지·해설에 근거한 문항별 분석은 별도 영역 작업에서 작성하오. 선택지·해설이 없다거나 정보 부족으로 분석할 수 없다고 쓰지 마시오. 이번 작업에 없는 세부 선택 내용을 추측하지 마시오.")]
     for row in rows:
         domain = row["domain"]
         need_guide = any(r["domain"] == domain for r in recommended)
@@ -95,6 +98,7 @@ def generate_parallel_report(client, graded: dict, model: str, observer: Callabl
             if remaining <= 0:
                 raise ReportDeadlineError("리포트 생성 처리 기한을 초과했소.")
             api_started = time.perf_counter()
+            logger.info("report_llm_request %s", json.dumps({"task": name, "model": model, "messages": [{"role": "system", "content": STYLE_PROMPT + "\n" + instruction}, {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}]}, ensure_ascii=False))
             completion = client.beta.chat.completions.parse(model=model, messages=[{"role": "system", "content": STYLE_PROMPT + "\n" + instruction}, {"role": "user", "content": json.dumps(payload, ensure_ascii=False, separators=(",", ":"))}], response_format=schema, timeout=remaining)
             if not completion.choices:
                 raise LlmReportError("LLM 응답에 분석이 없소.")
@@ -102,6 +106,8 @@ def generate_parallel_report(client, graded: dict, model: str, observer: Callabl
             if getattr(message, "refusal", None) or not isinstance(getattr(message, "parsed", None), schema):
                 raise LlmReportError("LLM 분석을 확인할 수 없소.")
             parsed = message.parsed
+            validate_report_safety(parsed)
+            logger.info("report_llm_response %s", json.dumps({"task": name, "request_id": getattr(completion, "_request_id", None), "content": parsed.model_dump()}, ensure_ascii=False))
             if isinstance(parsed, _DomainText):
                 ids = [x.id for x in parsed.wrong]
                 expected = [x["id"] for x in payload["wrong"]]
@@ -162,4 +168,5 @@ def generate_parallel_report(client, graded: dict, model: str, observer: Callabl
     logger.info("report_llm_total %s", json.dumps(final_metric))
     if observer:
         observer(final_metric)
+    validate_report_safety(report)
     return add_lowest_stage_summary(report, rows)

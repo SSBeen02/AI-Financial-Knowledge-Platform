@@ -1,0 +1,248 @@
+[
+  {
+    "case": "perfect",
+    "repeat": 1,
+    "safety_candidates": [],
+    "formal_style_candidates": [],
+    "awkward_yo_candidates": [],
+    "recommendation_sentence_counts": [
+      {
+        "domain": "finance_investment",
+        "sentences": 4
+      }
+    ]
+  },
+  {
+    "case": "partial",
+    "repeat": 1,
+    "safety_candidates": [],
+    "formal_style_candidates": [],
+    "awkward_yo_candidates": [
+      {
+        "field": "wrong.finance_investment_004",
+        "text": "선택한 헤지펀드는 소수 투자자의 자금을 모아 운용하는 사모펀드이고, ETF는 특정 지수를 추종하면서 거래소에서 실시간 매매가 가능한 펀드요. 질문의 ‘코스피200 추종’과 ‘주식처럼 실시간 거래’가 ETF를 가리키는 핵심 단서였소."
+      },
+      {
+        "field": "wrong.finance_investment_006",
+        "text": "선택한 신용스프레드는 신용등급이 다른 채권 사이의 금리 차이이고, VaR는 정해진 신뢰수준과 기간에서 예상되는 최대 손실액을 나타내는 지표요. 질문의 ‘95% 신뢰수준’, ‘일정 기간’, ‘손실 금액을 하나의 숫자로 표시’가 VaR의 단서였소."
+      },
+      {
+        "field": "wrong.macroeconomy_monetary_fiscal_policy_004",
+        "text": "질문의 핵심은 ‘한 나라 안에서’ 일정 기간 새로 생산된 최종 재화와 서비스의 가치라는 범위요. 선택한 GNP는 자국민의 국내외 생산을 기준으로 하므로, 국적이 아니라 생산 장소를 기준으로 하는 GDP와 구분해야 하오."
+      }
+    ],
+    "recommendation_sentence_counts": [
+      {
+        "domain": "finance_investment",
+        "sentences": 4
+      },
+      {
+        "domain": "macroeconomy_monetary_fiscal_policy",
+        "sentences": 4
+      },
+      {
+        "domain": "international_economy_industry_technology",
+        "sentences": 4
+      },
+      {
+        "domain": "socioeconomic_phenomena_consumer_life",
+        "sentences": 4
+      }
+    ]
+  },
+  {
+    "case": "all_wrong",
+    "repeat": 1,
+    "safety_candidates": [],
+    "formal_style_candidates": [],
+    "awkward_yo_candidates": [
+      {
+        "field": "wrong.macroeconomy_monetary_fiscal_policy_002",
+        "text": "예대금리는 은행의 예금·대출 금리를 통칭하지만, 기준금리는 한국은행 금융통화위원회가 결정하는 정책금리요. 질문에서 결정 주체를 한국은행으로, 시중 금리 전반에 미치는 영향을 단서로 제시했으니 기준금리가 맞소."
+      },
+      {
+        "field": "wrong.macroeconomy_monetary_fiscal_policy_003",
+        "text": "종합부동산세는 일정 기준을 넘는 부동산 보유자에게 부과되는 세금이고, 부가가치세는 거래 단계에서 생긴 부가가치에 부과하는 간접세요. 물건이나 서비스를 이용할 때 가격에 포함된다는 설명은 부가가치세를 가리키는 단서라오."
+      },
+      {
+        "field": "wrong.macroeconomy_monetary_fiscal_policy_006",
+        "text": "기업부채는 기업이 자금 조달 등을 위해 지는 부채인 반면, 국가채무는 정부가 직접 원리금 상환 의무를 지는 확정채무요. 질문의 주체가 ‘정부’이며 국내외에서 발생한 채무라고 했으니 국가채무를 가리키오."
+      }
+    ],
+    "recommendation_sentence_counts": [
+      {
+        "domain": "finance_investment",
+        "sentences": 4
+      },
+      {
+        "domain": "macroeconomy_monetary_fiscal_policy",
+        "sentences": 4
+      },
+      {
+        "domain": "international_economy_industry_technology",
+        "sentences": 4
+      },
+      {
+        "domain": "socioeconomic_phenomena_consumer_life",
+        "sentences": 4
+      }
+    ]
+  },
+  {
+    "case": "perfect",
+    "repeat": 2,
+    "safety_candidates": [],
+    "formal_style_candidates": [],
+    "awkward_yo_candidates": [],
+    "recommendation_sentence_counts": [
+      {
+        "domain": "finance_investment",
+        "sentences": 4
+      }
+    ]
+  },
+  {
+    "case": "partial",
+    "repeat": 2,
+    "safety_candidates": [],
+    "formal_style_candidates": [],
+    "awkward_yo_candidates": [],
+    "recommendation_sentence_counts": [
+      {
+        "domain": "finance_investment",
+        "sentences": 4
+      },
+      {
+        "domain": "macroeconomy_monetary_fiscal_policy",
+        "sentences": 4
+      },
+      {
+        "domain": "international_economy_industry_technology",
+        "sentences": 4
+      },
+      {
+        "domain": "socioeconomic_phenomena_consumer_life",
+        "sentences": 4
+      }
+    ]
+  },
+  {
+    "case": "all_wrong",
+    "repeat": 2,
+    "safety_candidates": [],
+    "formal_style_candidates": [],
+    "awkward_yo_candidates": [],
+    "recommendation_sentence_counts": [
+      {
+        "domain": "finance_investment",
+        "sentences": 4
+      },
+      {
+        "domain": "macroeconomy_monetary_fiscal_policy",
+        "sentences": 4
+      },
+      {
+        "domain": "international_economy_industry_technology",
+        "sentences": 4
+      },
+      {
+        "domain": "socioeconomic_phenomena_consumer_life",
+        "sentences": 5
+      }
+    ]
+  },
+  {
+    "case": "perfect",
+    "repeat": 3,
+    "safety_candidates": [
+      {
+        "field": "guide.finance_investment",
+        "text": "이번에 확인한 개념을 유지하면서 각 개념이 무엇을 설명하는지 비교해 두면 좋겠소. 단리와 복리는 이자 계산 방식, 국민연금과 예금자보호제도는 제도의 목적, ETF·PER·VaR은 각각 투자 수단·가치 평가 지표·위험 측정치라는 기준으로 살펴볼 수 있소. 문제를 풀 때는 먼저 대상이 제도인지, 계산 방식인지, 투자 관련 지표인지 파악하면 핵심 단서를 구별하기 유리하오. 이후에는 비슷한 용어가 함께 나오는 자료에서도 각 개념의 역할과 적용 범위를 비교하며 이해를 넓혀 가시오."
+      }
+    ],
+    "formal_style_candidates": [],
+    "awkward_yo_candidates": [],
+    "recommendation_sentence_counts": [
+      {
+        "domain": "finance_investment",
+        "sentences": 4
+      }
+    ]
+  },
+  {
+    "case": "partial",
+    "repeat": 3,
+    "safety_candidates": [],
+    "formal_style_candidates": [],
+    "awkward_yo_candidates": [],
+    "recommendation_sentence_counts": [
+      {
+        "domain": "finance_investment",
+        "sentences": 4
+      },
+      {
+        "domain": "macroeconomy_monetary_fiscal_policy",
+        "sentences": 4
+      },
+      {
+        "domain": "international_economy_industry_technology",
+        "sentences": 4
+      },
+      {
+        "domain": "socioeconomic_phenomena_consumer_life",
+        "sentences": 4
+      }
+    ]
+  },
+  {
+    "case": "all_wrong",
+    "repeat": 3,
+    "safety_candidates": [
+      {
+        "field": "guide.international_economy_industry_technology",
+        "text": "국제무역 제도는 협정인 FTA와 국제기구인 WTO를 구분하고, 관세 혜택의 대상과 적용 방식으로 GSP와 최혜국대우를 비교하는 흐름이 좋겠소. 생산 입지는 시설이 본국으로 돌아오는지, 가까운 해외 국가로 이동하는지를 기준으로 리쇼어링과 니어쇼어링을 나누면 되오. 금융 개념은 자금의 공급 주체와 방식에 주목해, 벤처캐피탈의 주식투자와 상호금융의 조합원 상호부조를 구별하는 편이 유리하오. 문제를 풀 때는 먼저 질문 속 주체·대상·이동 방향·자금 공급 방식을 표시하고, 선택지의 정의와 각각 대조해 보시오."
+      }
+    ],
+    "formal_style_candidates": [],
+    "awkward_yo_candidates": [
+      {
+        "field": "wrong.international_economy_industry_technology_001",
+        "text": "질문은 국가 간 관세와 무역장벽을 없애는 협정을 물었으므로 정답은 FTA요. WTO는 전 세계 자유무역질서를 다루는 국제기구라, 특정 국가 간 협정이라는 단서와 범위가 다르오."
+      },
+      {
+        "field": "wrong.international_economy_industry_technology_002",
+        "text": "상품·서비스·지식재산권을 아우르고 1995년에 출범한 무역기구라는 단서에 맞는 답은 WTO요. 세계은행은 개발도상국의 경제개발 자금을 지원하는 기관이므로, 무역규범을 다루는 WTO와 역할이 다르오."
+      },
+      {
+        "field": "wrong.international_economy_industry_technology_006",
+        "text": "선진국이 개도국산 제품의 관세를 낮추거나 면제해 주는 제도는 GSP요. 최혜국대우는 한 국가에 준 유리한 조건을 다른 무역상대국에도 적용하는 원칙이라, 개도국을 위한 일방적 관세 혜택과 구분되오."
+      },
+      {
+        "field": "wrong.socioeconomic_phenomena_consumer_life_003",
+        "text": "문항의 단서는 일자리가 있는데도 낮은 소득 탓에 빈곤에서 벗어나지 못한다는 점이오. 프리터족은 아르바이트로 생계를 잇는 청년층을 뜻하며 빈곤을 전제하지 않으므로, 빈곤 여부가 워킹푸어와의 핵심 차이요."
+      },
+      {
+        "field": "wrong.socioeconomic_phenomena_consumer_life_006",
+        "text": "질문은 직장 은퇴 후 국민연금 수급이 시작되기 전까지 정기 소득이 끊기는 기간을 가리키므로 소득 크레바스요. 유동성 함정은 금리를 낮춰도 통화정책이 효과를 내지 못하는 현상이라, 개인의 은퇴 소득 공백과는 주체와 맥락이 다르오."
+      }
+    ],
+    "recommendation_sentence_counts": [
+      {
+        "domain": "finance_investment",
+        "sentences": 4
+      },
+      {
+        "domain": "macroeconomy_monetary_fiscal_policy",
+        "sentences": 4
+      },
+      {
+        "domain": "international_economy_industry_technology",
+        "sentences": 4
+      },
+      {
+        "domain": "socioeconomic_phenomena_consumer_life",
+        "sentences": 5
+      }
+    ]
+  }
+]

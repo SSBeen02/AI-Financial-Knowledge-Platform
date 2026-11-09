@@ -31,10 +31,13 @@ class DiagnosticRepository(Protocol):
 
     def create_attempt(self, record: dict) -> dict: ...
 
+    def start_once(self, record: dict) -> dict: ...
+
     def get_attempt(self, attempt_id: str, user_id: str) -> dict | None: ...
 
     def update_attempt(
-        self, attempt_id: str, user_id: str, expected_status: str, changes: dict
+        self, attempt_id: str, user_id: str, expected_status: str, changes: dict,
+        expected_retry_count: int | None = None,
     ) -> dict | None: ...
 
 
@@ -55,6 +58,14 @@ class InMemoryDiagnosticRepository:
             self._rows[attempt_id] = copy.deepcopy(record)
             return copy.deepcopy(self._rows[attempt_id])
 
+    def start_once(self, record: dict) -> dict:
+        with self._lock:
+            existing = [row for row in self._rows.values() if row["user_id"] == record["user_id"]]
+            if existing:
+                return copy.deepcopy(min(existing, key=lambda row: (row["status"] == "pending", row["started_at"], row["id"])))
+            self._rows[record["id"]] = copy.deepcopy(record)
+            return copy.deepcopy(record)
+
     def get_attempt(self, attempt_id: str, user_id: str) -> dict | None:
         with self._lock:
             row = self._rows.get(attempt_id)
@@ -63,11 +74,14 @@ class InMemoryDiagnosticRepository:
             return copy.deepcopy(row)
 
     def update_attempt(
-        self, attempt_id: str, user_id: str, expected_status: str, changes: dict
+        self, attempt_id: str, user_id: str, expected_status: str, changes: dict,
+        expected_retry_count: int | None = None,
     ) -> dict | None:
         with self._lock:
             row = self._rows.get(attempt_id)
             if row is None or row["user_id"] != user_id or row["status"] != expected_status:
+                return None
+            if expected_retry_count is not None and row.get("retry_count", 0) != expected_retry_count:
                 return None
             row.update(copy.deepcopy(changes))
             return copy.deepcopy(row)
@@ -78,6 +92,19 @@ class SupabaseDiagnosticRepository:
 
     def __init__(self, url: str, key: str) -> None:
         self._client = create_supabase_client(url, key)
+
+    def start_once(self, record: dict) -> dict:
+        # DB 트랜잭션의 사용자별 잠금으로 여러 서버의 동시 시작도 직렬화한다.
+        try:
+            response = self._client.rpc("start_diagnostic_once", {"p_record": record}).execute()
+            rows = response.data or []
+            if not rows:
+                raise DiagnosticStorageError()
+            return _coerce_row(rows[0])
+        except DiagnosticStorageError:
+            raise
+        except Exception as exc:
+            raise DiagnosticStorageError("최초 응시 저장에 실패했습니다. start_diagnostic_once 마이그레이션을 확인해 주세요.") from exc
 
     def create_attempt(self, record: dict) -> dict:
         try:
@@ -109,17 +136,20 @@ class SupabaseDiagnosticRepository:
         return _coerce_row(rows[0])
 
     def update_attempt(
-        self, attempt_id: str, user_id: str, expected_status: str, changes: dict
+        self, attempt_id: str, user_id: str, expected_status: str, changes: dict,
+        expected_retry_count: int | None = None,
     ) -> dict | None:
         try:
-            response = (
+            query = (
                 self._client.table("diagnostic_attempts")
                 .update(changes)
                 .eq("id", attempt_id)
                 .eq("user_id", user_id)
                 .eq("status", expected_status)
-                .execute()
             )
+            if expected_retry_count is not None:
+                query = query.eq("retry_count", expected_retry_count)
+            response = query.execute()
         except Exception as exc:
             logger.exception("diagnostic_attempts 갱신 실패")
             raise DiagnosticStorageError() from exc

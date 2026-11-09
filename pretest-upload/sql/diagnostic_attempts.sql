@@ -13,6 +13,8 @@ create table if not exists public.diagnostic_attempts (
   answers jsonb,
   questions_snapshot jsonb,
   submission_key text,
+  retry_count integer not null default 0,
+  report_started_at timestamptz,
   error jsonb,
   summary jsonb,
   domain_scores jsonb,

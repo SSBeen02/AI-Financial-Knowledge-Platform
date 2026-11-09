@@ -1,6 +1,13 @@
 VULNERABLE_SCORE_THRESHOLD = 70.0
 HIGH_SEVERITY_SCORE_THRESHOLD = 50.0
 
+STAGE_DOMAINS = (
+    "socioeconomic_phenomena_consumer_life",
+    "finance_investment",
+    "macroeconomy_monetary_fiscal_policy",
+    "international_economy_industry_technology",
+)
+
 DOMAIN_CATALOG: dict[str, dict[str, str]] = {
     "finance_investment": {
         "label": "금융과 투자",

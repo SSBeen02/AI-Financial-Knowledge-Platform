@@ -12,8 +12,11 @@ router = APIRouter(tags=["사전테스트"])
 
 @router.post("/diagnostics", response_model=StartDiagnosticResponse,
              status_code=status.HTTP_201_CREATED, summary="사전테스트 시작")
-def start_diagnostic(user_id: CurrentUserId) -> StartDiagnosticResponse:
-    return get_diagnostic_service().start(user_id)
+def start_diagnostic(user_id: CurrentUserId, response: Response) -> StartDiagnosticResponse:
+    result = get_diagnostic_service().start(user_id)
+    if result.resumed:
+        response.status_code = status.HTTP_200_OK
+    return result
 
 
 @router.post("/diagnostics/{id}/submit", response_model=SubmitResponse,
