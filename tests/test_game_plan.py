@@ -180,17 +180,22 @@ def test_ut06_shop_boundaries_rejection_state(factory):
 
 def test_ut06_literal_no_storage_change_on_rejection(factory):
     s=standard_service(factory); s.create_character('user-a','학당')
-    before=snapshot(factory)
+    before=snapshot(factory,('game_purchase_requests',))
     assert s.purchase_accessory('user-a','rice_paddle','rejected-key').status=='unavailable'
-    assert snapshot(factory)==before, 'Rejected purchase persists PurchaseRequestRow'
+    assert snapshot(factory,('game_purchase_requests',))==before
+    with factory() as db:
+        assert db.scalar(select(func.count()).select_from(PurchaseRequestRow))==1
 
 
-def test_rejected_purchase_key_can_be_retried_after_conditions_change(factory):
+def test_rejected_purchase_key_replays_first_result_after_conditions_change(factory):
     s=standard_service(factory); s.create_character('user-a','학당')
-    assert s.purchase_accessory('user-a','shoes','retry').status=='unavailable'
+    first=s.purchase_accessory('user-a','shoes','retry')
+    assert first.status=='unavailable'
     fund(s)
-    assert s.purchase_accessory('user-a','shoes','retry').status=='success'
-    assert s.purchase_accessory('user-a','shoes','retry').status=='success'
+    before=snapshot(factory)
+    assert s.purchase_accessory('user-a','shoes','retry')==first
+    assert snapshot(factory)==before
+    assert s.purchase_accessory('user-a','shoes','new-key').status=='success'
 
 
 def test_ut07_purchase_ten_replays_and_full_rollback(factory):
@@ -403,3 +408,43 @@ def test_extra_state_query_error_returns_503(factory):
     with TestClient(app) as client:
         response=client.get('/game/state')
         assert response.status_code==503 and 'injected' not in response.text
+
+
+def test_awning_reward_boundary_and_replay(factory):
+    s=standard_service(factory); s.create_character('user-a','학당')
+    for count in (23,24,25):
+        s.process_event('user-a',dict(learning_event(f'awning-{count}',count),concept_id=f'a-{count}'))
+        rewards=[r.story_reward_id for r in s.get_game_state('user-a').story_rewards]
+        assert rewards.count('awning') == (0 if count==23 else 1)
+    s.process_event('user-a',dict(learning_event('awning-24',24),concept_id='a-24'))
+    with factory() as db:
+        row=db.scalar(select(StoryRewardRow).where(StoryRewardRow.story_reward_id=='awning'))
+        assert row.source_event_id=='awning-24'
+        assert db.scalar(select(func.count()).select_from(StoryRewardRow).where(StoryRewardRow.story_reward_id=='awning'))==1
+
+
+def test_nonlearning_operations_do_not_promote(factory):
+    s=standard_service(factory); s.create_character('user-a','학당'); fund(s)
+    for action in (lambda:s.get_game_state('user-a'), lambda:s.list_shop_items('user-a'),
+                   lambda:s.set_title('user-a','title_1'), lambda:s.purchase_accessory('user-a','shoes','buy'),
+                   lambda:s.equip_accessory('user-a','shoes'),lambda:s.equip_accessory('user-a',None)):
+        action(); assert s.get_game_state('user-a').current_rank==Rank.BEGGAR
+
+
+def test_state_and_progress_timestamps_and_failure_rollback(factory):
+    s=standard_service(factory); c=s.create_character('user-a','학당')
+    def times():
+        with factory() as db:
+            return (db.get(CharacterStateRow,c.character_id).updated_at,
+                    db.get(StoryProgressRow,(c.character_id,1)).updated_at)
+    original=times(); s.process_event('user-a',learning_event('advance',6)); advanced=times()
+    assert advanced[0]>original[0] and advanced[1]>original[1]
+    s.set_title('user-a','title_1'); assert times()[0]>advanced[0]
+    before=snapshot(factory,('game_event_logs',))
+    def fail(session,*_):
+        if any(isinstance(r,RewardHistoryRow) for r in session.new): raise RuntimeError('injected failure')
+    event.listen(factory.class_,'before_flush',fail)
+    try:
+        with pytest.raises(RuntimeError): s.process_event('user-a',dict(learning_event('fail',18),concept_id='new'))
+    finally: event.remove(factory.class_,'before_flush',fail)
+    assert snapshot(factory,('game_event_logs',))==before

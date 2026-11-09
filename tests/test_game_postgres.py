@@ -21,6 +21,9 @@ from game.models import (Base, CharacterRow, CoinTransactionRow, EventLogRow,
                          UserAccessoryRow, PurchaseRequestRow)
 from test_game_store import standard_service, learning_event
 from test_game_plan import (
+    test_awning_reward_boundary_and_replay,
+    test_nonlearning_operations_do_not_promote,
+    test_state_and_progress_timestamps_and_failure_rollback,
     completion, fund,
     test_ut01_names_save_and_failure_preserves_database,
     test_ut02_boundaries_and_invalid_event_entire_state,
@@ -85,7 +88,10 @@ def factory(isolated_engine):
     # Only explicitly named tables in the UUID-owned test schema are reset.
     tables=', '.join(f'"{schema}"."{t.name}"' for t in Base.metadata.sorted_tables)
     with engine.begin() as conn:
+        # Only the disposable schema's test reset bypasses the truncate guard.
+        conn.exec_driver_sql(f'ALTER TABLE "{schema}".game_audit_logs DISABLE TRIGGER game_audit_no_truncate')
         conn.exec_driver_sql(f'TRUNCATE TABLE {tables}')
+        conn.exec_driver_sql(f'ALTER TABLE "{schema}".game_audit_logs ENABLE TRIGGER game_audit_no_truncate')
     return sessionmaker(engine,expire_on_commit=False)
 
 
@@ -152,3 +158,22 @@ def test_pg_actual_unique_constraints(factory):
         with pytest.raises(IntegrityError) as exc:
             with factory.begin() as db: db.add(model(**values))
         assert exc.value.orig.sqlstate=='23505',model.__name__
+
+
+def test_pg_event_purchase_and_equip_concurrently(factory):
+    s=standard_service(factory); s.create_character('user-a','학당'); fund(s,20)
+    s.accessories['extra']=s.accessories['shoes'].model_copy(update={'accessory_id':'extra','price':0})
+    s.purchase_accessory('user-a','extra','setup-extra')
+    barrier=Barrier(3)
+    actions=[lambda:s.process_event('user-a',dict(learning_event('mixed',21),concept_id='mixed')),
+             lambda:s.purchase_accessory('user-a','shoes','mixed-buy'),
+             lambda:s.equip_accessory('user-a','extra')]
+    def run(action): barrier.wait(timeout=10); return action()
+    with ThreadPoolExecutor(max_workers=3) as pool: results=list(pool.map(run,actions))
+    assert results[0].status=='processed' and results[1].status=='success'
+    state=s.get_game_state('user-a')
+    assert state.coin_balance==10 and state.passed_concept_count==21
+    assert state.equipped_accessory.accessory_id=='extra'
+    with factory() as db:
+        assert db.scalar(select(func.sum(CoinTransactionRow.amount)))==10
+        assert db.scalar(select(func.count()).select_from(CoinTransactionRow).where(CoinTransactionRow.reason=='purchase'))==2

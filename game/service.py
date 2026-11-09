@@ -9,9 +9,9 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from game.models import (CharacterStateRow, CoinTransactionRow, EventLogRow,
+from game.models import (CharacterRow, CharacterStateRow, CoinTransactionRow, EventLogRow,
                          StageCompletionRow, StoryProgressRow, StoryRewardRow,
-                         UserAccessoryRow, EquippedAccessoryRow, PurchaseRequestRow, RewardHistoryRow, utcnow)
+                         UserAccessoryRow, EquippedAccessoryRow, PurchaseRequestRow, RewardHistoryRow, AuditLogRow, utcnow)
 from game.rules import RankPolicy, StoryRules, stage_number, validate_counts
 from game.schemas import (EventResult, EventStatus, GameStateOut, LearningEventIn,
                           Rank, StageCompletion, StoryReward, SyncOut, Title,
@@ -31,6 +31,13 @@ class RankVisual:
 
 
 class GameService:
+    @staticmethod
+    def _audit(session, character, change_type, source_type, source_id, before, after):
+        if before != after:
+            session.add(AuditLogRow(audit_id=str(uuid4()), user_id=character.user_id,
+                character_id=character.character_id, change_type=change_type,
+                source_type=source_type, source_id=source_id, before_value=before, after_value=after))
+
     def __init__(self, uow: SqlUnitOfWork, rules: StoryRules,
                  visuals: Mapping[Rank, RankVisual], totals: Mapping[int, int],
                  titles: tuple[Title, ...] = (), accessories: tuple[Accessory, ...] = ()):
@@ -118,6 +125,7 @@ class GameService:
                 elif item.unlocked:
                     status = "success" if state.coin_balance >= item.accessory.price else "insufficient_balance"
             if status == "success":
+                before_balance = state.coin_balance
                 state.coin_balance -= item.accessory.price
                 state.updated_at = utcnow()
                 session.add_all([
@@ -126,10 +134,14 @@ class GameService:
                                        balance_after=state.coin_balance),
                     UserAccessoryRow(character_id=cid, accessory_id=accessory_id),
                 ])
+                self._audit(session, character, "coin", "purchase", key,
+                            {"balance": before_balance}, {"balance": state.coin_balance})
+                self._audit(session, character, "accessory_owned", "purchase", key,
+                            {"accessory_id": accessory_id, "owned": False},
+                            {"accessory_id": accessory_id, "owned": True})
             result = PurchaseResult(status=status, accessory_id=accessory_id, coin_balance=state.coin_balance)
-            if status == "success":
-                session.add(PurchaseRequestRow(character_id=cid, idempotency_key=key,
-                                               accessory_id=accessory_id, result=result.model_dump(mode="json")))
+            session.add(PurchaseRequestRow(character_id=cid, idempotency_key=key,
+                                           accessory_id=accessory_id, result=result.model_dump(mode="json")))
             return result
         return self.uow.run(work)
 
@@ -139,6 +151,7 @@ class GameService:
             cid = character.character_id
             state = session.get(CharacterStateRow, cid)
             equipped = session.get(EquippedAccessoryRow, cid)
+            before_item = equipped.accessory_id if equipped else None
             if accessory_id is None:
                 if equipped:
                     session.delete(equipped)
@@ -152,6 +165,8 @@ class GameService:
                 else:
                     equipped.accessory_id, equipped.equipped_at = accessory_id, utcnow()
             state.updated_at = utcnow()
+            self._audit(session, character, "accessory_equipped", "user_action", str(uuid4()),
+                        {"accessory_id": before_item}, {"accessory_id": accessory_id})
             session.flush()
             return self._state(session, user_id)
         return self.uow.run(work)
@@ -231,6 +246,9 @@ class GameService:
                 event = LearningEventIn.model_validate(payload)
                 self._validate_event(event)
                 state = session.get(CharacterStateRow, character.character_id)
+                before_rank, before_balance = state.current_rank, state.coin_balance
+                before_equipped = session.get(EquippedAccessoryRow, character.character_id)
+                before_equipped_id = before_equipped.accessory_id if before_equipped else None
                 stage = stage_number(event.stage_id)
                 if event.event_type == "concept_passed" and not event.first_pass:
                     pass
@@ -251,6 +269,14 @@ class GameService:
                     if stage == state.current_stage and progress and event.passed_count < progress.passed_concept_count:
                         message = "이전 진행 개수보다 낮아 진행 갱신을 무시했습니다."
                     self._pass(session, character.character_id, state, event, stage)
+                self._audit(session, character, "rank", "event", event_id,
+                            {"rank": before_rank}, {"rank": state.current_rank})
+                self._audit(session, character, "coin", "event", event_id,
+                            {"balance": before_balance}, {"balance": state.coin_balance})
+                equipped = session.get(EquippedAccessoryRow, character.character_id)
+                after_equipped_id = equipped.accessory_id if equipped and equipped not in session.deleted else None
+                self._audit(session, character, "accessory_equipped", "event", event_id,
+                            {"accessory_id": before_equipped_id}, {"accessory_id": after_equipped_id})
                 result = EventResult(event_id=event_id, status=EventStatus.PROCESSED, message=message)
             except (ValueError, ValidationError) as exc:
                 # 바깥 트랜잭션을 롤백한 후 거부 이력만 별도 저장한다.
@@ -325,6 +351,9 @@ class GameService:
                 session.add(RewardHistoryRow(character_id=cid,
                     reward_key=f"story:{stage}:{reward.story_reward_id}", reward_type="story",
                     reward_ref=reward.story_reward_id, source_event_id=event.event_id))
+                self._audit(session, session.get(CharacterRow, cid), "story_reward", "event", event.event_id,
+                            {"stage": stage, "reward_id": reward.story_reward_id, "owned": False},
+                            {"stage": stage, "reward_id": reward.story_reward_id, "owned": True})
         progress.passed_concept_count, progress.current_story_step = event.passed_count, step
         progress.last_event_id = event.event_id
         self._set_crown(session, cid, state, self.rules.crown_for(stage, event.passed_count), event.event_id)
@@ -356,12 +385,15 @@ class GameService:
 
     @staticmethod
     def _set_crown(session, cid, state, crown, event_id):
+        before_crown = state.crown
         if crown is not None and state.crown != crown:
             key = f"crown:{crown.value}"
             if session.get(RewardHistoryRow, (cid, key)) is None:
                 session.add(RewardHistoryRow(character_id=cid, reward_key=key, reward_type="crown",
                                              reward_ref=crown.value, source_event_id=event_id))
         state.crown = crown
+        GameService._audit(session, session.get(CharacterRow, cid), "crown", "event", event_id,
+                           {"crown": before_crown}, {"crown": crown.value if crown else None})
 
     def sync_events(self, user_id: str, source: EventSource) -> SyncOut:
         if self.get_game_state(user_id) is None:
