@@ -26,6 +26,28 @@ Swagger: <http://127.0.0.1:8000/docs>. 로컬 개발에서는 각 요청의 `X-U
 공통 인증 의존성이 검증해 얻은 UUID를 사용한다. 브라우저 프론트의 origin은
 `CORS_ALLOW_ORIGINS`에 쉼표로 추가한다.
 
+## UT-13 첫 글자 응답 시간 측정
+
+실제 LLM과 Qdrant로 골든셋 v4에서 정답 문서가 있는 78문항을 각각 2회
+요청한다. HTTP POST를 시작한 순간부터 공백이 아닌 첫 SSE `token.delta`를 수신할 때까지를
+측정한다. 따라서 서버의 검색·안전 판정·LLM 생성·전송 시간이 포함되며 서버 시작 시간은
+포함되지 않는다. 결과는 매 요청 뒤 JSON에 저장되어 중단 후 `--resume`으로 이어갈 수 있다.
+각 요청은 새 테스트 사용자 ID를 쓴다. 아래 래퍼는 임시 로컬 SQLite DB를 사용해 운영 DB에
+측정 대화가 섞이지 않게 하고, 서버를 자동으로 시작·종료한다. 로컬에 캐시된 KURE-v1 모델이
+필요하다. `.env`의 실제 LLM과 Qdrant 설정을 사용한다.
+
+```powershell
+python scripts/run_ut13_local.py --golden 'C:\path\RAG_골든셋_v4.xlsx' --all-answered --runs 2 --output eval_outputs/ut13_results.json
+# 중단 후 이어서 실행
+python scripts/run_ut13_local.py --golden 'C:\path\RAG_골든셋_v4.xlsx' --all-answered --runs 2 --output eval_outputs/ut13_results.json --resume
+# 오류 원인을 수정한 뒤 실패 회차만 재측정 (이전 실패는 prior_results에 보존)
+python scripts/run_ut13_local.py --golden 'C:\path\RAG_골든셋_v4.xlsx' --all-answered --runs 2 --output eval_outputs/ut13_results.json --resume --retry-failed
+```
+
+결과의 `first_text_seconds`가 각 요청에서 20초 이하면 통과다. 요약의 `all_pass`, 중앙값,
+95백분위수, 최댓값을 확인한다. SSE `error`, HTTP 오류, `done` 누락도 실패로 기록한다.
+2026-11-09 실행 결과와 팀 전달 문안은 `GUIDE/UT13_MEASUREMENT.md`에 정리했다.
+
 ## 역할별 읽을 곳
 
 - 퀴즈 담당: **5장 퀴즈 모듈 연동 가이드**
@@ -187,7 +209,7 @@ Qdrant 실제 연결 테스트는 `.env`에 연결 정보가 있을 때 실행�
 | `CORS_ALLOW_ORIGINS` | 선택 | `http://localhost:5173,http://localhost:3000` | 브라우저 접근을 허용할 origin의 쉼표 구분 목록 |
 | `BAND_HIGH` | 선택 | `0.50` | high band 최소 Dense 점수 |
 | `BAND_LOW` | 선택 | `0.45` | mid band 최소 Dense 점수. 이 값 미만은 low다. |
-| `DISPLAY_SOURCE_MIN_SCORE` | 선택 | `0.60` | 현재 세션 개념 외 문서를 `display_sources`에 노출할 최소 점수 |
+| `DISPLAY_SOURCE_MIN_SCORE` | 선택 | `0.60` | 시사·한국은행 Dense 문서를 `display_sources`에 노출할 최소 점수. 현재 세션 개념·답변 첫 정의 문장의 인용 근거·교재 RRF 문서는 예외 |
 | `STAGES_JSON_PATH` | 선택 | `data/stages.json` | 스테이지·학습 개념 정의 파일 |
 | `CHAT_DB_URL` | 선택 | `sqlite:///chat.db` | SQLAlchemy DB URL. 배포에서는 Supabase PostgreSQL URL로 교체한다. |
 | `DB_AUTO_CREATE` | 선택 | `false` | `true`면 시작 시 `create_all`과 `stages.json` 시드를 실행한다. 로컬 최초 실행에만 권장하며 공유 Supabase에서는 `false`로 두고 migration을 적용한다. |
@@ -797,6 +819,8 @@ type ChatDone = {
     collection: string;
     label: string;
     images?: string[];
+    printed_page?: number;
+    source_url?: string;
   }>;
   message_id: string;
   safety_level: 'ALLOW' | 'REVIEW' | 'BLOCK';
@@ -865,6 +889,13 @@ extra/excluded 용어, low band 질문을 성장·퀴즈 반영 여부와 함께
 화면 출처에는 `sources`가 아니라 **`display_sources`**를 사용한다. `sources`는 LLM에 전달한 전체
 근거와 퀴즈 맥락 저장용이며, 화면 노출 임계값이 적용되지 않는다.
 `sisa_terms`의 표시 출처는 [공공데이터포털의 재정경제부_시사경제용어 정보](https://www.data.go.kr/data/15006052/fileData.do)다.
+교재 컬렉션의 `score`는 RRF 순위 점수이며 `sisa_terms`의 Dense 유사도와 비교할 수 없다.
+백엔드는 교재의 상위 5개 RRF 결과 중 최대 2개를 `sources`와 `display_sources`에 넣는다. 교재의 BM25 질의는 `data/fss_hybrid_sparse_model.json`의 어휘 ID·IDF를 사용하므로 이 파일을 배포 산출물에 포함한다.
+교재는 RRF 상위 5개에서 Dense 유사도 0.50 이상인 청크만 답변 근거로 채택한다. 화면의 교재 `score`는 여전히 RRF 점수다. 시사·한국은행 Dense 출처는 첫 정의 문장에서 실제로 인용되면 화면 임계값보다 낮아도 표시한다.
+프론트는 두 컬렉션에 같은 점수 임계값을 다시 적용하지 않고 `display_sources`를 그대로 표시한다.
+출처 이름은 `label`을 사용하고, `term`에는 교재의 절·장 제목이 올 수 있다.
+한국은행 `bok_economic_financial_terms_2026_kure_v1_rrf`는 기본 KURE-v1 Dense 검색이다.
+`display_sources`의 한국은행 항목에는 `term`, `printed_page`, `source_url`이 함께 오며, 프론트는 페이지를 표시하고 `source_url`을 원문 링크로 사용할 수 있다.
 
 ### 6.3 새로고침 시 대화 복원
 
@@ -907,6 +938,10 @@ Stage 5는 앞 단계와 겹치는 개념도 `(concept_id, stage5)`로 별도 �
 ## 7. 검색 소스 추가 체크리스트
 
 명세 6.5의 확장 절차다.
+
+현재 `sisa_terms`는 KURE-v1 Dense 단독으로 검색하고, `fss_practical_finance_4e_3p_kure_v1`은 KURE-v1 Dense와 Kiwi BM25 Sparse 상위 200개씩을 Qdrant 동일 가중 RRF(k=2)로 결합한다. 교재의 RRF 상위 5개 중 Dense 유사도 0.50 이상인 결과 최대 2개를 기존 용어집 결과 최대 3개와 함께 답변 근거로 제공한다. 교재 BM25 질의는 적재 당시의 `data/fss_hybrid_sparse_model.json` 어휘 ID·IDF와 Kiwi 형태소 규칙을 사용한다. 교재 출처 표시는 `대학생을 위한 실용금융(제4판)_금융감독원_2024`다. 학습 개념 감지와 band 판정은 용어집 Dense 점수만 사용한다. 실측 컬렉션은 502개 포인트이고 벡터 이름은 `dense`/`bm25`다. 교재 payload의 `content_markdown`을 본문, `subsection`/`section`/`chapter_title`을 제목으로 읽되 문장처럼 긴 제목은 장 제목으로 바꾸며, 식별자는 Qdrant 포인트 ID를 사용한다.
+
+`bok_economic_financial_terms_2026_kure_v1_rrf`는 이름에 `rrf`가 있어도 챗봇 기본 모드는 KURE-v1 Dense 단독이다. 실측 790개 포인트의 `dense` 벡터에서 상위 5개를 검색해 최대 2개를 근거로 사용한다. `content_markdown`을 답변 본문 근거로, `term`·`printed_page`·`source_url`을 출처 표시 메타데이터로 쓴다. label은 `2026_경제금융용어 800선_한국은행`이다. 이 소스는 학습 개념 감지와 band 판정에 관여하지 않는다. 따라서 세 소스에서 답변 근거는 최대 7개(시사 3·교재 2·한국은행 2)다. hybrid 비교가 필요하면 제공된 `search_glossary_800.py`와 별도 `hybrid_sparse_model.json`의 어휘 ID·IDF를 사용해야 한다.
 
 1. 새 문서를 청크 JSONL로 만들고 각 payload에 `concept_id`, `term`, `text`, `source`, `stages`를 넣는다.
    기존 Qdrant payload의 `doc_id`는 하위 호환으로 읽지만 새 데이터와 애플리케이션 코드는

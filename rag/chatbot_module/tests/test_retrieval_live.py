@@ -8,7 +8,7 @@ from qdrant_client import QdrantClient
 from chatbot.concepts import load_stage_catalog
 from chatbot.config import Settings
 from chatbot.retrieval import ConceptCache, Retriever, judge_band
-from rag_common import DenseEncoder
+from rag_common import DenseEncoder, SparseEncoder
 
 
 def _live_settings() -> Settings | None:
@@ -26,9 +26,9 @@ def test_live_opportunity_cost_search() -> None:
         pytest.skip("Qdrant 접속 정보가 없습니다.")
     client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
     dense = DenseEncoder(settings.dense_model)
-    result = Retriever(client, dense, settings).search("기회비용이 뭐야?")
+    result = Retriever(client, dense, settings, sparse=SparseEncoder()).search("기회비용이 뭐야?")
     assert result.sources
-    assert len(result.sources) <= 3
+    assert len(result.sources) <= 7
     assert result.band == judge_band(result.top_score, high=settings.band_high, low=settings.band_low)
     assert result.top_score == result.sources[0].score
     assert result.sources[0].collection == settings.qdrant_collection

@@ -32,6 +32,7 @@ def test_lifespan_preloads_each_process_dependency_once(monkeypatch) -> None:
         "get_concept_status_service",
         "get_qdrant_client",
         "get_dense_encoder",
+        "get_sparse_encoder",
         "get_concept_cache",
         "get_retriever",
         "get_llm_adapter",

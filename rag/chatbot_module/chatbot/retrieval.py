@@ -19,6 +19,7 @@ from chatbot.schemas import Band, SourceOut
 PointId = str
 _BATCH = 128
 PUBLIC_DATA_SOURCE_LABEL = SEARCH_PROFILES["sisa_terms"]["label"]
+FSS_COLLECTION = "fss_practical_finance_4e_3p_kure_v1"
 
 
 def display_source_label(label: str, collection: str) -> str:
@@ -85,6 +86,8 @@ class RetrievedDoc:
     images: tuple[str, ...] | None
     stages: tuple[str, ...]
     aliases: tuple[str, ...] = ()
+    printed_page: int | None = None
+    source_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -148,6 +151,7 @@ class Retriever:
         self._settings = settings
         self._profiles = profiles if profiles is not None else settings.search_profiles
         self._sparse = sparse
+        self._use_real_search = search_fn is None
         if search_fn is None or dense_score_fn is None:
             from rag_common import search, top_dense_score
 
@@ -179,16 +183,67 @@ class Retriever:
     def _search_profile(self, query: str, collection: str, profile: SearchProfile) -> list[RetrievedDoc]:
         if profile["mode"] != "dense" and self._sparse is None:
             raise RetrievalError(f"{collection}의 {profile['mode']} 검색에는 희소 인코더가 필요합니다.")
-        points = self._search(
-            self._client,
-            query,
-            self._dense,
-            self._sparse,
+        search_kwargs = dict(
             mode=profile["mode"],
             k=profile["k"],
             collection=collection,
         )
+        if profile["mode"] == "hybrid":
+            search_kwargs["prefetch_k"] = profile.get("prefetch_k", 30)
+        if self._use_real_search and profile.get("sparse_vector"):
+            points = self._search_named_sparse(query, collection, profile)
+        else:
+            points = self._search(
+                self._client,
+                query,
+                self._dense,
+                self._sparse,
+                **search_kwargs,
+            )
         return [_retrieved(point, collection, profile["label"]) for point in points]
+
+    def _search_named_sparse(self, query: str, collection: str, profile: SearchProfile) -> list[Any]:
+        """공용 검색 함수를 바꾸지 않고 교재의 bm25 벡터 이름을 사용한다."""
+        from qdrant_client import models
+        from rag_common import DENSE_NAME
+        import numpy as np
+
+        if getattr(self._sparse, "collection", collection) != collection:
+            raise RetrievalError(f"{collection}에 맞는 희소 인코더가 설정되지 않았습니다.")
+
+        dense_query = self._dense.encode([query])[0].tolist()
+        sparse_query = self._sparse.encode_query(query)
+        candidates = profile.get("prefetch_k", 30)
+        prefetch = [models.Prefetch(query=dense_query, using=DENSE_NAME, limit=candidates)]
+        if sparse_query.indices:
+            prefetch.append(models.Prefetch(
+                query=sparse_query, using=profile["sparse_vector"], limit=candidates
+            ))
+        response = self._client.query_points(
+            collection_name=collection,
+            prefetch=prefetch,
+            query=models.RrfQuery(rrf=models.Rrf(k=2, weights=[1.0] * len(prefetch))),
+            limit=profile["k"],
+            with_payload=True,
+            with_vectors=[DENSE_NAME] if "min_dense_score" in profile else False,
+        )
+        if "min_dense_score" not in profile:
+            return response.points
+        query_vector = np.asarray(dense_query, dtype=np.float32)
+        query_norm = np.linalg.norm(query_vector)
+        selected = []
+        for point in response.points:
+            vector = (point.vector or {}).get(DENSE_NAME) if isinstance(point.vector, dict) else None
+            if vector is None:
+                raise RetrievalError(f"{collection}의 Dense 벡터를 검색 결과에서 읽지 못했습니다.")
+            document_vector = np.asarray(vector, dtype=np.float32)
+            denominator = query_norm * np.linalg.norm(document_vector)
+            if denominator == 0:
+                continue
+            similarity = float(np.dot(query_vector, document_vector) / denominator)
+            if similarity >= profile["min_dense_score"]:
+                selected.append(point)
+        return selected
 
     def _dense_top(self, query: str, collection: str, profile: SearchProfile, hits: list[RetrievedDoc]) -> float:
         if profile["mode"] == "dense":
@@ -204,6 +259,8 @@ def to_source_out(doc: RetrievedDoc) -> SourceOut:
         collection=doc.collection,
         label=display_source_label(doc.label, doc.collection),
         images=list(doc.images) if doc.images is not None else None,
+        printed_page=doc.printed_page,
+        source_url=doc.source_url,
     )
 
 
@@ -277,23 +334,28 @@ def _cached(point: Any, by_point: Mapping[str, str]) -> CachedConcept | None:
         concept_id=concept_id,
         term=str(payload.get("term") or ""),
         aliases=tuple(str(alias) for alias in aliases),
-        text=str(payload.get("text") or ""),
+        text=str(payload.get("text") or payload.get("content") or payload.get("page_content") or ""),
         images=_images(payload),
     )
 
 
 def _retrieved(point: Any, collection: str, label: str) -> RetrievedDoc:
     payload = point.payload or {}
+    section = str(payload.get("subsection") or payload.get("section") or "").strip()
+    if len(section) > 40 or ("." in section and len(section) > 25) or section.endswith(("?", "!", "。")):
+        section = ""
     return RetrievedDoc(
-        concept_id=str(payload.get("concept_id") or payload.get("doc_id") or ""),
-        term=str(payload.get("term") or ""),
+        concept_id=str(payload.get("concept_id") or payload.get("doc_id") or payload.get("chunk_id") or point.id),
+        term=str(payload.get("term") or section or payload.get("chapter_title") or payload.get("section_title") or payload.get("title") or payload.get("chunk_id") or ""),
         score=float(point.score),
         collection=collection,
         label=label,
-        text=str(payload.get("text") or ""),
+        text=str(payload.get("text") or payload.get("content_markdown") or payload.get("content") or payload.get("page_content") or ""),
         images=_images(payload),
         stages=_stages(payload),
         aliases=_aliases(payload),
+        printed_page=payload.get("printed_page") if type(payload.get("printed_page")) is int else None,
+        source_url=(url if (url := str(payload.get("source_url") or "")).startswith(("https://", "http://")) else None),
     )
 
 

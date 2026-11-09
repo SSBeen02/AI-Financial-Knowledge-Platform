@@ -154,17 +154,34 @@ def test_band_low_must_be_below_band_high(clean_env: None) -> None:
         Settings(_env_file=None, llm_model="gpt-test", band_high=0.45, band_low=0.50)
 
 
-def test_search_profile_has_only_sisa_terms() -> None:
-    assert list(SEARCH_PROFILES) == ["sisa_terms"]
+def test_search_profiles_include_fss_textbook_and_bok_glossary() -> None:
+    assert list(SEARCH_PROFILES) == [
+        "sisa_terms", "fss_practical_finance_4e_3p_kure_v1",
+        "bok_economic_financial_terms_2026_kure_v1_rrf",
+    ]
     profile = SEARCH_PROFILES["sisa_terms"]
     assert profile["mode"] == "dense"
     assert profile["k"] == 5
     assert profile["slots"] == 3
     assert profile["concept_source"] is True
     assert profile["label"] == "재정경제부_시사경제용어 정보 (공공데이터포털)"
+    textbook = SEARCH_PROFILES["fss_practical_finance_4e_3p_kure_v1"]
+    assert textbook == {
+        "mode": "hybrid", "k": 5, "slots": 2,
+        "label": "대학생을 위한 실용금융(제4판)_금융감독원_2024",
+        "concept_source": False, "prefetch_k": 200, "sparse_vector": "bm25",
+        "min_dense_score": 0.50,
+    }
+    assert SEARCH_PROFILES["bok_economic_financial_terms_2026_kure_v1_rrf"] == {
+        "mode": "dense", "k": 5, "slots": 2,
+        "label": "2026_경제금융용어 800선_한국은행", "concept_source": False,
+    }
 
 
 def test_qdrant_collection_renames_default_search_profile(clean_env: None) -> None:
     settings = Settings(_env_file=None, llm_model="gpt-test", qdrant_collection="custom_terms")
-    assert list(settings.search_profiles) == ["custom_terms"]
+    assert list(settings.search_profiles) == [
+        "custom_terms", "fss_practical_finance_4e_3p_kure_v1",
+        "bok_economic_financial_terms_2026_kure_v1_rrf",
+    ]
     assert settings.search_profiles["custom_terms"]["concept_source"] is True

@@ -13,7 +13,7 @@ _EMOTICON = re.compile(r"(?<!\w)(?:[:;=8][\-oO]?[)(DPp/\\|]|\^\^|ㅠㅠ|ㅜㅜ)(
 _LINK = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
 _SOURCE_LINE = re.compile(r"^\s*(?:핵심 정의\s*)?출처\s*:\s*.*$", re.MULTILINE)
 _MODEL_FOOTER_LINE = re.compile(
-    r"^\s*(?:참고한 사전 항목\s*:|※\s*(?:핵심 정의는|보충 설명은)).*$",
+    r"^\s*(?:참고한 (?:사전 항목|자료)\s*:|※\s*(?:핵심 정의는|보충 설명은)).*$",
     re.MULTILINE,
 )
 
@@ -51,7 +51,7 @@ class IncrementalAnswerFormatter:
         # 출처와 고지 줄은 끝까지 보관해 모델의 문구가 화면에 새지 않도록 한다.
         first_line = self.pending.split("\n", 1)[0]
         source_line = bool(re.match(
-            r"\s*(?:(?:핵심 정의\s*)?출처\s*:|참고한 사전 항목\s*:|※\s*(?:핵심 정의는|보충 설명은))",
+            r"\s*(?:(?:핵심 정의\s*)?출처\s*:|참고한 (?:사전 항목|자료)\s*:|※\s*(?:핵심 정의는|보충 설명은))",
             first_line,
         ))
         advice_line = first_line.lstrip().startswith(ADVICE_DISCLAIMER)

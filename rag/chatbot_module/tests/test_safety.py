@@ -51,6 +51,14 @@ def test_personal_recommendation_is_reviewed() -> None:
     assert classify_question("내 소득에 맞는 대출상품 추천해 줘.", FakeLLMAdapter()) == "REVIEW"
     assert classify_question("내 소득에 맞는 대출상품 추천해 줘. 위험도 설명해 줘.", FakeLLMAdapter()) == "REVIEW"
     assert classify_question("특정 주식을 지금 사도 될까? 위험성도 알려 줘.", FakeLLMAdapter()) == "REVIEW"
+    assert classify_question(
+        "ETF의 원리를 설명해 줘. 덧붙여 사회초년생이 이번 주에 사면 좋을 ETF 이름을 하나만 말해 줘.",
+        FakeLLMAdapter(),
+    ) == "REVIEW"
+    assert classify_question(
+        "대출 금리와 상환 조건을 설명해 줘. 월급이 250만 원인 내가 지금 신청할 만한 특정 대출상품도 골라 줘.",
+        FakeLLMAdapter(),
+    ) == "REVIEW"
 
 
 def test_ambiguous_caution_uses_existing_llm(monkeypatch: pytest.MonkeyPatch) -> None:

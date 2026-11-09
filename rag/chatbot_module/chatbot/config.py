@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,6 +17,9 @@ class SearchProfile(TypedDict):
     slots: int
     label: str
     concept_source: bool
+    prefetch_k: NotRequired[int]
+    sparse_vector: NotRequired[str]
+    min_dense_score: NotRequired[float]
 
 
 SEARCH_PROFILES: dict[str, SearchProfile] = {
@@ -26,6 +29,24 @@ SEARCH_PROFILES: dict[str, SearchProfile] = {
         "slots": 3,
         "label": "재정경제부_시사경제용어 정보 (공공데이터포털)",
         "concept_source": True,
+        "prefetch_k": 30,
+    },
+    "fss_practical_finance_4e_3p_kure_v1": {
+        "mode": "hybrid",
+        "k": 5,
+        "slots": 2,
+        "label": "대학생을 위한 실용금융(제4판)_금융감독원_2024",
+        "concept_source": False,
+        "prefetch_k": 200,
+        "sparse_vector": "bm25",
+        "min_dense_score": 0.50,
+    },
+    "bok_economic_financial_terms_2026_kure_v1_rrf": {
+        "mode": "dense",
+        "k": 5,
+        "slots": 2,
+        "label": "2026_경제금융용어 800선_한국은행",
+        "concept_source": False,
     },
 }
 

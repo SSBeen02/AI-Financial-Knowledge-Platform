@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from contextvars import ContextVar
 import csv
 from datetime import datetime, timezone
 import io
@@ -483,7 +484,9 @@ def collect(args: argparse.Namespace) -> None:
     print(json.dumps(meta, ensure_ascii=False))
 
 
-async def _score_rows(rows: list[dict[str, Any]], settings: Settings, output: Path) -> int:
+async def _score_rows(
+    rows: list[dict[str, Any]], settings: Settings, output: Path, *, concurrency: int = 1
+) -> int:
     import httpx
     from openai import AsyncOpenAI
     from ragas.llms import llm_factory
@@ -504,8 +507,12 @@ async def _score_rows(rows: list[dict[str, Any]], settings: Settings, output: Pa
 
     completed = {str(row["qid"]) for row in _read_jsonl(output)}
     count = [0]
+    current_qid: ContextVar[str | None] = ContextVar("ragas_score_qid", default=None)
+    calls_by_qid: dict[str, int] = {}
     async def count_request(_request: httpx.Request) -> None:
         count[0] += 1
+        if qid := current_qid.get():
+            calls_by_qid[qid] = calls_by_qid.get(qid, 0) + 1
 
     if settings.llm_provider not in {"upstage", "openai"}:
         raise ValueError("RAGAS 평가는 Upstage 또는 OpenAI 판정 모델이 필요합니다.")
@@ -524,34 +531,41 @@ async def _score_rows(rows: list[dict[str, Any]], settings: Settings, output: Pa
             )
             faithfulness = Faithfulness(llm=judge)
             relevancy = AnswerRelevancy(llm=judge, embeddings=LocalDenseEmbeddings(DenseEncoder(settings.dense_model)))
-        for row in rows:
-            qid = str(row["qid"])
-            if qid in completed:
-                continue
-            row_started = perf_counter()
-            before = count[0]
-            relevance_value = faithfulness_value = None
-            if row["question_type"] != OUT_OF_DB_TYPE:
-                question = str(row["user_input"])
-                response = _answer_for_scoring(str(row["response_for_scoring"]))
-                contexts = row["retrieved_contexts"]
-                relevance_result = await relevancy.ascore(user_input=question, response=response)
-                faithfulness_result = (
-                    await faithfulness.ascore(user_input=question, response=response, retrieved_contexts=contexts)
-                    if contexts else None
-                )
-                relevance_value = float(relevance_result.value)
-                faithfulness_value = float(faithfulness_result.value) if faithfulness_result is not None else None
-            _append_jsonl(output, {
-                "qid": qid,
-                "question_type": row["question_type"],
-                "band": row["band"],
-                "answer_relevancy": relevance_value,
-                "faithfulness": faithfulness_value,
-                "judge_api_requests": count[0] - before,
-                "score_seconds": round(perf_counter() - row_started, 3),
-            })
-            print(f"{qid}: answer_relevancy={relevance_value}, faithfulness={faithfulness_value}, judge_calls={count[0] - before}")
+        semaphore = asyncio.Semaphore(concurrency)
+
+        async def score_one(row: dict[str, Any]) -> None:
+            async with semaphore:
+                qid = str(row["qid"])
+                token = current_qid.set(qid)
+                row_started = perf_counter()
+                try:
+                    relevance_value = faithfulness_value = None
+                    if row["question_type"] != OUT_OF_DB_TYPE:
+                        question = str(row["user_input"])
+                        response = _answer_for_scoring(str(row["response_for_scoring"]))
+                        contexts = row["retrieved_contexts"]
+                        relevance_result = await relevancy.ascore(user_input=question, response=response)
+                        faithfulness_result = (
+                            await faithfulness.ascore(user_input=question, response=response, retrieved_contexts=contexts)
+                            if contexts else None
+                        )
+                        relevance_value = float(relevance_result.value)
+                        faithfulness_value = float(faithfulness_result.value) if faithfulness_result is not None else None
+                    requests = calls_by_qid.get(qid, 0)
+                    _append_jsonl(output, {
+                        "qid": qid,
+                        "question_type": row["question_type"],
+                        "band": row["band"],
+                        "answer_relevancy": relevance_value,
+                        "faithfulness": faithfulness_value,
+                        "judge_api_requests": requests,
+                        "score_seconds": round(perf_counter() - row_started, 3),
+                    })
+                    print(f"{qid}: answer_relevancy={relevance_value}, faithfulness={faithfulness_value}, judge_calls={requests}", flush=True)
+                finally:
+                    current_qid.reset(token)
+
+        await asyncio.gather(*(score_one(row) for row in rows if str(row["qid"]) not in completed))
     finally:
         await judge_client.close()
     return count[0]
@@ -672,7 +686,9 @@ def score(args: argparse.Namespace) -> None:
     if args.run and args.output.exists() and not args.resume:
         raise FileExistsError(f"점수 파일이 이미 있습니다: {args.output} (--resume 사용)")
     settings = Settings()
-    calls_this_run = 0 if args.report_only else asyncio.run(_score_rows(rows, settings, args.output))
+    calls_this_run = 0 if args.report_only else asyncio.run(
+        _score_rows(rows, settings, args.output, concurrency=args.concurrency)
+    )
     scored_by_qid = {str(row["qid"]): row for row in _read_jsonl(args.output)}
     scored = [scored_by_qid[str(row["qid"])] for row in rows]
     answer_pairs = [(sample, result) for sample, result in zip(rows, scored) if sample["question_type"] != OUT_OF_DB_TYPE]
@@ -818,6 +834,7 @@ def main() -> None:
     scoring.add_argument("--csv", type=Path, default=Path("eval_outputs/ragas_v4_results.csv"))
     scoring.add_argument("--below-csv", type=Path, default=Path("eval_outputs/ragas_v4_below_0_7.csv"))
     scoring.add_argument("--limit", type=int, help="최대 문항 수; 미지정 시 입력 전체")
+    scoring.add_argument("--concurrency", type=int, default=1, help="동시 채점 문항 수 (기본 1)")
     scoring.add_argument("--qids", action="append", help="쉼표로 구분한 qid; 여러 번 지정 가능")
     scoring.add_argument("--types", action="append", help="질문유형; 여러 번 지정 가능")
     scoring.add_argument("--run", action="store_true", help="판정 LLM을 실제 호출")
@@ -847,6 +864,8 @@ def main() -> None:
     args = parser.parse_args()
     if getattr(args, "limit", None) is not None and args.limit < 1:
         parser.error("--limit는 1 이상이어야 합니다.")
+    if getattr(args, "concurrency", 1) < 1:
+        parser.error("--concurrency는 1 이상이어야 합니다.")
     args.func(args)
 
 

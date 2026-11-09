@@ -32,8 +32,10 @@ class _OmitAbsentImages(BaseModel):
     @model_serializer(mode="wrap")
     def _serialize(self, handler: Any) -> Any:
         data = handler(self)
-        if isinstance(data, dict) and self.images is None:
-            data.pop("images", None)
+        if isinstance(data, dict):
+            for field in ("images", "printed_page", "source_url", "term"):
+                if data.get(field) is None:
+                    data.pop(field, None)
         return data
 
 
@@ -90,6 +92,8 @@ class SourceOut(_OmitAbsentImages):
     score: float
     collection: str
     label: str
+    printed_page: int | None = None
+    source_url: str | None = None
 
 
 class ConceptStateOut(BaseModel):
@@ -239,6 +243,9 @@ class ContextSourceOut(_OmitAbsentImages):
     concept_id: str
     collection: str
     label: str
+    term: str | None = None
+    printed_page: int | None = None
+    source_url: str | None = None
 
 
 class LearningTurnOut(BaseModel):
