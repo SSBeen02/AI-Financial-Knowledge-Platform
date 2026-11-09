@@ -255,6 +255,27 @@ def test_fss_qdrant_query_uses_dense_and_bm25_with_rrf() -> None:
     assert doc.text == "신용의 의미"
 
 
+def test_fss_empty_bm25_query_uses_one_rrf_weight() -> None:
+    class Dense:
+        def encode(self, texts):
+            return np.array([[0.1, 0.2]])
+
+    class Sparse:
+        def encode_query(self, query):
+            return models.SparseVector(indices=[], values=[])
+
+    class Client:
+        def query_points(self, **kwargs):
+            assert [item.using for item in kwargs["prefetch"]] == ["dense"]
+            assert kwargs["query"] == models.RrfQuery(rrf=models.Rrf(k=2, weights=[1.0]))
+            return SimpleNamespace(points=[])
+
+    from chatbot.config import SEARCH_PROFILES
+    profile = SEARCH_PROFILES["fss_practical_finance_4e_3p_kure_v1"]
+    retriever = Retriever(Client(), Dense(), _settings(), sparse=Sparse())
+    assert retriever._search_named_sparse("FTA가 뭐야?", "fss_practical_finance_4e_3p_kure_v1", profile) == []
+
+
 def test_named_sparse_search_rejects_another_collection_model() -> None:
     from chatbot.config import SEARCH_PROFILES
 

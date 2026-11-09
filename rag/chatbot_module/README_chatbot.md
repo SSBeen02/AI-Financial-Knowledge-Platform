@@ -26,6 +26,28 @@ Swagger: <http://127.0.0.1:8000/docs>. 로컬 개발에서는 각 요청의 `X-U
 공통 인증 의존성이 검증해 얻은 UUID를 사용한다. 브라우저 프론트의 origin은
 `CORS_ALLOW_ORIGINS`에 쉼표로 추가한다.
 
+## UT-13 첫 글자 응답 시간 측정
+
+실제 LLM과 Qdrant로 골든셋 v4에서 정답 문서가 있는 78문항을 각각 2회
+요청한다. HTTP POST를 시작한 순간부터 공백이 아닌 첫 SSE `token.delta`를 수신할 때까지를
+측정한다. 따라서 서버의 검색·안전 판정·LLM 생성·전송 시간이 포함되며 서버 시작 시간은
+포함되지 않는다. 결과는 매 요청 뒤 JSON에 저장되어 중단 후 `--resume`으로 이어갈 수 있다.
+각 요청은 새 테스트 사용자 ID를 쓴다. 아래 래퍼는 임시 로컬 SQLite DB를 사용해 운영 DB에
+측정 대화가 섞이지 않게 하고, 서버를 자동으로 시작·종료한다. 로컬에 캐시된 KURE-v1 모델이
+필요하다. `.env`의 실제 LLM과 Qdrant 설정을 사용한다.
+
+```powershell
+python scripts/run_ut13_local.py --golden 'C:\path\RAG_골든셋_v4.xlsx' --all-answered --runs 2 --output eval_outputs/ut13_results.json
+# 중단 후 이어서 실행
+python scripts/run_ut13_local.py --golden 'C:\path\RAG_골든셋_v4.xlsx' --all-answered --runs 2 --output eval_outputs/ut13_results.json --resume
+# 오류 원인을 수정한 뒤 실패 회차만 재측정 (이전 실패는 prior_results에 보존)
+python scripts/run_ut13_local.py --golden 'C:\path\RAG_골든셋_v4.xlsx' --all-answered --runs 2 --output eval_outputs/ut13_results.json --resume --retry-failed
+```
+
+결과의 `first_text_seconds`가 각 요청에서 20초 이하면 통과다. 요약의 `all_pass`, 중앙값,
+95백분위수, 최댓값을 확인한다. SSE `error`, HTTP 오류, `done` 누락도 실패로 기록한다.
+2026-11-09 실행 결과와 팀 전달 문안은 `GUIDE/UT13_MEASUREMENT.md`에 정리했다.
+
 ## 역할별 읽을 곳
 
 - 퀴즈 담당: **5장 퀴즈 모듈 연동 가이드**

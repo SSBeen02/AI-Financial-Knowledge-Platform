@@ -222,7 +222,7 @@ class Retriever:
         response = self._client.query_points(
             collection_name=collection,
             prefetch=prefetch,
-            query=models.RrfQuery(rrf=models.Rrf(k=2, weights=[1.0, 1.0])),
+            query=models.RrfQuery(rrf=models.Rrf(k=2, weights=[1.0] * len(prefetch))),
             limit=profile["k"],
             with_payload=True,
             with_vectors=[DENSE_NAME] if "min_dense_score" in profile else False,
