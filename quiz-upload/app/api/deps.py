@@ -1,48 +1,19 @@
-"""토큰 또는 헤더로 사용자를 식별합니다. 요청 본문의 user_id는 사용하지 않습니다."""
-
-from __future__ import annotations
-
-import base64
-import json
+"""운영 사용자 ID는 공통 인증 의존성이 검증한 값만 사용한다."""
+import os
 from typing import Annotated
-
 from fastapi import Depends, Header
-
+from database.settings import load_settings
 from dependencies import get_current_user_id
 
 
-def subject_from_authorization(authorization: str | None) -> str | None:
-    if not authorization:
-        return None
-    scheme, _, token = authorization.partition(" ")
-    if scheme.lower() != "bearer" or not token.strip():
-        return None
-    parts = token.strip().split(".")
-    if len(parts) < 2:
-        return None
-    payload = parts[1]
-    padding = "=" * (-len(payload) % 4)
-    try:
-        data = json.loads(base64.urlsafe_b64decode(payload + padding))
-    except (ValueError, json.JSONDecodeError):
-        return None
-    subject = data.get("sub")
-    if isinstance(subject, str) and subject.strip():
-        return subject.strip()
-    return None
-
-
 def get_authenticated_user_id(
-    authorization: Annotated[str | None, Header()] = None,
+    verified_user_id: Annotated[str, Depends(get_current_user_id)],
     x_user_id: Annotated[str | None, Header()] = None,
 ) -> str:
-    """Authorization Bearer JWT의 sub, 없으면 X-User-Id, 없으면 공통 인증 모듈의 임시 사용자."""
-    subject = subject_from_authorization(authorization)
-    if subject:
-        return subject
-    if x_user_id and x_user_id.strip():
+    load_settings()
+    # 테스트 헤더는 단독 개발에서만 허용. 서명 미검증 JWT를 읽지 않는다.
+    if os.getenv("DEV_MODE", "false").strip().lower() == "true" and x_user_id and x_user_id.strip():
         return x_user_id.strip()
-    return get_current_user_id()
-
+    return verified_user_id
 
 AuthenticatedUserId = Annotated[str, Depends(get_authenticated_user_id)]

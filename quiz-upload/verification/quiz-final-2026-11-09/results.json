@@ -1,0 +1,511 @@
+{
+  "started_at": "2026-11-09T08:33:55.550667+00:00",
+  "database": "temporary SQLite",
+  "model": "gpt-6-luna",
+  "samples": [
+    {
+      "trial": 1,
+      "term": "분업과 특화",
+      "context": "분업은 생산 과정을 나누어 맡는 것이고, 특화는 특정 업무에 집중하는 것이다. 역할 분담은 숙련도를 높일 수 있지만 모든 상황에서 효율을 보장하지 않는다.",
+      "generation_seconds": 10.37,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "생산 과정을 여러 부분으로 나누어 맡는 것을 분업이라 하오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "생산 과정을 나누어 맡는 것이 분업이오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "역할을 나누면 숙련도가 높아질 수 있지만, 분업이 언제나 효율을 보장하는 것은 아니오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "역할 분담은 숙련도를 높일 수 있으나 모든 상황에서 효율을 보장하지는 않소."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "생산 과정이 여러 업무로 나뉘어 있고, 당신은 그중 한 업무를 맡았소. 특화의 뜻에 맞게 행동하려면 무엇을 하겠소?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "맡은 특정 업무에 집중한다"
+            },
+            {
+              "key": "B",
+              "text": "생산 과정을 나누지 않고 혼자 모두 맡는다"
+            },
+            {
+              "key": "C",
+              "text": "맡은 업무를 매번 다른 업무로 바꾼다"
+            },
+            {
+              "key": "D",
+              "text": "맡은 업무를 다른 사람에게 모두 넘긴다"
+            }
+          ],
+          "answer": "A",
+          "explanation": "특화는 특정 업무에 집중하는 것이므로 맡은 업무에 집중하면 되오."
+        }
+      ],
+      "structure_ok": true,
+      "grading_seconds": 0.0327,
+      "grading_status": 200,
+      "grading_ok": true
+    },
+    {
+      "trial": 2,
+      "term": "기회비용",
+      "context": "기회비용은 어떤 선택을 하면서 포기한 대안 중 가장 가치가 큰 대안의 가치이다. 포기한 모든 대안의 가치를 합산하지 않는다.",
+      "generation_seconds": 9.268,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "기회비용은 포기한 대안 가운데 가장 가치가 큰 대안의 가치이오.",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "가장 가치가 큰 포기 대안의 가치가 기회비용이오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "기회비용은 선택한 대안 자체의 가치이오.",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "기회비용은 선택한 대안이 아니라 포기한 대안 중 가장 가치가 큰 대안의 가치이오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "여러 대안 중 하나를 선택하고 나머지를 포기했소. 이때 기회비용을 어떻게 판단해야 하겠소?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "포기한 대안의 가치를 모두 더한다"
+            },
+            {
+              "key": "B",
+              "text": "포기한 대안 중 가장 가치가 큰 대안의 가치를 본다"
+            },
+            {
+              "key": "C",
+              "text": "선택한 대안의 가치를 본다"
+            },
+            {
+              "key": "D",
+              "text": "포기한 대안 중 가장 가치가 작은 대안의 가치를 본다"
+            }
+          ],
+          "answer": "B",
+          "explanation": "포기한 대안 중 가장 가치가 큰 대안의 가치가 기회비용이오."
+        }
+      ],
+      "structure_ok": true,
+      "grading_seconds": 0.0263,
+      "grading_status": 200,
+      "grading_ok": true
+    },
+    {
+      "trial": 3,
+      "term": "희소성",
+      "context": "희소성은 사람들의 욕구에 비해 이용할 수 있는 자원이 제한되어 있는 상태이다. 자원이 제한되어 있기 때문에 선택이 필요하다.",
+      "generation_seconds": 6.805,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "사람들의 욕구에 비해 이용할 수 있는 자원이 제한되어 있는 상태를 희소성이라 하오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "희소성은 사람들의 욕구에 비해 이용할 수 있는 자원이 제한된 상태를 뜻하오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "희소성이란 이용할 수 있는 자원이 전혀 없는 상태만을 가리키오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "희소성은 자원이 전혀 없는 상태가 아니라, 욕구에 비해 자원이 제한된 상태이오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "여러 물건을 원하지만 쓸 수 있는 자원이 제한되어 있소. 희소성을 고려할 때 어떤 행동이 알맞겠소?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "원하는 물건을 모두 가질 수 있다고 생각한다"
+            },
+            {
+              "key": "B",
+              "text": "자원이 제한되어 있음을 고려해 필요한 것을 선택한다"
+            },
+            {
+              "key": "C",
+              "text": "자원이 제한되어 있어도 선택할 필요가 없다고 생각한다"
+            },
+            {
+              "key": "D",
+              "text": "욕구가 여러 가지라는 사실을 무시한다"
+            }
+          ],
+          "answer": "B",
+          "explanation": "자원이 제한되어 있으면 원하는 것을 모두 가질 수 없으므로 선택이 필요하오."
+        }
+      ],
+      "structure_ok": true,
+      "grading_seconds": 0.0152,
+      "grading_status": 200,
+      "grading_ok": true
+    },
+    {
+      "trial": 4,
+      "term": "고정비와 변동비",
+      "context": "고정비는 일정한 범위에서 생산량에 따라 변하지 않는 비용이다. 변동비는 생산량이 달라짐에 따라 변하는 비용이다. 매장 임대료는 고정비의 예, 제품별 재료비는 변동비의 예이다.",
+      "generation_seconds": 8.587,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "매장 임대료는 일정한 범위에서 생산량이 달라져도 변하지 않는 고정비이오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "고정비는 일정한 범위에서 생산량에 따라 변하지 않으며, 매장 임대료가 그 예이오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "제품별 재료비는 생산량에 따라 달라질 수 있는 변동비이오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "제품별 재료비는 생산량이 달라짐에 따라 변하는 변동비의 예이오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "매장에서 다음 달 생산량을 늘릴 계획이오. 제품별 재료비를 비용 계획에 어떻게 반영하겠소?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "생산량 변화에 맞춰 재료비를 다시 산정한다"
+            },
+            {
+              "key": "B",
+              "text": "재료비를 생산량과 관계없는 고정비로 본다"
+            },
+            {
+              "key": "C",
+              "text": "생산량이 늘어도 재료비는 변하지 않는다고 본다"
+            },
+            {
+              "key": "D",
+              "text": "매장 임대료만 생산량에 비례해 늘어난다고 본다"
+            }
+          ],
+          "answer": "A",
+          "explanation": "제품별 재료비는 생산량에 따라 변하므로 생산량 변화에 맞춰 산정해야 하오."
+        }
+      ],
+      "structure_ok": true
+    },
+    {
+      "trial": 5,
+      "term": "가계 예산",
+      "context": "가계 예산은 예상 수입과 지출을 미리 계획하는 것이다. 지출이 수입보다 많으면 지출 조정 등의 검토가 필요하다. 예산 계획에는 실제 지출 확인도 도움이 된다.",
+      "generation_seconds": 5.951,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "가계 예산은 예상 수입과 지출을 미리 계획하는 것이오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "가계 예산은 예상 수입과 지출을 미리 계획하는 것이오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "실제 지출을 확인하는 일은 가계 예산을 세우는 데 도움이 되지 않소?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "실제 지출을 확인하면 예산 계획에 도움이 되오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "예상 지출이 수입보다 많다는 사실을 알게 되었소. 어떤 행동을 하는 것이 알맞겠소?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "지출을 조정하는 방안을 검토한다"
+            },
+            {
+              "key": "B",
+              "text": "예산 계획을 그대로 둔다"
+            },
+            {
+              "key": "C",
+              "text": "실제 지출 확인을 중단한다"
+            },
+            {
+              "key": "D",
+              "text": "예상 수입과 지출을 계획하지 않는다"
+            }
+          ],
+          "answer": "A",
+          "explanation": "지출이 수입보다 많으면 지출 조정 등을 검토해야 하오."
+        }
+      ],
+      "structure_ok": true
+    },
+    {
+      "trial": 6,
+      "term": "수요와 공급",
+      "context": "다른 조건이 일정할 때 가격이 오르면 수요량은 감소하고 공급량은 증가하는 경향이 있다. 가격 자체 변화에 따른 수요량 변화와 다른 조건 변화로 인한 수요 곡선 이동은 구분한다.",
+      "generation_seconds": 7.909,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "다른 조건이 일정할 때 가격이 오르면 공급량은 증가하는 경향이 있소?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "다른 조건이 일정하다면 가격 상승에 따라 공급량은 증가하는 경향이 있소."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "상품 가격 자체가 변하면 수요 곡선이 이동한다고 보아야 하오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "가격 자체가 변할 때는 수요량이 변하오. 다른 조건의 변화로 인한 수요 곡선 이동과 구분해야 하오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "상품 가격은 그대로이고 가격 외의 조건이 달라졌소. 이 변화를 수요 곡선에 어떻게 반영해야 하오?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "가격 변화에 따른 수요량 변화로 본다"
+            },
+            {
+              "key": "B",
+              "text": "수요 곡선의 이동으로 본다"
+            },
+            {
+              "key": "C",
+              "text": "가격 상승에 따른 공급량 증가로 본다"
+            },
+            {
+              "key": "D",
+              "text": "가격 하락에 따른 공급량 감소로 본다"
+            }
+          ],
+          "answer": "B",
+          "explanation": "가격 외 조건의 변화로 생긴 수요 변화는 수요 곡선의 이동으로 구분하오."
+        }
+      ],
+      "structure_ok": true
+    },
+    {
+      "trial": 7,
+      "term": "물가와 구매력",
+      "context": "물가는 여러 상품과 서비스의 전반적인 가격 수준이다. 소득이 일정할 때 물가가 전반적으로 오르면 같은 돈으로 살 수 있는 양이 줄어 구매력이 낮아진다.",
+      "generation_seconds": 7.543,
+      "status": "completed",
+      "questions": [
+        {
+          "question_index": 1,
+          "question_type": "ox",
+          "prompt": "물가는 여러 상품과 서비스의 전반적인 가격 수준을 가리키오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "O",
+          "explanation": "물가는 여러 상품과 서비스의 전반적인 가격 수준을 뜻하오."
+        },
+        {
+          "question_index": 2,
+          "question_type": "ox",
+          "prompt": "소득이 일정하고 물가가 전반적으로 오르면 같은 돈으로 살 수 있는 양이 늘어나오?",
+          "choices": [
+            {
+              "key": "O",
+              "text": "O"
+            },
+            {
+              "key": "X",
+              "text": "X"
+            }
+          ],
+          "answer": "X",
+          "explanation": "물가가 오르면 같은 돈으로 살 수 있는 양이 줄어드오."
+        },
+        {
+          "question_index": 3,
+          "question_type": "situation",
+          "prompt": "소득은 그대로인데 여러 상품과 서비스의 가격이 전반적으로 올랐소. 이 상황을 어떻게 판단하는 것이 알맞겠소?",
+          "choices": [
+            {
+              "key": "A",
+              "text": "같은 돈으로 살 수 있는 양이 줄어 구매력이 낮아졌다고 판단한다"
+            },
+            {
+              "key": "B",
+              "text": "소득이 그대로이므로 구매력도 그대로라고 판단한다"
+            },
+            {
+              "key": "C",
+              "text": "가격이 올랐으므로 같은 돈으로 더 많이 살 수 있다고 판단한다"
+            },
+            {
+              "key": "D",
+              "text": "물가가 올라도 같은 돈으로 살 수 있는 양에는 변화가 없다고 판단한다"
+            }
+          ],
+          "answer": "A",
+          "explanation": "소득이 일정할 때 물가가 오르면 같은 돈으로 살 수 있는 양이 줄어 구매력이 낮아지오."
+        }
+      ],
+      "structure_ok": true
+    }
+  ],
+  "timeout": {
+    "injected_error": "APITimeoutError",
+    "sdk_timeout": 40.0,
+    "sdk_max_retries": 1,
+    "returned_status": "failed",
+    "stored_status": "failed",
+    "stored_questions": [],
+    "get_status": 200,
+    "get_body_status": "failed",
+    "passed": true,
+    "note": "API exposes failed status. Browser error-message rendering was not inspected."
+  }
+}

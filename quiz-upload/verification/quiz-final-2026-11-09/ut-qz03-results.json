@@ -1,0 +1,151 @@
+{
+  "C Github final quiz": [
+    {
+      "case": "정상 3문항",
+      "expected_rejection": false,
+      "rejected": false,
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "case": "2문항",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "퀴즈는 3문항이어야 합니다."
+    },
+    {
+      "case": "4문항",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "퀴즈는 3문항이어야 합니다."
+    },
+    {
+      "case": "허용하지 않는 유형",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "문항 형식이 올바르지 않습니다."
+    },
+    {
+      "case": "유형 순서 오류",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "OX 2문항 뒤에 상황형 1문항이 와야 합니다."
+    },
+    {
+      "case": "필수 값 누락: question_type",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "문항 형식이 올바르지 않습니다."
+    },
+    {
+      "case": "필수 값 누락: prompt",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "문항 형식이 올바르지 않습니다."
+    },
+    {
+      "case": "필수 값 누락: explanation",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "문항 형식이 올바르지 않습니다."
+    },
+    {
+      "case": "필수 값 누락: question_index",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "question_index가 없습니다."
+    },
+    {
+      "case": "필수 값 누락: choices",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "보기가 부족합니다."
+    },
+    {
+      "case": "필수 값 누락: answer",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "OX 정답이 올바르지 않습니다."
+    },
+    {
+      "case": "빈 문제",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "문항 형식이 올바르지 않습니다."
+    },
+    {
+      "case": "빈 해설",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "문항 형식이 올바르지 않습니다."
+    },
+    {
+      "case": "보기 텍스트 누락",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "보기가 비어 있습니다."
+    },
+    {
+      "case": "중복 문항 번호",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "문항 번호는 1, 2, 3이어야 합니다."
+    },
+    {
+      "case": "OX 정답 오류",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "OX 정답이 올바르지 않습니다."
+    },
+    {
+      "case": "상황형 정답이 보기에 없음",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "상황형 정답이 보기에 없습니다."
+    },
+    {
+      "case": "상황형 보기 키 중복",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "상황형 보기 키가 중복되었습니다."
+    },
+    {
+      "case": "문제에 정답 표시",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "문제 또는 보기에 정답·해설 표시가 포함되어 있습니다."
+    },
+    {
+      "case": "보기에 정답 표시",
+      "expected_rejection": true,
+      "rejected": true,
+      "pass": true,
+      "detail": "문제 또는 보기에 정답·해설 표시가 포함되어 있습니다."
+    },
+    {
+      "case": "상황형 보기 3개(검사 범위 확인)",
+      "expected_rejection": false,
+      "rejected": false,
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

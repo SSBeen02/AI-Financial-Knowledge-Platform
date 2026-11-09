@@ -1,0 +1,30 @@
+{
+  "scope": "headless Chrome; actual quiz.html; mocked API responses",
+  "results": [
+    {
+      "state": "failed",
+      "passed": true,
+      "uncaught_errors": []
+    },
+    {
+      "state": "pending",
+      "passed": true,
+      "uncaught_errors": []
+    },
+    {
+      "state": "processing",
+      "passed": true,
+      "uncaught_errors": []
+    },
+    {
+      "state": "completed",
+      "passed": true,
+      "uncaught_errors": []
+    },
+    {
+      "state": "broken-completed",
+      "passed": true,
+      "uncaught_errors": []
+    }
+  ]
+}

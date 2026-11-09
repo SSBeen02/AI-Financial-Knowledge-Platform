@@ -1,0 +1,35 @@
+..............���� ���� ���� concept_id=inflation quiz_set_id=6c80a545-b481-4d10-a4cb-816bd18399f4
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 424, in create_quiz_set
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_quizzes.py", line 329, in counting_failure
+    raise RuntimeError("generation failed")
+RuntimeError: generation failed
+..���� ���� ���� concept_id=inflation quiz_set_id=893bde9e-c1e2-4bd6-a404-512e580baf5d
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 424, in create_quiz_set
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_quizzes.py", line 63, in failing_generator
+    raise RuntimeError("generation failed")
+RuntimeError: generation failed
+..�н� ���� �̿���: ��� ���� submission_id=b14c3680-9ec4-46c8-98fd-a28fdb1707d5
+....�н� ���� �̿���: ��� ���� submission_id=3556f1f7-6c47-45fb-94ab-a97275ef6a28
+�н� ���� �̿���: ��� ���� submission_id=3556f1f7-6c47-45fb-94ab-a97275ef6a28
+......�н� ���� �̿���: ��� ���� submission_id=36664929-56f9-4310-ab99-92f206e14791
+�н� ���� �̿���: ��� ���� submission_id=86c212c8-33b9-48c9-9ac2-85ea490d8a67
+.....���� ���� ���� concept_id=sisa_1281 quiz_set_id=58595ece-da5c-492c-89a2-7963dec80c5a
+Traceback (most recent call last):
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\app\services\quiz_service.py", line 424, in create_quiz_set
+    raw_questions = await self._generator(
+                    ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Github\AI-Financial-Knowledge-Platform\quiz-upload\tests\test_team_quiz_adapter.py", line 108, in fail
+    raise RuntimeError("simulated generation failure")
+RuntimeError: simulated generation failure
+......
+----------------------------------------------------------------------
+Ran 39 tests in 16.104s
+
+OK
+{"tests_run": 39, "all_passed": true, "failures": 0, "errors": 0, "windows_event_loop_initialization_retries": 0, "note": "Retries apply only to OS WinError 10014 before a test starts; assertions and test bodies are not retried."}

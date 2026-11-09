@@ -1,0 +1,103 @@
+[
+  {
+    "case": "failed 세트 제출",
+    "status": 409,
+    "code": "QUIZ_NOT_READY",
+    "pass": true
+  },
+  {
+    "case": "processing 세트 제출",
+    "status": 409,
+    "code": "QUIZ_NOT_READY",
+    "pass": true
+  },
+  {
+    "case": "pending 세트 제출",
+    "status": 409,
+    "code": "QUIZ_NOT_READY",
+    "pass": true
+  },
+  {
+    "case": "허용되지 않은 user_id",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "답안 목록 누락",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "답안 2개",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "답안 4개",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "문항 번호 중복",
+    "status": 422,
+    "code": "INVALID_SUBMISSION",
+    "pass": true
+  },
+  {
+    "case": "문항 번호 0",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "문항 번호 4",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "answer 필드 누락",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "빈 답안",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "멱등 키 누락",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "빈 멱등 키",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "답안 안의 허용되지 않은 필드",
+    "status": 422,
+    "code": "VALIDATION_ERROR",
+    "pass": true
+  },
+  {
+    "case": "거부한 요청의 제출 저장 0건",
+    "count": 0,
+    "pass": true
+  },
+  {
+    "case": "정상 제출 대조군",
+    "status": 200,
+    "correct_count": 3,
+    "pass": true
+  }
+]

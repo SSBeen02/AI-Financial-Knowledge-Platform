@@ -1,0 +1,40 @@
+[
+  {
+    "case": "결과 보고 예외 후에도 200·정상 채점",
+    "pass_": true,
+    "status": 200
+  },
+  {
+    "case": "결과 보고 호출·예외 로그 확인",
+    "pass_": true
+  },
+  {
+    "case": "재전송에도 저장된 결과 반환",
+    "pass_": true
+  },
+  {
+    "case": "새 DB 세션에서 채점 기록 유지·중복 없음",
+    "pass_": true,
+    "count": 1
+  },
+  {
+    "case": "생성 실패 보고 예외 후에도 failed 반환",
+    "pass_": true
+  },
+  {
+    "case": "생성 실패 보고 호출·예외 로그 확인",
+    "pass_": true
+  },
+  {
+    "case": "새 DB 세션에서 failed 저장 유지",
+    "pass_": true
+  },
+  {
+    "case": "생성 실패 시 채점 기록 추가 없음",
+    "pass_": true
+  },
+  {
+    "case": "API 재조회에서도 failed·빈 문항 반환",
+    "pass_": true
+  }
+]

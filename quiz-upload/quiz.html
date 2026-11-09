@@ -77,12 +77,30 @@
 
 
   <script>
+    const formatChoice = (choice, questionType) => {
+      const key = String(choice.key).trim();
+      if (questionType === "ox") {
+        if (key === "O") return "O";
+        if (key === "X") return "X";
+      }
+      return key === String(choice.text).trim() ? key : key + ". " + choice.text;
+    };
     const QUIZ_ID = new URLSearchParams(location.search).get("quiz_set_id") || "91862c9e-1780-4395-9b62-f92eddec113d";
     const answers = {};
     let quiz = null;
     let submitted = false;
     let currentIndex = 0;
     const submissionKey = "page-" + crypto.randomUUID();
+
+    async function quizFetch(url, options = {}) {
+      const headers = new Headers(options.headers || {});
+      if (typeof window.quizAccessTokenProvider === "function") {
+        const token = await window.quizAccessTokenProvider();
+        if (!token) throw new Error("로그인이 필요합니다.");
+        headers.set("Authorization", "Bearer " + token);
+      }
+      return fetch(url, { ...options, headers });
+    }
 
     const statusEl = document.querySelector("#status");
     const quizEl = document.querySelector("#quiz");
@@ -116,7 +134,7 @@
           button.dataset.key = choice.key;
           button.classList.toggle("selected", answers[question.question_index] === choice.key);
           button.setAttribute("aria-pressed", answers[question.question_index] === choice.key ? "true" : "false");
-          button.textContent = choice.key + ". " + choice.text;
+          button.textContent = formatChoice(choice, question.question_type);
           button.addEventListener("click", () => selectAnswer(question.question_index, choice.key));
           choices.appendChild(button);
         });
@@ -170,7 +188,7 @@
         const question = quiz.questions.find((q) => q.question_index === item.question_index);
         const choiceLabel = (key) => {
           const choice = question.choices.find((c) => c.key === key);
-          return choice ? key + ". " + choice.text : key;
+          return choice ? formatChoice(choice, question.question_type) : key;
         };
         const answer = document.createElement("p");
         answer.className = "answer-detail";
@@ -193,7 +211,8 @@
       submitted = true;
       document.querySelector("#submit").disabled = true;
       setStatus("채점하는 중입니다.");
-      const response = await fetch("/api/v1/quiz-sets/" + QUIZ_ID + "/submit", {
+      try {
+      const response = await quizFetch("/api/v1/quiz-sets/" + QUIZ_ID + "/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -223,21 +242,54 @@
       outcomeEl.appendChild(result);
       renderResults(body);
       setStatus("");
+      } catch (error) {
+        submitted = false;
+        document.querySelector("#submit").disabled = false;
+        setStatus("제출하지 못했습니다. 로그인과 연결 상태를 확인한 뒤 다시 시도하세요.", true);
+      }
     }
 
     async function loadQuiz() {
-      const response = await fetch("/api/v1/quiz-sets/" + QUIZ_ID);
+      try {
+      const response = await quizFetch("/api/v1/quiz-sets/" + QUIZ_ID);
       const body = await response.json();
       if (!response.ok) {
         setStatus(body.message || "퀴즈를 불러오지 못했습니다.", true);
         return;
       }
       quiz = body;
+      quizEl.replaceChildren();
+      outcomeEl.replaceChildren();
+      if (quiz.status === "failed") {
+        setStatus("퀴즈 생성에 실패했습니다. 학습 화면에서 퀴즈를 다시 요청해 주세요.", true);
+        return;
+      }
+      if (quiz.status === "pending" || quiz.status === "processing") {
+        setStatus("퀴즈를 준비하는 중입니다. 잠시 후 다시 확인해 주세요.");
+        const refresh = document.createElement("button");
+        refresh.type = "button";
+        refresh.className = "submit";
+        refresh.textContent = "준비 상태 다시 확인";
+        refresh.addEventListener("click", () => {
+          refresh.disabled = true;
+          loadQuiz();
+        });
+        quizEl.appendChild(refresh);
+        return;
+      }
+      if (quiz.status !== "completed" || !Array.isArray(quiz.questions) || quiz.questions.length !== 3) {
+        setStatus("퀴즈 문제를 확인할 수 없습니다. 학습 화면에서 다시 확인해 주세요.", true);
+        return;
+      }
       setStatus(quiz.concept_id + " 개념입니다. 보기를 고른 뒤 제출하세요.");
       renderQuiz();
+      } catch (error) {
+        setStatus("문제를 불러오지 못했습니다. 로그인과 연결 상태를 확인하세요.", true);
+      }
     }
 
     loadQuiz();
-  </script>
+
+</script>
 </body>
 </html>

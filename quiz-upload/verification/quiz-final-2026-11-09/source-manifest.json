@@ -1,0 +1,12 @@
+{
+  "repository": "C:\\Github\\AI-Financial-Knowledge-Platform",
+  "branch": "quiz-database",
+  "date": "2026-11-09",
+  "source_sha256": {
+    "app/services/quiz_service.py": "5e7e1b4dcdebd7a729b7504a32e6e3212d502067b82ca0b95ad82610df40e146",
+    "app/services/quiz_tone.py": "fcc90a1e9bc0abeb24e3de02b1a14c441f98ac8491fca48ffb0e26b7d02f559c",
+    "app/services/stage5_bank.py": "40c15e4b187adbc9ad3c15f845137bdeb3703f2d0060c0193b6953faae69ba72",
+    "app/api/deps.py": "8f0ab0a3824a95292e1d57e352bc5d0b4c2a8e549fea4055fcfe364c07121bee",
+    "quiz.html": "5f79e9d338ad42bcc1b16a4f7194675f1f80048c10adb56b4e4e1c79bed45ab9"
+  }
+}

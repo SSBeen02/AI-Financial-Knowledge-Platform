@@ -1,4 +1,4 @@
-"""챗봇 학습 완료를 가정한 로컬 화면. 외부 AI·챗봇 호출 없음.
+"""챗봇 학습 완료를 가정한 로컬 화면. 실제 AI 버튼은 유료 API를 호출함.
 
 실제 퀴즈 생성·저장·채점·학습노트 서비스를 임시 DB에서 사용한다.
 python -m uvicorn quiz_preview:app --host 127.0.0.1 --port 8010
@@ -66,8 +66,14 @@ def home(mode: str = ""):
 <article><small>학습한 개념</small><h2>분업 / 특화</h2>
 <p>분업은 일을 나누고, 특화는 특정 업무에 집중하는 것이오.<br>빵집에서 반죽·굽기·판매를 나누어 맡는 모습을 떠올려 보시오.</p>
 <p>학습을 마쳤다면 세 문제를 풀어 보시오.<br>두 문제 이상 맞히면 통과하오.</p>
-<form method="post" action="/preview/start"><button onclick="this.textContent='문제를 준비하는 중…'">퀴즈 풀기 →</button></form></article>
-<small>챗봇 학습을 완료했다고 가정한 미리보기입니다. 문제는 예시이며 채점·저장은 실제 퀴즈 기능을 사용합니다. 학습 상태 반영은 아직 연결되지 않았습니다.</small></html>"""
+<form method="post" action="/preview/start"><button>고정 예시 퀴즈 보기 →</button></form>
+<p>다른 문제로 다시 출제되는지 확인하려면 아래 실제 AI 생성을 선택하세요. 설정된 API 키를 사용하며 사용료가 발생합니다.</p>
+<form method="post" action="/preview/start-ai"><button onclick="this.textContent='새 문제를 생성하는 중…'">실제 AI로 새 퀴즈 생성 →</button></form></article>
+<article><h2>생성 상태별 화면 확인</h2>
+<p>아래 버튼으로 생성 실패와 생성 중 화면을 각각 확인할 수 있습니다.</p>
+<form method="post" action="/preview/failed"><button>생성 실패 화면 확인</button></form>
+<form method="post" action="/preview/processing" style="margin-top:12px"><button>생성 중 화면 확인</button></form></article>
+<small>챗봇 학습을 완료했다고 가정한 미리보기입니다. 고정 예시와 실제 AI 생성을 구분하여 선택할 수 있습니다. 채점·저장은 실제 퀴즈 기능을 사용하며 학습 상태 반영은 아직 연결되지 않았습니다.</small></html>"""
     if mode == "relearn":
         page = page.replace("배운 내용을 확인해 보시오.", "분업 / 특화를 다시 배워 보시오.")
     elif mode == "next":
@@ -80,6 +86,15 @@ def home(mode: str = ""):
 @app.post("/preview/start")
 async def start():
     async with session_scope() as session:
+        from sqlalchemy import select
+        from app.models.quiz import QuizSet
+
+        existing = (await session.execute(select(QuizSet).where(
+            QuizSet.user_id == "preview-user", QuizSet.concept_id == "sisa_1281",
+            QuizSet.status == "completed",
+        ).order_by(QuizSet.created_at))).scalars().first()
+        if existing is not None:
+            return RedirectResponse(f"/quiz?quiz_set_id={existing.id}", status_code=303)
         quiz = await create_quiz_set(
             session, user_id="preview-user", session_id=str(uuid.uuid4()),
             concept_id="sisa_1281", stage_id="stage1",
@@ -92,3 +107,47 @@ async def start():
 @app.get("/quiz")
 def quiz_page():
     return FileResponse(Path(__file__).parent / "quiz.html")
+
+
+@app.post("/preview/start-ai")
+async def start_ai():
+    async with session_scope() as session:
+        quiz = await create_quiz_set(
+            session, user_id="preview-user", session_id=str(uuid.uuid4()), concept_id="sisa_1281", stage_id="stage1",
+            learning_context={"concept": {"term": "분업 / 특화"}, "definition": (
+                "분업은 생산 과정을 여러 작업으로 나누어 맡는 것이다. 특화는 특정 작업에 집중하는 것이다. "
+                "반복 경험은 숙련도를 높일 수 있고 작업 전환 시간을 줄일 수 있다. 역할 사이의 협업과 일정 조정이 필요하다. "
+                "특정 공정이 지연되면 다음 공정도 영향을 받을 수 있다. 생산량과 품질을 함께 고려해야 한다. "
+                "분업이 모든 상황에서 효율을 보장하지는 않는다. 개인별 강점과 작업의 성격에 맞는 역할 분담이 도움이 된다."
+            )},
+        )
+    return RedirectResponse(f"/quiz?quiz_set_id={quiz.id}", status_code=303)
+
+
+
+@app.post("/preview/failed")
+async def preview_failed():
+    async def timeout_generator(**kwargs):
+        raise TimeoutError("미리보기용 생성 시간 초과")
+
+    async with session_scope() as session:
+        quiz = await create_quiz_set(
+            session, user_id="preview-user", session_id=str(uuid.uuid4()),
+            concept_id="sisa_1281", stage_id="stage1", learning_context="실패 화면 확인",
+            generator=timeout_generator,
+        )
+    return RedirectResponse(f"/quiz?quiz_set_id={quiz.id}", status_code=303)
+
+
+
+@app.post("/preview/processing")
+async def preview_processing():
+    from app.models.quiz import QuizSet
+
+    quiz_id = str(uuid.uuid4())
+    async with session_scope() as session:
+        session.add(QuizSet(
+            id=quiz_id, user_id="preview-user", learning_session_id=str(uuid.uuid4()),
+            concept_id="sisa_1281", stage_id="stage1", questions=[], status="processing",
+        ))
+    return RedirectResponse(f"/quiz?quiz_set_id={quiz_id}", status_code=303)

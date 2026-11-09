@@ -1,0 +1,20 @@
+UT-QZ-10: isolated SQLite/API checks starting
+PASS failed 세트 제출 409 QUIZ_NOT_READY
+PASS processing 세트 제출 409 QUIZ_NOT_READY
+PASS pending 세트 제출 409 QUIZ_NOT_READY
+PASS 허용되지 않은 user_id 422 VALIDATION_ERROR
+PASS 답안 목록 누락 422 VALIDATION_ERROR
+PASS 답안 2개 422 VALIDATION_ERROR
+PASS 답안 4개 422 VALIDATION_ERROR
+PASS 문항 번호 중복 422 INVALID_SUBMISSION
+PASS 문항 번호 0 422 VALIDATION_ERROR
+PASS 문항 번호 4 422 VALIDATION_ERROR
+PASS answer 필드 누락 422 VALIDATION_ERROR
+PASS 빈 답안 422 VALIDATION_ERROR
+PASS 멱등 키 누락 422 VALIDATION_ERROR
+PASS 빈 멱등 키 422 VALIDATION_ERROR
+PASS 답안 안의 허용되지 않은 필드 422 VALIDATION_ERROR
+Rejected submission rows: 0
+�н� ���� �̿���: ��� ���� submission_id=63373e1b-a94d-463c-8aa9-a7471e64ab67
+Normal control: 200 3
+RESULT 17 / 17
