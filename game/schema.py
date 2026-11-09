@@ -29,6 +29,11 @@ def render_schema() -> str:
             f"grant select on table {name} to authenticated;",
             f"create policy game_select_own on {name} for select to authenticated using ({predicate});",
         ])
+    statements.extend([
+        "create function public.game_audit_append_only() returns trigger language plpgsql set search_path = '' as $$ begin raise exception 'audit log is append only'; end; $$;",
+        "create trigger game_audit_no_mutation before update or delete on public.game_audit_logs for each row execute function public.game_audit_append_only();",
+        "create trigger game_audit_no_truncate before truncate on public.game_audit_logs for each statement execute function public.game_audit_append_only();",
+    ])
     return "\n\n".join(statements) + "\n"
 
 

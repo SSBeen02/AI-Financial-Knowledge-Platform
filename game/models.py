@@ -1,7 +1,7 @@
 """게임 전용 영속 모델. 테이블 생성은 배포 마이그레이션에서 수행한다."""
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, UniqueConstraint, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -136,3 +136,39 @@ class RewardHistoryRow(Base):
     amount: Mapped[int] = mapped_column(Integer, default=0)
     source_event_id: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AuditLogRow(Base):
+    __tablename__ = "game_audit_logs"
+    audit_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), index=True)
+    character_id: Mapped[str] = mapped_column(ForeignKey("game_characters.character_id"), index=True)
+    change_type: Mapped[str] = mapped_column(String(30))
+    source_type: Mapped[str] = mapped_column(String(30))
+    source_id: Mapped[str] = mapped_column(String(200))
+    before_value: Mapped[dict] = mapped_column(JSON)
+    after_value: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+@event.listens_for(AuditLogRow.__table__, "after_create")
+def protect_audit_log(table, connection, **_):
+    """Reject SQL UPDATE/DELETE, including statements outside the ORM."""
+    dialect = connection.dialect.name
+    preparer = connection.dialect.identifier_preparer
+    schema = connection.schema_for_object(table)
+    name = preparer.quote(table.name)
+    qualified = f"{preparer.quote_schema(schema)}.{name}" if schema else name
+    if dialect == "sqlite":
+        for operation in ("UPDATE", "DELETE"):
+            connection.exec_driver_sql(
+                f"CREATE TRIGGER game_audit_no_{operation.lower()} BEFORE {operation} ON {qualified} "
+                "BEGIN SELECT RAISE(ABORT, 'audit log is append only'); END")
+    elif dialect == "postgresql":
+        function = f"{preparer.quote_schema(schema)}.game_audit_append_only" if schema else "game_audit_append_only"
+        connection.exec_driver_sql(f"CREATE FUNCTION {function}() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $$ "
+                                   "BEGIN RAISE EXCEPTION 'audit log is append only'; END; $$")
+        connection.exec_driver_sql(f"CREATE TRIGGER game_audit_no_mutation BEFORE UPDATE OR DELETE ON {qualified} "
+                                   f"FOR EACH ROW EXECUTE FUNCTION {function}()")
+        connection.exec_driver_sql(f"CREATE TRIGGER game_audit_no_truncate BEFORE TRUNCATE ON {qualified} "
+                                   f"FOR EACH STATEMENT EXECUTE FUNCTION {function}()")
