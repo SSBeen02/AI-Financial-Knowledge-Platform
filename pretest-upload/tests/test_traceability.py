@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 from database.repository import InMemoryDiagnosticRepository
 from dependencies import get_current_user_id
 from schemas.diagnostic import SubmitRequest
-from services.diagnostic_service import DiagnosticService, get_diagnostic_service
+from services.diagnostic_service import DiagnosticService
 from services.domains import level_for
 from services.errors import LlmReportError
 from services.grading import grade_attempt
@@ -81,9 +81,8 @@ class TraceabilityServiceTest(unittest.TestCase):
         before = self.repo.get_attempt(started.id, "owner")
         original_overrides = dict(app.dependency_overrides)
         app.dependency_overrides[get_current_user_id] = lambda: "other-user"
-        app.dependency_overrides[get_diagnostic_service] = lambda: self.service
         try:
-            with TestClient(app) as client:
+            with patch("routers.diagnostics.get_diagnostic_service", return_value=self.service), patch("routers.reports.get_diagnostic_service", return_value=self.service), TestClient(app) as client:
                 responses = [
                     client.get(f"/reports/{started.id}"),
                     client.post(f"/diagnostics/{started.id}/submit", json=payload, headers={"Idempotency-Key": "other"}),
