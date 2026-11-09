@@ -86,7 +86,9 @@ def prepare_game_runtime(learning_service) -> GameRuntime | None:
         raise RuntimeError("게임 PostgreSQL 연결 설정을 확인하세요.") from None
     if url.drivername != "postgresql+psycopg":
         raise RuntimeError("게임 DB는 postgresql+psycopg 연결이 필요합니다.")
-    engine = create_engine(url, pool_pre_ping=True, hide_parameters=True)
+    # Each module has its own engine; keep rollout overlap below the shared session limit.
+    engine = create_engine(url, pool_pre_ping=True, hide_parameters=True,
+                           pool_size=1, max_overflow=0, pool_timeout=15)
     try:
         return build_game_runtime(engine, learning_service)
     except Exception:

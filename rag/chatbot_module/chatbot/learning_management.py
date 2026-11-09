@@ -197,7 +197,10 @@ def create_database_engine(db_url: str) -> Engine:
     connect_args: dict[str, Any] = {}
     if db_url.startswith("sqlite"):
         connect_args["check_same_thread"] = False
-    return create_engine(db_url, connect_args=connect_args)
+    pool_options = {} if db_url.startswith("sqlite") else {
+        "pool_size": 1, "max_overflow": 0, "pool_timeout": 15, "pool_pre_ping": True,
+    }
+    return create_engine(db_url, connect_args=connect_args, **pool_options)
 
 
 def initialize_learning_management_schema(

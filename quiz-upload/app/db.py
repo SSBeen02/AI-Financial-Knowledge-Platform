@@ -73,6 +73,7 @@ def get_engine() -> AsyncEngine:
             kwargs["poolclass"] = NullPool
         else:
             kwargs["pool_pre_ping"] = True
+            kwargs.update(pool_size=1, max_overflow=0, pool_timeout=15)
         _engine = create_async_engine(url, **kwargs)
         _enable_sqlite_foreign_keys(_engine)
     return _engine

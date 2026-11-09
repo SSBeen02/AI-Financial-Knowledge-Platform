@@ -211,6 +211,24 @@ def test_stage5_selection_crowns_and_king_shop_use_stage4_progress(factory):
 
 
 def test_game_api_auth_ownership_and_purchase_key_validation(factory):
+    # Windows asyncio creates a loopback socket pair before TestClient starts.
+    # Some restricted runners block that connection indefinitely. Probe in a
+    # child process so timeout cleanup cannot leave a stuck worker thread.
+    import subprocess
+    import sys
+
+    if sys.platform == "win32":
+        try:
+            probe = subprocess.run(
+                [sys.executable, "-c",
+                 "import socket; a, b = socket.socketpair(); a.close(); b.close()"],
+                capture_output=True, timeout=5,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.skip("Windows loopback socketpair timed out; API assertions were not executed")
+        else:
+            if probe.returncode:
+                pytest.fail(f"Windows socketpair probe failed: {probe.stderr!r}")
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from game.router import router
