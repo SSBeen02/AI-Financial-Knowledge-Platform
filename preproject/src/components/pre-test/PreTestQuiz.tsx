@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, BarChart3, Loader2 } from "lucide-react";
 import { savePreTestResult } from "@/actions/pre-test";
 import PreTestResultView from "@/components/pre-test/PreTestResultView";
@@ -14,11 +14,26 @@ import type {
 
 interface PreTestQuizProps {
   initialQuestions: PreTestQuestion[];
+  userId: string;
 }
 
 type Phase = "quiz" | "loading" | "result";
 
-export default function PreTestQuiz({ initialQuestions }: PreTestQuizProps) {
+interface SavedAttempt {
+  version: 1;
+  questions: PreTestQuestion[];
+  currentIndex: number;
+  answers: PreTestAnswer[];
+  selectedOption: number | null;
+}
+
+const ATTEMPT_STORAGE_PREFIX = "pre-test-attempt:v1:";
+
+function attemptStorageKey(userId: string) {
+  return `${ATTEMPT_STORAGE_PREFIX}${userId}`;
+}
+
+export default function PreTestQuiz({ initialQuestions, userId }: PreTestQuizProps) {
   const [phase, setPhase] = useState<Phase>("quiz");
   const [questions, setQuestions] = useState(initialQuestions);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -30,6 +45,50 @@ export default function PreTestQuiz({ initialQuestions }: PreTestQuizProps) {
   const [saveError, setSaveError] = useState<string>();
   const [resultId, setResultId] = useState<string>();
 
+  useEffect(() => {
+    const key = attemptStorageKey(userId);
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as SavedAttempt;
+      if (
+        saved.version !== 1 ||
+        !Array.isArray(saved.questions) ||
+        saved.questions.length !== initialQuestions.length ||
+        !Number.isInteger(saved.currentIndex) ||
+        saved.currentIndex < 0 ||
+        saved.currentIndex >= saved.questions.length ||
+        !Array.isArray(saved.answers)
+      ) {
+        window.localStorage.removeItem(key);
+        return;
+      }
+
+      setQuestions(saved.questions);
+      setCurrentIndex(saved.currentIndex);
+      setAnswers(saved.answers);
+      setSelectedOption(saved.selectedOption ?? null);
+    } catch {
+      window.localStorage.removeItem(key);
+    }
+  }, [initialQuestions.length, userId]);
+
+  useEffect(() => {
+    if (phase !== "quiz" || questions.length === 0) return;
+    const attempt: SavedAttempt = {
+      version: 1,
+      questions,
+      currentIndex,
+      answers,
+      selectedOption,
+    };
+    try {
+      window.localStorage.setItem(attemptStorageKey(userId), JSON.stringify(attempt));
+    } catch {
+      // Storage may be disabled or full; the in-memory attempt remains usable.
+    }
+  }, [answers, currentIndex, phase, questions, selectedOption, userId]);
+
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
   const isLastQuestion = currentIndex === totalQuestions - 1;
@@ -37,6 +96,18 @@ export default function PreTestQuiz({ initialQuestions }: PreTestQuizProps) {
 
   const handleSelectOption = (optionIndex: number) => {
     setSelectedOption(optionIndex);
+    const attempt: SavedAttempt = {
+      version: 1,
+      questions,
+      currentIndex,
+      answers,
+      selectedOption: optionIndex,
+    };
+    try {
+      window.localStorage.setItem(attemptStorageKey(userId), JSON.stringify(attempt));
+    } catch {
+      // Storage may be disabled or full; the in-memory attempt remains usable.
+    }
   };
 
   const handleNext = async () => {
@@ -61,15 +132,27 @@ export default function PreTestQuiz({ initialQuestions }: PreTestQuizProps) {
 
     if (!isLastQuestion) {
       const nextIndex = currentIndex + 1;
-      setCurrentIndex(nextIndex);
       const nextAnswer = updatedAnswers.find(
         (a) => a.questionId === questions[nextIndex].id
       );
+      try {
+        window.localStorage.setItem(attemptStorageKey(userId), JSON.stringify({
+          version: 1,
+          questions,
+          currentIndex: nextIndex,
+          answers: updatedAnswers,
+          selectedOption: nextAnswer?.selectedAnswer ?? null,
+        } satisfies SavedAttempt));
+      } catch {
+        // Storage may be disabled or full; the in-memory attempt remains usable.
+      }
+      setCurrentIndex(nextIndex);
       setSelectedOption(nextAnswer?.selectedAnswer ?? null);
       return;
     }
 
     setPhase("loading");
+    window.localStorage.removeItem(attemptStorageKey(userId));
     const result = calculatePreTestScore(questions, updatedAnswers);
     setScoreResult(result);
 
@@ -98,6 +181,7 @@ export default function PreTestQuiz({ initialQuestions }: PreTestQuizProps) {
     setSaveError(undefined);
     setResultId(undefined);
     setPhase("quiz");
+    window.localStorage.removeItem(attemptStorageKey(userId));
   };
 
   if (phase === "loading") {

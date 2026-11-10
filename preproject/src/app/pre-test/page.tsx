@@ -25,5 +25,5 @@ export default async function PreTestPage() {
 
   const questions = generatePreTestQuestions();
 
-  return <PreTestQuiz initialQuestions={questions} />;
+  return <PreTestQuiz initialQuestions={questions} userId={user.id} />;
 }
