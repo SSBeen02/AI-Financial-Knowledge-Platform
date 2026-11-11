@@ -64,6 +64,7 @@ from chatbot.service import (
 )
 from chatbot.store import ChatStore, ChatStoreError
 from chatbot.quiz import QuizService
+from chatbot.timing import timing_scope
 
 router = APIRouter(prefix="/learning", tags=["learning"])
 
@@ -229,19 +230,21 @@ def create_message_stream(
     settings: Settings = Depends(get_cached_settings),
 ) -> StreamingResponse:
     _validate_message_length(request, settings)
-    prepared = _call(
-        lambda: prepare_message(
-            catalog=catalog,
-            status_service=status_service,
-            store=store,
-            cache=cache,
-            retriever=retriever,
-            llm=llm,
-            settings=settings,
-            user_id=user_id,
-            request=request,
+    timing = getattr(http_request.state, "learning_timing", None)
+    with timing_scope(timing):
+        prepared = _call(
+            lambda: prepare_message(
+                catalog=catalog,
+                status_service=status_service,
+                store=store,
+                cache=cache,
+                retriever=retriever,
+                llm=llm,
+                settings=settings,
+                user_id=user_id,
+                request=request,
+            )
         )
-    )
     events = stream_message_events(
         prepared=prepared,
         status_service=status_service,
@@ -249,6 +252,7 @@ def create_message_stream(
         llm=llm,
         is_disconnected=http_request.is_disconnected,
         request_id=str(getattr(http_request.state, "request_id", uuid.uuid4())),
+        timing=timing,
     )
     return StreamingResponse(
         events,

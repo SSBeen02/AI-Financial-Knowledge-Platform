@@ -72,6 +72,7 @@ from chatbot.schemas import (
 )
 from chatbot.store import ChatStore, LatestQuiz, MessageRecord, SessionRecord
 from chatbot.quiz import QuizService, QuizServiceError
+from chatbot.timing import RequestTiming, current_timing
 from chatbot.tone import (
     active_learning_notice,
     ChatTone,
@@ -416,6 +417,9 @@ def prepare_message(
     request = request.model_copy(update={"message": safe_question})
     screen = resolve_screen(catalog, status_service, store, user_id)
     plan = _initial_message_plan(catalog, status_service, store, user_id, request, screen)
+    timing = current_timing()
+    if timing is not None:
+        timing.mark("state_plan_complete")
 
     try:
         search_query = normalize_search_query(
@@ -423,6 +427,8 @@ def prepare_message(
             (term for concept in cache.values() for term in (concept.term, *concept.aliases)),
         )
         retrieval = retriever.search(search_query)
+        if timing is not None:
+            timing.mark("retrieval_complete")
     except Exception as exc:
         raise ExternalServiceError("검색 서비스 호출에 실패했습니다.") from exc
 
@@ -487,6 +493,8 @@ def prepare_message(
         chat_emoji=settings.chat_emoji,
         use_current_concept_on_low=use_current_concept_on_low,
     )
+    if timing is not None:
+        timing.mark("prompt_complete")
     return PreparedMessage(
         user_id=user_id,
         request=request,
@@ -512,6 +520,7 @@ async def stream_message_events(
     llm: LLMAdapter,
     is_disconnected: Callable[[], Awaitable[bool]],
     request_id: str,
+    timing: RequestTiming | None = None,
 ) -> AsyncIterator[str]:
     """답변을 SSE로 보내고, 완주 및 연결 유지가 확인된 뒤에만 상태를 반영한다."""
     formatter = IncrementalAnswerFormatter()
@@ -524,6 +533,9 @@ async def stream_message_events(
             )
             if await is_disconnected():
                 return
+            if timing is not None:
+                timing.mark("generation_complete")
+                timing.mark("first_sse_token_yield")
             yield _sse("token", {"delta": answer})
             await asyncio.sleep(0)
             if await is_disconnected():
@@ -534,32 +546,52 @@ async def stream_message_events(
                 status_service=status_service,
                 store=store,
             )
+            if timing is not None:
+                timing.mark("save_complete")
             yield _sse("done", response.model_dump(mode="json", exclude={"answer"}))
             return
         iterator = iter(llm.stream(prepared.prompt))
+        first_raw = True
+        first_sent = True
         while True:
             if await is_disconnected():
                 return
             chunk = await asyncio.to_thread(_next_or_end, iterator)
             if chunk is _STREAM_END:
                 break
+            if first_raw and chunk:
+                first_raw = False
+                if timing is not None:
+                    timing.mark("llm_first_content")
             text = utf8_decoder.feed(chunk if isinstance(chunk, (str, bytes)) else str(chunk))
             if not text:
                 continue
             for delta in formatter.feed(text):
                 if await is_disconnected():
                     return
+                if first_sent:
+                    first_sent = False
+                    if timing is not None:
+                        timing.mark("first_sse_token_yield")
                 yield _sse("token", {"delta": delta})
 
         for delta in formatter.feed(utf8_decoder.finish()):
             if await is_disconnected():
                 return
+            if first_sent:
+                first_sent = False
+                if timing is not None:
+                    timing.mark("first_sse_token_yield")
             yield _sse("token", {"delta": delta})
         if not formatter.has_input:
             raise LLMError("LLM이 비어 있는 응답을 반환했습니다.")
         for delta in formatter.finish():
             if await is_disconnected():
                 return
+            if first_sent:
+                first_sent = False
+                if timing is not None:
+                    timing.mark("first_sse_token_yield")
             yield _sse("token", {"delta": delta})
         if not formatter.body:
             raise LLMError("LLM이 비어 있는 응답을 반환했습니다.")
@@ -580,7 +612,14 @@ async def stream_message_events(
         if await is_disconnected():
             return
         if suffix:
+            if first_sent:
+                first_sent = False
+                if timing is not None:
+                    timing.mark("first_sse_token_yield")
             yield _sse("token", {"delta": suffix})
+
+        if timing is not None:
+            timing.mark("generation_complete")
 
         # 마지막 토큰 전송 뒤 취소 신호가 처리될 기회를 주고, 커밋 직전에 다시 확인한다.
         await asyncio.sleep(0)
@@ -592,6 +631,8 @@ async def stream_message_events(
             status_service=status_service,
             store=store,
         )
+        if timing is not None:
+            timing.mark("save_complete")
         metadata = response.model_dump(mode="json", exclude={"answer"})
         yield _sse("done", metadata)
     except LLMError as exc:

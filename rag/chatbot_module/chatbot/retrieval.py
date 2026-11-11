@@ -15,11 +15,42 @@ from typing import Any, Protocol
 
 from chatbot.config import SEARCH_PROFILES, SearchProfile, Settings
 from chatbot.schemas import Band, SourceOut
+from chatbot.timing import RequestTiming, current_timing
 
 PointId = str
 _BATCH = 128
 PUBLIC_DATA_SOURCE_LABEL = SEARCH_PROFILES["sisa_terms"]["label"]
 FSS_COLLECTION = "fss_practical_finance_4e_3p_kure_v1"
+
+
+class _TimedDense:
+    def __init__(self, delegate: Any, timing: RequestTiming, collection: str) -> None:
+        self._delegate = delegate
+        self._timing = timing
+        self._collection = collection
+
+    def encode(self, *args: Any, **kwargs: Any) -> Any:
+        result = self._delegate.encode(*args, **kwargs)
+        self._timing.mark(f"{self._collection}.embedding_complete")
+        return result
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._delegate, name)
+
+
+class _TimedClient:
+    def __init__(self, delegate: Any, timing: RequestTiming, collection: str) -> None:
+        self._delegate = delegate
+        self._timing = timing
+        self._collection = collection
+
+    def query_points(self, *args: Any, **kwargs: Any) -> Any:
+        result = self._delegate.query_points(*args, **kwargs)
+        self._timing.mark(f"{self._collection}.qdrant_complete")
+        return result
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._delegate, name)
 
 
 def display_source_label(label: str, collection: str) -> str:
@@ -164,8 +195,11 @@ class Retriever:
         merged: list[RetrievedDoc] = []
         concept_hits: list[RetrievedDoc] = []
         concept_scores: list[float] = []
+        timing = current_timing()
         for name, profile in self._profiles.items():
-            hits = self._search_profile(query, name, profile)
+            hits = self._search_profile(query, name, profile, timing=timing)
+            if timing is not None:
+                timing.mark(f"{name}.search_complete")
             merged.extend(hits[: profile["slots"]])
             if profile["concept_source"]:
                 concept_hits.extend(hits)
@@ -180,7 +214,10 @@ class Retriever:
         )
 
 
-    def _search_profile(self, query: str, collection: str, profile: SearchProfile) -> list[RetrievedDoc]:
+    def _search_profile(
+        self, query: str, collection: str, profile: SearchProfile,
+        *, timing: RequestTiming | None = None,
+    ) -> list[RetrievedDoc]:
         if profile["mode"] != "dense" and self._sparse is None:
             raise RetrievalError(f"{collection}의 {profile['mode']} 검색에는 희소 인코더가 필요합니다.")
         search_kwargs = dict(
@@ -190,19 +227,24 @@ class Retriever:
         )
         if profile["mode"] == "hybrid":
             search_kwargs["prefetch_k"] = profile.get("prefetch_k", 30)
+        client = _TimedClient(self._client, timing, collection) if timing is not None else self._client
+        dense = _TimedDense(self._dense, timing, collection) if timing is not None else self._dense
         if self._use_real_search and profile.get("sparse_vector"):
-            points = self._search_named_sparse(query, collection, profile)
+            points = self._search_named_sparse(query, collection, profile, client=client, dense=dense)
         else:
             points = self._search(
-                self._client,
+                client,
                 query,
-                self._dense,
+                dense,
                 self._sparse,
                 **search_kwargs,
             )
         return [_retrieved(point, collection, profile["label"]) for point in points]
 
-    def _search_named_sparse(self, query: str, collection: str, profile: SearchProfile) -> list[Any]:
+    def _search_named_sparse(
+        self, query: str, collection: str, profile: SearchProfile,
+        *, client: Any = None, dense: Any = None,
+    ) -> list[Any]:
         """공용 검색 함수를 바꾸지 않고 교재의 bm25 벡터 이름을 사용한다."""
         from qdrant_client import models
         from rag_common import DENSE_NAME
@@ -211,7 +253,7 @@ class Retriever:
         if getattr(self._sparse, "collection", collection) != collection:
             raise RetrievalError(f"{collection}에 맞는 희소 인코더가 설정되지 않았습니다.")
 
-        dense_query = self._dense.encode([query])[0].tolist()
+        dense_query = (dense if dense is not None else self._dense).encode([query])[0].tolist()
         sparse_query = self._sparse.encode_query(query)
         candidates = profile.get("prefetch_k", 30)
         prefetch = [models.Prefetch(query=dense_query, using=DENSE_NAME, limit=candidates)]
@@ -219,7 +261,7 @@ class Retriever:
             prefetch.append(models.Prefetch(
                 query=sparse_query, using=profile["sparse_vector"], limit=candidates
             ))
-        response = self._client.query_points(
+        response = (client if client is not None else self._client).query_points(
             collection_name=collection,
             prefetch=prefetch,
             query=models.RrfQuery(rrf=models.Rrf(k=2, weights=[1.0] * len(prefetch))),
