@@ -1,8 +1,8 @@
 """Prepare and score a read-only golden-set answer evaluation.
 
 The existing retrieval and answer adapters are reused without creating chat
-sessions. The local Qdrant SQLite file is opened read-only and copied into an
-in-memory Qdrant collection; the source file is never modified.
+sessions. The local Qdrant SQLite file can be copied read-only into memory, or
+the current remote Qdrant collections can be searched without modifying them.
 """
 
 from __future__ import annotations
@@ -378,7 +378,8 @@ class _FreshStatus:
 def collect(args: argparse.Namespace) -> None:
     started = perf_counter()
     cases = select_cases(filter_cases(load_golden(args.golden), args.qids, args.types), args.limit)
-    if not args.sqlite.is_file():
+    live_qdrant = getattr(args, "live_qdrant", False)
+    if not live_qdrant and (args.sqlite is None or not args.sqlite.is_file()):
         raise FileNotFoundError(args.sqlite)
     print(f"선택 문항: {', '.join(str(row['qid']) for row in cases)}")
     if not args.run:
@@ -392,9 +393,28 @@ def collect(args: argparse.Namespace) -> None:
         raise ValueError("이 SQLite 파일은 sisa_terms 컬렉션용입니다. QDRANT_COLLECTION을 확인하세요.")
     from rag_common import DenseEncoder
 
-    client = load_local_collection(args.sqlite, settings.qdrant_collection)
+    if live_qdrant:
+        from qdrant_client import QdrantClient
+        from chatbot.fss_sparse import FssSparseEncoder
+
+        if not settings.qdrant_url:
+            raise ValueError("--live-qdrant에는 QDRANT_URL 설정이 필요합니다.")
+        client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key, timeout=30)
+        source_counts = {}
+        for name in settings.search_profiles:
+            if not client.collection_exists(name):
+                raise ValueError(f"Qdrant 컬렉션이 없습니다: {name}")
+            source_counts[name] = client.count(name, exact=True).count
+        profiles = settings.search_profiles
+        sparse = FssSparseEncoder() if any(profile["mode"] == "hybrid" for profile in profiles.values()) else None
+        print(f"검색 컬렉션 문서 수: {json.dumps(source_counts, ensure_ascii=False)}")
+    else:
+        client = load_local_collection(args.sqlite, settings.qdrant_collection)
+        profiles = {settings.qdrant_collection: settings.search_profiles[settings.qdrant_collection]}
+        source_counts = {settings.qdrant_collection: None}
+        sparse = None
     dense = DenseEncoder(settings.dense_model)
-    retriever = Retriever(client, dense, settings)
+    retriever = Retriever(client, dense, settings, sparse=sparse, profiles=profiles)
     counter = [0]
     llm = _answer_adapter(settings, counter)
     catalog = load_stage_catalog(settings.stages_json_path)
@@ -446,23 +466,28 @@ def collect(args: argparse.Namespace) -> None:
                 "response_for_scoring": _answer_for_scoring(answer),
                 "retrieved_contexts": contexts,
                 "retrieved_doc_ids": [source.concept_id for source in retrieval.sources],
+                "retrieved_collections": [source.collection for source in retrieval.sources],
                 "context_doc_ids": [source.concept_id for source in retrieval.sources if source.text],
                 "gold_doc_ids": str(row["정답_doc_ids"]),
                 "band": retrieval.band,
                 "top_score": retrieval.top_score,
                 **notice_fields,
                 "answer_knowledge_mode": settings.answer_knowledge_mode,
+                "band_low": settings.band_low,
+                "band_high": settings.band_high,
                 "generator_provider": settings.llm_provider,
                 "generator_model": settings.llm_model,
                 "answer_api_requests": counter[0] - requests_before,
                 "collect_seconds": round(perf_counter() - row_started, 3),
                 "collected_at": datetime.now(timezone.utc).isoformat(),
                 "golden_version": args.golden.stem,
+                "search_backend": "live_qdrant" if live_qdrant else "local_sisa_sqlite",
             },
         )
         new_count += 1
         print(f"{qid}: band={retrieval.band}, contexts={len(contexts)}")
     llm._client.close()
+    client.close()
     if refreshed:
         current_rows = _read_jsonl(args.output)
         temporary = args.output.with_suffix(".notice_tmp.jsonl")
@@ -477,6 +502,10 @@ def collect(args: argparse.Namespace) -> None:
         "collect_wall_seconds": round(perf_counter() - started, 3),
         "answer_api_requests_this_run": counter[0],
         "notices_refreshed": refreshed,
+        "search_backend": "live_qdrant" if live_qdrant else "local_sisa_sqlite",
+        "source_counts": source_counts,
+        "band_low": settings.band_low,
+        "band_high": settings.band_high,
     }
     meta_path = args.output.with_suffix(".collect_meta.json")
     if new_count or not meta_path.exists():
@@ -752,9 +781,21 @@ def score(args: argparse.Namespace) -> None:
             "chat_tone": settings.chat_tone,
             "answer_knowledge_mode": settings.answer_knowledge_mode,
             "llm_temperature": settings.llm_temperature,
+            "band_low": settings.band_low,
+            "band_high": settings.band_high,
             "executed_at": datetime.now(timezone.utc).isoformat(),
             "golden_version": rows[0].get("golden_version", "unknown"),
             "report_only": args.report_only,
+        },
+        "search": {
+            "backend": rows[0].get("search_backend", "unknown"),
+            "collection_point_counts": collect_meta.get("source_counts", {}),
+            "returned_source_counts": {
+                name: sum(sample.get("retrieved_collections", []).count(name) for sample in rows)
+                for name in dict.fromkeys(
+                    collection for sample in rows for collection in sample.get("retrieved_collections", [])
+                )
+            },
         },
         "selected_count": len(rows),
         "answer_cases": len(answer_pairs),
@@ -819,7 +860,8 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     prepare = commands.add_parser("collect", help="기존 골든셋 질문으로 실제 답변과 검색 원문 수집")
     prepare.add_argument("--golden", type=Path, required=True)
-    prepare.add_argument("--sqlite", type=Path, required=True)
+    prepare.add_argument("--sqlite", type=Path, help="로컬 sisa_terms SQLite (기본 검색 방식)")
+    prepare.add_argument("--live-qdrant", action="store_true", help="현재 Qdrant의 세 컬렉션을 읽기 전용 검색")
     prepare.add_argument("--output", type=Path, default=Path("eval_outputs/ragas_v4_samples.jsonl"))
     prepare.add_argument("--limit", type=int, help="최대 문항 수; 미지정 시 필터 결과 전체")
     prepare.add_argument("--qids", action="append", help="쉼표로 구분한 qid; 여러 번 지정 가능")

@@ -274,12 +274,12 @@
 | 최고 점수 | band | 처리 |
 |---|---|---|
 | ≥ 0.50 | `high` | 검색 결과 상위 3개를 근거로 답변 |
-| 0.45 ~ 0.50 | `mid` | 검색 결과를 주되, 질문과 관련 있을 때만 사용하도록 프롬프트에서 지시 |
-| < 0.45 | `low` | 현재 학습 개념에 관련된 질문이면 검색 결과 대신 현재 개념 캐시 문서를 근거로 답하고 범위 밖 안내를 생략한다. 그 외에는 LLM 자체 지식으로 답변하고 서버 생성 `notice`로 범위 밖 안내 |
+| 0.49 ~ < 0.50 | `mid` | 검색 결과를 주되, 질문과 관련 있을 때만 사용하도록 프롬프트에서 지시 |
+| < 0.49 | `low` | 현재 학습 개념에 관련된 질문이면 검색 결과 대신 현재 개념 캐시 문서를 근거로 답하고 범위 밖 안내를 생략한다. 그 외에는 LLM 자체 지식으로 답변하고 서버 생성 `notice`로 범위 밖 안내 |
 
    - 검색 1위 extra/excluded 용어의 term/aliases가 질문에 포함되면 서버 생성 `notice`로 안내한다.
      excluded와 low 안내는 LLM 답변 본문에 넣지 않는다.
-   - 임계값(0.50, 0.45)은 **설정값**으로 분리한다.
+   - 임계값(0.50, 0.49)은 **설정값**으로 분리한다.
 6. **현재 개념과의 관련성(is_related) 판정** (세션이 있을 때)
    - `keyword`/`detected`로 세션을 시작한 첫 메시지는 항상 `true`
    - `relearn`으로 시작한 첫 메시지는 일반 관련성 규칙으로 판정한다
@@ -361,7 +361,7 @@ SEARCH_PROFILES = {
 ```
 - `retrieval.py` 는 `SEARCH_PROFILES` 를 순회하며 각 컬렉션을 **자기 mode로** 검색한다 (`rag_common.search` 재사용).
 - 여러 소스 결과 합치기: 점수 범위가 mode마다 다르므로 점수를 직접 비교하지 않는다. 기본은 **자리 배분**(소스별 `slots` 개수만큼).
-- **범위 밖 판별(band)** 은 `concept_source=True` 인 소스의 **Dense 최고 점수**로만 계산한다 (기준값 0.50/0.45가 이 기준으로 검증됨). 다른 소스가 hybrid여도 판별 기준은 바뀌지 않는다.
+- **범위 밖 판별(band)** 은 `concept_source=True` 인 소스의 **Dense 최고 점수**로만 계산한다 (최종 기준값 0.50/0.49는 2026-11-11 세 소스 골든셋 93문항 재평가 기준). 다른 소스가 hybrid여도 판별 기준은 바뀌지 않는다.
 - **개념 감지·현재 개념 조회·관련성 판정**은 `concept_source=True` 소스만 사용한다.
 - 응답의 `sources` 와 학습 맥락의 근거에는 **컬렉션명과 label** 을 함께 기록한다 (출처 표기·퀴즈 참고용).
 - 현재는 `sisa_terms`, 금융감독원 교재, 한국은행 2026 용어집 컬렉션을 등록한다. 소스가 1개일 때도 같은 코드 경로로 동작해야 한다.
@@ -422,7 +422,7 @@ README_chatbot.md  # 통합 방법, 환경변수, API 예시
 | `FREE_QUESTION_AUTO_START` | 기본 `false`. 자유 질문 자동 시작 호환 설정 |
 | `MAX_QUESTION_CHARS` | 기본 `500`. 공백 제외 질문 글자 수 제한. 일반·SSE 메시지 API 공통, 말투별 422 |
 | `CORS_ALLOW_ORIGINS` | 쉼표 구분. 기본 `http://localhost:5173,http://localhost:3000` |
-| `BAND_HIGH` / `BAND_LOW` | `0.50` / `0.45` |
+| `BAND_HIGH` / `BAND_LOW` | `0.50` / `0.49` |
 | `DISPLAY_SOURCE_MIN_SCORE` | `0.60` (현재 개념 외 화면 표시 출처의 최소 점수) |
 | `STAGES_JSON_PATH` | `data/stages.json` |
 | `CHAT_DB_URL` | 로컬 `sqlite:///chat.db` / 배포 Supabase PostgreSQL 연결 문자열 |

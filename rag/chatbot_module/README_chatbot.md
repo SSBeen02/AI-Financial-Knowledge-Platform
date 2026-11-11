@@ -208,7 +208,7 @@ Qdrant 실제 연결 테스트는 `.env`에 연결 정보가 있을 때 실행�
 | `MAX_QUESTION_CHARS` | 선택 | `500` | 공백을 제외한 질문 글자 수 제한. 초과 시 일반·SSE 메시지 API 모두 422를 반환한다. `hao`: `질문은 500자 이내로 적어 주시오`, `modern`: `질문은 500자 이내로 입력해 주세요`. |
 | `CORS_ALLOW_ORIGINS` | 선택 | `http://localhost:5173,http://localhost:3000` | 브라우저 접근을 허용할 origin의 쉼표 구분 목록 |
 | `BAND_HIGH` | 선택 | `0.50` | high band 최소 Dense 점수 |
-| `BAND_LOW` | 선택 | `0.45` | mid band 최소 Dense 점수. 이 값 미만은 low다. |
+| `BAND_LOW` | 선택 | `0.49` | mid band 최소 Dense 점수. 이 값 미만은 low다. |
 | `DISPLAY_SOURCE_MIN_SCORE` | 선택 | `0.60` | 시사·한국은행 Dense 문서를 `display_sources`에 노출할 최소 점수. 현재 세션 개념·답변 첫 정의 문장의 인용 근거·교재 RRF 문서는 예외 |
 | `STAGES_JSON_PATH` | 선택 | `data/stages.json` | 스테이지·학습 개념 정의 파일 |
 | `CHAT_DB_URL` | 선택 | `sqlite:///chat.db` | SQLAlchemy DB URL. 배포에서는 Supabase PostgreSQL URL로 교체한다. |
