@@ -321,7 +321,7 @@
         return;
       }
       restoreDraft();
-      setStatus(quiz.concept_id + " 개념입니다. 보기를 고른 뒤 제출하세요.");
+      setStatus("보기를 고른 뒤 제출하세요.");
       renderQuiz();
       } catch (error) {
         setStatus("문제를 불러오지 못했습니다. 로그인과 연결 상태를 확인하세요.", true);

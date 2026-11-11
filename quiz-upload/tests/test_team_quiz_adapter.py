@@ -32,7 +32,7 @@ SAMPLE_QUESTIONS = [
     for index in (1, 2)
 ] + [
     dict(question_index=3, question_type="situation", prompt="분업에 해당하는 사례는?",
-         choices=[{"key": key, "text": f"사례 {key}"} for key in "ABCD"],
+         choices=[{"key": key, "text": f"사례 {number}"} for number, key in enumerate("ABCD", 1)],
          answer="A", explanation="각자 맡은 업무를 수행한다.")
 ]
 

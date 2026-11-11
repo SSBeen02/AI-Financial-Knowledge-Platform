@@ -54,6 +54,22 @@ class OriginalQuizRequirementsTests(unittest.IsolatedAsyncioTestCase):
         async with self.factory() as session:
             self.assertEqual((await session.get(QuizSet,created.id)).questions,[])
 
+    async def test_foreign_language_is_rejected_and_regenerated(self):
+        bad_prompt = copy.deepcopy(SAMPLE)
+        bad_prompt[0]["prompt"] = "GDP의 의미는 무엇이오?"
+        bad_choice = copy.deepcopy(SAMPLE)
+        bad_choice[2]["choices"][0]["text"] = "価格"
+        bad_explanation = copy.deepcopy(SAMPLE)
+        bad_explanation[0]["explanation"] = "이 문항은 English 설명이오."
+        for questions in (bad_prompt, bad_choice, bad_explanation):
+            with self.assertRaisesRegex(ValueError, "한글|한국어"):
+                normalize_questions(questions)
+
+        generator = AsyncMock(side_effect=[bad_prompt, bad_choice, copy.deepcopy(SAMPLE)])
+        result = await self.create(generator)
+        self.assertEqual(result.status, "completed")
+        self.assertEqual(generator.await_count, 3)
+
     async def test_transport_error_not_retried_by_format_loop(self):
         generator=AsyncMock(side_effect=RuntimeError('transport failure'))
         with patch('app.services.quiz_service.report_quiz_generation_failed',AsyncMock()):

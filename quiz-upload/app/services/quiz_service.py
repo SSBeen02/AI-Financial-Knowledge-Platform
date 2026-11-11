@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.errors import QuizGenerationError, idempotency_conflict, invalid_submission, quiz_not_found, quiz_not_ready
+from app.errors import QuizAPIError, QuizGenerationError, idempotency_conflict, invalid_submission, quiz_not_found, quiz_not_ready
 from app.models.quiz import QuizSet, QuizSetStatus, QuizSubmission
 from app.schemas.quiz import (
     CreatedQuizSet,
@@ -42,6 +42,7 @@ from app.schemas.quiz import (
     SubmittedAnswer,
 )
 from app.services.learning_callbacks import report_quiz_generation_failed, report_quiz_result
+from app.services.quiz_language import localize_quiz_text, validate_korean_text
 from app.services.quiz_tone import choice_in_modern, explanation_in_hao, question_in_hao
 from app.timeutil import to_utc_iso, utc_now
 from database.settings import load_settings
@@ -66,6 +67,8 @@ questions 배열은 길이 3입니다.
 - question_index 1과 2는 question_type "ox"입니다. choices는 key "O"와 "X" 두 개입니다. answer는 "O" 또는 "X"입니다.
 - question_index 3은 question_type "situation"입니다. 학습자가 처한 상황을 제시하고, 행동 선택지 4개(key A, B, C, D) 중 알맞은 하나를 answer로 둡니다.
 각 문항은 prompt, choices, answer, explanation을 모두 포함합니다.
+문제, 상황형 보기, 해설은 한글로만 작성합니다. 외국어와 영문 약어는 한국어로 풀어 씁니다.
+숫자와 계산 기호는 사용할 수 있습니다. O/X와 A~D는 기존 보기 식별자로 사용합니다.
 모든 prompt의 문장과 질문은 반드시 현대 하오체(~하오/~이오/~있소/~하겠소?)로 씁니다.
 OX choices의 text는 각각 "O", "X"만 씁니다. 맞소·아니오·맞아요 등의 설명은 붙이지 않습니다.
 상황형 choices의 text는 현대식 평서문(~한다/~이다) 또는 간결한 명사구로 씁니다. 보기에는 하오체를 쓰지 않습니다.
@@ -209,6 +212,8 @@ def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, A
         if question_type not in {"ox", "situation"} or not prompt or not explanation:
             raise ValueError("문항 형식이 올바르지 않습니다.")
         _validate_public_text(prompt)
+        validate_korean_text(prompt)
+        validate_korean_text(explanation)
         try:
             question_index = int(item["question_index"])
         except (KeyError, TypeError, ValueError) as exc:
@@ -244,6 +249,8 @@ def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, A
             answer = mapped
         else:
             choices = [dict(choice, text=choice_in_modern(choice["text"])) for choice in choices]
+            for choice in choices:
+                validate_korean_text(choice["text"], allow_numeric=True)
             keys = [choice["key"] for choice in choices]
             if len(keys) != len(set(keys)):
                 raise ValueError("상황형 보기 키가 중복되었습니다.")
@@ -289,12 +296,24 @@ def answers_match(question: dict[str, Any], submitted: str) -> bool:
     return False
 
 
+def _quiz_display_text(text: str, *, allow_numeric: bool = False) -> str:
+    localized = localize_quiz_text(text)
+    try:
+        validate_korean_text(localized, allow_numeric=allow_numeric)
+    except ValueError as exc:
+        raise QuizAPIError(
+            409, "QUIZ_LANGUAGE_UNSUPPORTED",
+            "저장된 퀴즈에 한국어로 표시할 수 없는 내용이 있습니다.",
+        ) from exc
+    return localized
+
+
 def _public_question(question: dict[str, Any]) -> QuizQuestionPublic:
     return QuizQuestionPublic(
         question_index=question["question_index"],
         question_type=question["question_type"],
-        prompt=question_in_hao(question["prompt"]),
-        choices=[QuizChoicePublic(key=choice["key"], text=choice["key"] if question["question_type"] == "ox" else choice_in_modern(choice["text"])) for choice in question["choices"]],
+        prompt=question_in_hao(_quiz_display_text(question["prompt"])),
+        choices=[QuizChoicePublic(key=choice["key"], text=choice["key"] if question["question_type"] == "ox" else choice_in_modern(_quiz_display_text(choice["text"], allow_numeric=True))) for choice in question["choices"]],
     )
 
 
@@ -349,11 +368,11 @@ def _submit_response(quiz: QuizSet, submission: QuizSubmission) -> SubmitQuizRes
             QuizQuestionResult(
                 question_index=question["question_index"],
                 question_type=question["question_type"],
-                prompt=question_in_hao(question["prompt"]),
+                prompt=question_in_hao(_quiz_display_text(question["prompt"])),
                 submitted_answer=answers[question["question_index"]],
                 is_correct=bool(is_correct),
                 answer=question["answer"],
-                explanation=explanation_in_hao(question["explanation"]),
+                explanation=explanation_in_hao(_quiz_display_text(question["explanation"])),
             )
         )
     learning_module_result = LearningModuleResult(
@@ -541,6 +560,10 @@ class QuizService:
             return _submit_response(quiz, first)
 
         started = time.perf_counter()
+        # Reject unsupported legacy content before saving a new result.
+        for question in quiz.questions or []:
+            _public_question(question)
+            _quiz_display_text(question["explanation"])
         stored_answers = _ordered_answers(submitted_answers)
         flags, correct_count, is_passed = _grade(list(quiz.questions or []), stored_answers)
         submission = QuizSubmission(
