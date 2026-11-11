@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     max_question_chars: int = Field(default=500, ge=1)
     cors_allow_origins: str = "http://localhost:5173,http://localhost:3000"
     band_high: float = 0.50
-    band_low: float = 0.45
+    band_low: float = 0.49
     display_source_min_score: float = Field(default=0.60, ge=0, le=1)
     stages_json_path: Path = Path("data/stages.json")
     chat_db_url: str = "sqlite:///chat.db"
