@@ -16,6 +16,7 @@ from services.question_bank import load_questions
 from services.report_summary import add_lowest_stage_summary, normalize_report_labels
 from services.errors import ReportRetryLimitError
 from services.report_safety import validate_report_safety
+from services.report_language import validate_report_language
 
 logger = logging.getLogger("diagnostics")
 _service: "DiagnosticService | None" = None
@@ -111,6 +112,7 @@ class DiagnosticService:
                 raise ReportDeadlineError("리포트 처리 대기 시간이 처리 기한을 초과했소.")
             llm = generate_llm_report(graded, budget=min(28.0, REPORT_DEADLINE_SECONDS - elapsed))
             validate_report_safety(llm)
+            validate_report_language(llm)
             if (datetime.now(timezone.utc) - datetime.fromisoformat(began.replace("Z", "+00:00"))).total_seconds() >= REPORT_DEADLINE_SECONDS:
                 from services.report_parallel import ReportDeadlineError
                 raise ReportDeadlineError("리포트 생성 처리 기한을 초과했소.")
@@ -190,6 +192,7 @@ class DiagnosticService:
         if response.llm_report is not None:
             try:
                 validate_report_safety(response.llm_report)
+                validate_report_language(response.llm_report)
             except Exception:
                 # 과거에 저장된 위험 문구도 재조회 시 노출하지 않는다.
                 response.llm_report = None

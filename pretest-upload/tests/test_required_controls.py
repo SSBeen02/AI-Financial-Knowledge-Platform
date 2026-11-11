@@ -12,6 +12,7 @@ from services.errors import ReportRetryLimitError, LlmReportError
 from services.llm_report import generate_local_report
 from services.question_bank import load_questions
 from services.report_safety import validate_report_safety
+from services.report_language import validate_report_language
 
 
 class RequiredControlsTest(unittest.TestCase):
@@ -156,6 +157,7 @@ class RequiredControlsTest(unittest.TestCase):
         for case in ("perfect", "partial", "all_wrong"):
             answers = {q["id"]: q["answer"] if case == "perfect" or (case == "partial" and i % 2 == 0) else q["answer"] % 4 + 1 for i, q in enumerate(questions)}
             report = generate_local_report(grade_attempt(questions, answers))
+            validate_report_language(report)
             narrative = [report.level_diagnosis.summary, report.wrong_answer_analysis.summary]
             narrative += [x.diagnosis for x in report.level_diagnosis.domain_comments]
             narrative += [x.vulnerability for x in report.wrong_answer_analysis.items]
@@ -163,6 +165,22 @@ class RequiredControlsTest(unittest.TestCase):
             for text in narrative:
                 with self.subTest(case=case, text=text):
                     self.assertIsNone(re.search(r"습니다|합니다|하세요", text))
+
+    def test_foreign_report_text_is_rejected_before_storage(self):
+        attempt_id = self.submit()
+        graded = self.repo.get_attempt(attempt_id, "owner")
+        report = generate_local_report(graded)
+        for text in ("경제를 복습하시오. Review the concept.", "경제를 복습하시오。経済を復習する。", "GDP를 확인하시오. 经济分析。", "경제를 복습하시오. Ｒｅｖｉｅｗ"):
+            with self.subTest(text=text):
+                report.recommendations[0].guide = text
+                with self.assertRaises(LlmReportError):
+                    validate_report_language(report)
+        with patch("services.diagnostic_service.generate_llm_report", return_value=report):
+            self.service.generate_report(attempt_id, "owner")
+        response = self.service.get_report(attempt_id, "owner")
+        self.assertEqual(response.status, "failed")
+        self.assertIsNone(response.llm_report)
+        self.assertEqual(response.summary.score, 100)
 
 
 if __name__ == "__main__":

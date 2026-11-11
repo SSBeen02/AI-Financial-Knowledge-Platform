@@ -11,6 +11,7 @@ from schemas.llm_report import DomainLevelComment, LevelDiagnosis, LlmReportAnal
 from services.errors import LlmReportError
 from services.report_summary import add_lowest_stage_summary
 from services.report_safety import SAFETY_PROMPT, validate_report_safety
+from services.report_language import KOREAN_REPORT_PROMPT
 
 logger = logging.getLogger("diagnostics")
 REPORT_BUDGET_SECONDS = 28.0
@@ -28,7 +29,7 @@ STYLE_PROMPT = f"""경제 사전테스트의 친절한 튜터로서 입력 보�
 recommendation은 오답 정의 나열이 아니라 이후 학습 방향과 접근 전략이오. 실제 혼동 지점 → 개념의 본질적인 비교 기준 → 실전 접근 전략을 주제별 3~5문장의 자연스러운 단일 문단으로 연결하시오. 반복 라벨 없이 어미도 다양하게 쓰시오. 학습 권장 문단에서 ~시오로 끝나는 직접 지시는 최대 한 문장만 쓰고, 나머지는 이유와 전략을 설명하는 ~이오/~하오/~좋겠소/~유리하오 등으로 연결하시오. 같은 종결 표현을 3문장 이상 반복하지 마시오. 오답 분석도 모든 항목을 ~가리키오/~단서이오로 끝내지 마시오."""
 
 
-STYLE_PROMPT += "\n" + SAFETY_PROMPT
+STYLE_PROMPT += "\n" + KOREAN_REPORT_PROMPT + "\n" + SAFETY_PROMPT
 
 class _Overview(BaseModel):
     model_config = ConfigDict(extra="forbid")
