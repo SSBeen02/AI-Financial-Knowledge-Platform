@@ -37,6 +37,10 @@ async def get_verified_user_id(
     if response.status_code != 200:
         raise HTTPException(503, "인증 서버가 요청을 처리하지 못했습니다.")
     try:
-        return str(UUID(response.json()["id"]))
+        user_id = str(UUID(response.json()["id"]))
+        timing = getattr(request.state, "learning_timing", None)
+        if timing is not None:
+            timing.mark("auth_complete")
+        return user_id
     except (ValueError, KeyError, TypeError):
         raise HTTPException(503, "인증 응답을 확인할 수 없습니다.") from None

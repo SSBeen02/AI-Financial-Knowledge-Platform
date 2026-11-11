@@ -10,6 +10,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 
+from chatbot.timing import RequestTiming
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,6 +53,9 @@ def install_learning_error_handlers(app: FastAPI) -> None:
     ) -> Response:
         incoming = request.headers.get("X-Request-ID", "").strip()
         request.state.request_id = incoming[:128] if incoming else str(uuid.uuid4())
+        if request.method == "POST" and request.url.path == "/learning/messages/stream":
+            request.state.learning_timing = RequestTiming(request.state.request_id)
+            request.state.learning_timing.mark("post_enter")
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
         return response
