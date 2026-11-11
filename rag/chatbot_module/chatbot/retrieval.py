@@ -31,7 +31,38 @@ class _TimedDense:
 
     def encode(self, *args: Any, **kwargs: Any) -> Any:
         result = self._delegate.encode(*args, **kwargs)
-        self._timing.mark(f"{self._collection}.embedding_complete")
+        phase = "embedding_reused" if getattr(self._delegate, "last_reused", False) else "embedding_complete"
+        self._timing.mark(f"{self._collection}.{phase}")
+        return result
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._delegate, name)
+
+
+class _RequestDense:
+    """Reuse one query embedding across collections within a single search call."""
+
+    def __init__(self, delegate: Any, query: str) -> None:
+        self._delegate = delegate
+        self._query = query
+        self._cached: Any = None
+        self.last_reused = False
+
+    def encode(self, texts: Any, *args: Any, **kwargs: Any) -> Any:
+        cacheable = (
+            isinstance(texts, (list, tuple))
+            and len(texts) == 1
+            and texts[0] == self._query
+            and not args
+            and not kwargs
+        )
+        if cacheable and self._cached is not None:
+            self.last_reused = True
+            return self._cached
+        result = self._delegate.encode(texts, *args, **kwargs)
+        self.last_reused = False
+        if cacheable:
+            self._cached = result
         return result
 
     def __getattr__(self, name: str) -> Any:
@@ -196,14 +227,15 @@ class Retriever:
         concept_hits: list[RetrievedDoc] = []
         concept_scores: list[float] = []
         timing = current_timing()
+        dense = _RequestDense(self._dense, query)
         for name, profile in self._profiles.items():
-            hits = self._search_profile(query, name, profile, timing=timing)
+            hits = self._search_profile(query, name, profile, timing=timing, dense=dense)
             if timing is not None:
                 timing.mark(f"{name}.search_complete")
             merged.extend(hits[: profile["slots"]])
             if profile["concept_source"]:
                 concept_hits.extend(hits)
-                concept_scores.append(self._dense_top(query, name, profile, hits))
+                concept_scores.append(self._dense_top(query, name, profile, hits, dense=dense))
         top_score = max(concept_scores) if concept_scores else 0.0
         band = judge_band(top_score, high=self._settings.band_high, low=self._settings.band_low)
         return RetrievalResult(
@@ -216,7 +248,7 @@ class Retriever:
 
     def _search_profile(
         self, query: str, collection: str, profile: SearchProfile,
-        *, timing: RequestTiming | None = None,
+        *, timing: RequestTiming | None = None, dense: Any = None,
     ) -> list[RetrievedDoc]:
         if profile["mode"] != "dense" and self._sparse is None:
             raise RetrievalError(f"{collection}의 {profile['mode']} 검색에는 희소 인코더가 필요합니다.")
@@ -228,7 +260,8 @@ class Retriever:
         if profile["mode"] == "hybrid":
             search_kwargs["prefetch_k"] = profile.get("prefetch_k", 30)
         client = _TimedClient(self._client, timing, collection) if timing is not None else self._client
-        dense = _TimedDense(self._dense, timing, collection) if timing is not None else self._dense
+        encoder = dense if dense is not None else self._dense
+        dense = _TimedDense(encoder, timing, collection) if timing is not None else encoder
         if self._use_real_search and profile.get("sparse_vector"):
             points = self._search_named_sparse(query, collection, profile, client=client, dense=dense)
         else:
@@ -287,10 +320,13 @@ class Retriever:
                 selected.append(point)
         return selected
 
-    def _dense_top(self, query: str, collection: str, profile: SearchProfile, hits: list[RetrievedDoc]) -> float:
+    def _dense_top(
+        self, query: str, collection: str, profile: SearchProfile, hits: list[RetrievedDoc],
+        *, dense: Any = None,
+    ) -> float:
         if profile["mode"] == "dense":
             return hits[0].score if hits else 0.0
-        return float(self._dense_score(self._client, query, self._dense, collection=collection))
+        return float(self._dense_score(self._client, query, dense if dense is not None else self._dense, collection=collection))
 
 
 def to_source_out(doc: RetrievedDoc) -> SourceOut:
