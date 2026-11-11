@@ -13,7 +13,7 @@ def test_defaults(clean_env: None) -> None:
     assert settings.llm_provider == "openai"
     assert settings.llm_base_url == "https://api.upstage.ai/v1"
     assert settings.band_high == 0.50
-    assert settings.band_low == 0.45
+    assert settings.band_low == 0.49
     assert settings.display_source_min_score == 0.60
     assert settings.stages_json_path.as_posix() == "data/stages.json"
     assert settings.chat_db_url == "sqlite:///chat.db"

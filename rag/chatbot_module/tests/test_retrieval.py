@@ -60,6 +60,8 @@ def test_band_boundaries() -> None:
     assert judge_band(0.45, high=0.50, low=0.45) == "mid"
     assert judge_band(0.499, high=0.50, low=0.45) == "mid"
     assert judge_band(0.449, high=0.50, low=0.45) == "low"
+    assert judge_band(0.49, high=0.50, low=0.49) == "mid"
+    assert judge_band(0.489, high=0.50, low=0.49) == "low"
 
 
 def test_search_joins_only_spaced_single_hangul_run() -> None:

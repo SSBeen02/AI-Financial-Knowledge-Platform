@@ -1,6 +1,27 @@
 # 골든셋 v4 답변 품질 평가
 
-기존 Hit@k/MRR 검색 평가와 별개로, 골든셋 질문에 대해 현재 챗봇의 **대화 이력 없는 단일 자유 질문 답변**을 생성한다. 정답 문서가 있는 78문항은 RAGAS `Faithfulness`(검색 근거 충실도)와 `AnswerRelevancy`(질문 관련성)를 계산한다. `DB에 없음` 15문항은 RAGAS에 보내지 않고 `band=low`와 서버의 범위 밖 notice 반환 여부를 각각 집계한다. 이 두 RAGAS 지표에는 기대 답변 문장이 필요하지 않다.
+## 현재 Qdrant 3개 검색 소스 재평가
+
+`collect --live-qdrant`는 `.env`에 설정된 실제 Qdrant에서 `sisa_terms`,
+`fss_practical_finance_4e_3p_kure_v1`, `bok_economic_financial_terms_2026_kure_v1_rrf`
+세 컬렉션을 읽기 전용으로 검색한다. 기존 검색기 `Retriever`와 교재 BM25 인코더를 그대로
+사용한다. 이 옵션에서는 `--sqlite`가 필요 없다. 기존 `--sqlite` 경로는 시사용어사전만
+메모리에 복사하는 이전 평가 방식으로 유지한다. 서로 다른 검색 범위의 결과 파일을 섞지 않는다.
+
+```powershell
+python scripts/evaluate_ragas.py collect --golden 'C:\path\RAG_골든셋_v4.xlsx' --live-qdrant --output eval_outputs/08_three_source_ragas/full_samples.jsonl --run
+python scripts/evaluate_ragas.py score --input eval_outputs/08_three_source_ragas/full_samples.jsonl --output eval_outputs/08_three_source_ragas/full_scores.jsonl --summary eval_outputs/08_three_source_ragas/full_summary.json --csv eval_outputs/08_three_source_ragas/full_results.csv --below-csv eval_outputs/08_three_source_ragas/full_below_0_7.csv --concurrency 3 --run
+```
+
+`full_samples.jsonl`에는 문항별 검색 출처 컬렉션, `full_samples.collect_meta.json`에는
+평가 당시 컬렉션별 문서 수를 기록한다. `full_summary.json`의 `search`에는 사용한 검색
+방식과 실제 답변 근거로 반환된 출처별 건수를 기록한다. API 키는 결과에 남기지 않는다.
+중단 후 같은 출력 경로에 `--resume --run`을 붙이면 완료된 문항을 다시 호출하지 않는다.
+답변·검색 원문을 외부 LLM에 전송하므로 평가 대상 데이터의 전송 승인을 확인하고 실행한다.
+
+## 기존 시사용어사전 단독 평가
+
+기존 Hit@k/MRR 검색 평가와 별개로, 골든셋 질문에 대해 챗봇의 **대화 이력 없는 단일 자유 질문 답변**을 생성한다. 정답 문서가 있는 78문항은 RAGAS `Faithfulness`(검색 근거 충실도)와 `AnswerRelevancy`(질문 관련성)를 계산한다. `DB에 없음` 15문항은 RAGAS에 보내지 않고 `band=low`와 서버의 범위 밖 notice 반환 여부를 각각 집계한다. 이 두 RAGAS 지표에는 기대 답변 문장이 필요하지 않다.
 
 ## 입력과 실행 조건
 
