@@ -203,6 +203,54 @@ def test_three_default_sources_keep_their_own_slots() -> None:
     ]
 
 
+def test_real_three_source_search_reuses_one_query_embedding(caplog) -> None:
+    import logging
+
+    from chatbot.timing import RequestTiming, timing_scope
+
+    class Dense:
+        calls = 0
+
+        def encode(self, texts):
+            assert texts == ["신용관리"]
+            self.calls += 1
+            return np.array([[0.1, 0.2]], dtype=np.float32)
+
+    class Sparse:
+        collection = "fss_practical_finance_4e_3p_kure_v1"
+
+        def encode_query(self, query):
+            return models.SparseVector(indices=[12], values=[1.0])
+
+    class Client:
+        def query_points(self, collection_name=None, **kwargs):
+            assert kwargs.get("query", kwargs.get("prefetch", [None])[0]) is not None
+            if collection_name == "sisa_terms":
+                return SimpleNamespace(points=[Point("sisa_1", 0.7)])
+            if collection_name == "fss_practical_finance_4e_3p_kure_v1":
+                return SimpleNamespace(points=[SimpleNamespace(
+                    id="book_1", score=0.5, vector={"dense": [0.1, 0.2]},
+                    payload={"content_markdown": "신용관리 설명", "section": "신용관리"},
+                )])
+            if collection_name == "bok_economic_financial_terms_2026_kure_v1_rrf":
+                return SimpleNamespace(points=[Point("bok_1", 0.6)])
+            raise AssertionError(collection_name)
+
+    dense = Dense()
+    retriever = Retriever(Client(), dense, _settings(), sparse=Sparse())
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+        with timing_scope(RequestTiming("timing-test")):
+            result = retriever.search("신용관리")
+    assert dense.calls == 1
+    assert [source.concept_id for source in result.sources] == ["sisa_1", "book_1", "bok_1"]
+    assert result.band == "high" and result.top_score == 0.7
+    phases = [record.message for record in caplog.records if "timing-test" in record.message]
+    assert sum("embedding_complete" in phase for phase in phases) == 1
+    assert sum("embedding_reused" in phase for phase in phases) == 2
+    retriever.search("신용관리")
+    assert dense.calls == 2  # A later request must compute its own embedding.
+
+
 def test_fss_malformed_section_uses_chapter_title() -> None:
     from chatbot.retrieval import _retrieved
 

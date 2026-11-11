@@ -943,6 +943,8 @@ Stage 5는 앞 단계와 겹치는 개념도 `(concept_id, stage5)`로 별도 �
 
 `bok_economic_financial_terms_2026_kure_v1_rrf`는 이름에 `rrf`가 있어도 챗봇 기본 모드는 KURE-v1 Dense 단독이다. 실측 790개 포인트의 `dense` 벡터에서 상위 5개를 검색해 최대 2개를 근거로 사용한다. `content_markdown`을 답변 본문 근거로, `term`·`printed_page`·`source_url`을 출처 표시 메타데이터로 쓴다. label은 `2026_경제금융용어 800선_한국은행`이다. 이 소스는 학습 개념 감지와 band 판정에 관여하지 않는다. 따라서 세 소스에서 답변 근거는 최대 7개(시사 3·교재 2·한국은행 2)다. hybrid 비교가 필요하면 제공된 `search_glossary_800.py`와 별도 `hybrid_sparse_model.json`의 어휘 ID·IDF를 사용해야 한다.
 
+한 메시지의 세 소스 검색은 동일한 정규화 질의를 사용하므로 KURE-v1 질의 임베딩을 요청당 한 번만 만들고 나머지 소스에서 재사용한다. 다른 메시지의 질의 벡터는 공유하지 않는다. 운영 계측 로그에서는 최초 소스가 `embedding_complete`, 뒤의 소스가 `embedding_reused`로 기록된다. Qdrant 컬렉션 조회는 기존 순서와 검색 설정을 유지한다.
+
 1. 새 문서를 청크 JSONL로 만들고 각 payload에 `concept_id`, `term`, `text`, `source`, `stages`를 넣는다.
    기존 Qdrant payload의 `doc_id`는 하위 호환으로 읽지만 새 데이터와 애플리케이션 코드는
    `concept_id`를 기준으로 한다.
