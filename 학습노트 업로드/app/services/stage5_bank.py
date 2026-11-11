@@ -2,6 +2,7 @@
 import json
 from functools import lru_cache
 from pathlib import Path
+from app.services.quiz_language import localize_quiz_text
 from app.services.quiz_tone import choice_in_modern, explanation_in_hao, question_in_hao
 
 
@@ -17,9 +18,9 @@ def fixed_questions(concept_id):
         dict(
             question_index=q["question_number"],
             question_type="ox" if q["question_type"] == "OX" else "situation",
-            prompt=question_in_hao(q["question"]),
-            choices=[dict(key=(text if q["question_type"] == "OX" else "ABCD"[i]), text=text if q["question_type"] == "OX" else choice_in_modern(text))
+            prompt=question_in_hao(localize_quiz_text(q["question"])),
+            choices=[dict(key=(text if q["question_type"] == "OX" else "ABCD"[i]), text=text if q["question_type"] == "OX" else choice_in_modern(localize_quiz_text(text)))
                      for i, text in enumerate(q["options"])],
-            answer=q["answer"], explanation=explanation_in_hao(q["explanation"]),
+            answer=q["answer"], explanation=explanation_in_hao(localize_quiz_text(q["explanation"])),
         ) for q in questions
     ]

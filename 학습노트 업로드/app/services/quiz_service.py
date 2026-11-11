@@ -42,6 +42,7 @@ from app.schemas.quiz import (
     SubmittedAnswer,
 )
 from app.services.learning_callbacks import get_concept_status, report_quiz_generation_failed, report_quiz_result
+from app.services.quiz_language import localize_quiz_text, validate_korean_text
 from app.services.quiz_tone import choice_in_modern, explanation_in_hao, question_in_hao
 from app.timeutil import to_utc_iso, utc_now
 from database.settings import load_settings
@@ -66,6 +67,7 @@ questions 배열은 길이 3입니다.
 - question_index 1과 2는 question_type "ox"입니다. choices는 key "O"와 "X" 두 개입니다. answer는 "O" 또는 "X"입니다.
 - question_index 3은 question_type "situation"입니다. 학습자가 처한 상황을 제시하고, 행동 선택지 4개(key A, B, C, D) 중 알맞은 하나를 answer로 둡니다.
 각 문항은 prompt, choices, answer, explanation을 모두 포함합니다.
+문제, 보기, 해설은 반드시 한국어로 작성합니다. 학습 맥락이 외국어여도 일본어·중국어·영어 문장을 출력하지 않습니다. 영문 약어는 한국어로 풀어 씁니다. 숫자와 계산 기호를 사용할 수 있으며 O/X와 A~D는 보기 식별자로 사용합니다.
 모든 prompt의 문장과 질문은 반드시 현대 하오체(~하오/~이오/~있소/~하겠소?)로 씁니다.
 OX choices의 text는 각각 "O", "X"만 씁니다. 맞소·아니오·맞아요 등의 설명은 붙이지 않습니다.
 상황형 choices의 text는 현대식 평서문(~한다/~이다) 또는 간결한 명사구로 씁니다. 보기에는 하오체를 쓰지 않습니다.
@@ -84,6 +86,68 @@ ANSWER_DISCLOSURE = re.compile(
     r"|✅|✔|☑",
     re.IGNORECASE,
 )
+
+
+def _has_foreign_script(text: str) -> bool:
+    return any(
+        not char.isascii()
+        and unicodedata.category(char)[0] in {"L", "M"}
+        and not unicodedata.name(char, "").startswith("HANGUL")
+        for char in unicodedata.normalize("NFKC", text)
+    )
+
+
+def _is_korean_text(text: str, *, allow_numeric: bool = False) -> bool:
+    try:
+        validate_korean_text(text, allow_numeric=allow_numeric)
+    except ValueError:
+        return False
+    return True
+
+
+def _display_prose(text: str, fallback: str) -> str:
+    localized = localize_quiz_text(text)
+    return localized if _is_korean_text(localized) else fallback
+
+
+UNAVAILABLE_PROMPT = "이 문항의 한국어 문제를 확인할 수 없소."
+UNAVAILABLE_CHOICE = "이 보기의 한국어 내용을 확인할 수 없소."
+
+
+def _display_answer(text: str | None) -> str | None:
+    if text is None or text in ("O", "X", "A", "B", "C", "D"):
+        return text
+    localized = localize_quiz_text(text)
+    return localized if _is_korean_text(localized, allow_numeric=True) else "한국어 답안을 확인할 수 없소."
+
+
+def _display_prompt(text: str) -> str:
+    if text.strip() == "レンタ貧困は、単に家賃が高いという意味だけである。":
+        return "렌트 푸어는 단순히 임대료가 높다는 뜻이오."
+    return _display_prose(question_in_hao(text), UNAVAILABLE_PROMPT)
+
+
+def _display_choices(question: dict[str, Any]) -> list[QuizChoicePublic]:
+    choices = []
+    for choice in question["choices"]:
+        key = choice["key"]
+        if key not in ("O", "X", "A", "B", "C", "D"):
+            continue
+        text = key if question["question_type"] == "ox" else choice_in_modern(localize_quiz_text(choice["text"]))
+        if question["question_type"] != "ox" and not _is_korean_text(text, allow_numeric=True):
+            text = UNAVAILABLE_CHOICE
+        choices.append(QuizChoicePublic(key=key, text=text))
+    return choices
+
+
+def has_playable_korean_text(question: dict[str, Any]) -> bool:
+    choices = _display_choices(question)
+    return (
+        _display_prompt(question["prompt"]) != UNAVAILABLE_PROMPT
+        and len(choices) == len(question["choices"])
+        and all(choice.text != UNAVAILABLE_CHOICE for choice in choices)
+    )
+
 
 def _validate_public_text(text: str) -> None:
     if ANSWER_DISCLOSURE.search(text):
@@ -208,6 +272,8 @@ def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, A
         explanation = explanation_in_hao(str(item.get("explanation", "")).strip())
         if question_type not in {"ox", "situation"} or not prompt or not explanation:
             raise ValueError("문항 형식이 올바르지 않습니다.")
+        validate_korean_text(prompt)
+        validate_korean_text(explanation)
         _validate_public_text(prompt)
         try:
             question_index = int(item["question_index"])
@@ -220,6 +286,8 @@ def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, A
             text = str(choice.get("text", "")).strip()
             if not key or not text:
                 raise ValueError("보기가 비어 있습니다.")
+            if _has_foreign_script(key) or _has_foreign_script(text):
+                raise ValueError("보기에는 외국어 문자를 사용할 수 없습니다.")
             _validate_public_text(text)
             choices.append({"key": key, "text": text})
         if len(choices) < 2:
@@ -244,6 +312,8 @@ def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, A
             answer = mapped
         else:
             choices = [dict(choice, text=choice_in_modern(choice["text"])) for choice in choices]
+            for choice in choices:
+                validate_korean_text(choice["text"], allow_numeric=True)
             keys = [choice["key"] for choice in choices]
             if len(keys) != len(set(keys)):
                 raise ValueError("상황형 보기 키가 중복되었습니다.")
@@ -293,8 +363,8 @@ def _public_question(question: dict[str, Any]) -> QuizQuestionPublic:
     return QuizQuestionPublic(
         question_index=question["question_index"],
         question_type=question["question_type"],
-        prompt=question_in_hao(question["prompt"]),
-        choices=[QuizChoicePublic(key=choice["key"], text=choice["key"] if question["question_type"] == "ox" else choice_in_modern(choice["text"])) for choice in question["choices"]],
+        prompt=_display_prompt(question["prompt"]),
+        choices=_display_choices(question),
     )
 
 
@@ -349,11 +419,11 @@ def _submit_response(quiz: QuizSet, submission: QuizSubmission) -> SubmitQuizRes
             QuizQuestionResult(
                 question_index=question["question_index"],
                 question_type=question["question_type"],
-                prompt=question_in_hao(question["prompt"]),
-                submitted_answer=answers[question["question_index"]],
+                prompt=_display_prompt(question["prompt"]),
+                submitted_answer=_display_answer(answers[question["question_index"]]),
                 is_correct=bool(is_correct),
-                answer=question["answer"],
-                explanation=explanation_in_hao(question["explanation"]),
+                answer=_display_answer(question["answer"]),
+                explanation=_display_prose(explanation_in_hao(question["explanation"]), "이 문항의 한국어 해설을 확인할 수 없소."),
             )
         )
     learning_module_result = LearningModuleResult(
@@ -541,6 +611,8 @@ class QuizService:
             return _submit_response(quiz, first)
 
         started = time.perf_counter()
+        if any(not has_playable_korean_text(question) for question in quiz.questions):
+            raise invalid_submission("한국어 문제와 보기를 확인할 수 없어 제출할 수 없습니다.")
         stored_answers = _ordered_answers(submitted_answers)
         flags, correct_count, is_passed = _grade(list(quiz.questions or []), stored_answers)
         submission = QuizSubmission(
@@ -720,12 +792,12 @@ def _note_items(quiz: QuizSet, submission: QuizSubmission | None) -> list[Learni
                 learning_session_id=quiz.learning_session_id,
                 question_index=index,
                 question_type=question["question_type"],
-                prompt=question_in_hao(question["prompt"]),
-                choices=[QuizChoicePublic(key=choice["key"], text=choice["key"] if question["question_type"] == "ox" else choice_in_modern(choice["text"])) for choice in question["choices"]],
-                submitted_answer=answers.get(index) if submitted else None,
+                prompt=_display_prompt(question["prompt"]),
+                choices=_display_choices(question),
+                submitted_answer=_display_answer(answers.get(index)) if submitted else None,
                 is_correct=flags.get(index) if submitted else None,
-                answer=question["answer"] if submitted else None,
-                explanation=explanation_in_hao(question["explanation"]) if submitted else None,
+                answer=_display_answer(question["answer"]) if submitted else None,
+                explanation=_display_prose(explanation_in_hao(question["explanation"]), "이 문항의 한국어 해설을 확인할 수 없소.") if submitted else None,
                 is_passed=submission.is_passed if submission is not None else None,
                 created_at=created_at,
             )
