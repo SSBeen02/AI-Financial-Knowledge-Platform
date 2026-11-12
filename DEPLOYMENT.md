@@ -48,6 +48,23 @@ python -m uvicorn run_integration:app --host 0.0.0.0 --port 8000 --workers 1
 
 현재 로컬 변경을 GitHub에 반영한 뒤 Cloudtype에서 위 설정으로 배포해야 서비스에 적용된다. 이 문서 생성만으로 원격 배포나 프론트 API 주소가 변경되지는 않는다.
 
+### 학습 메시지 502 추적
+
+`OPTIONS 200` 이후 `POST /learning/messages/stream 502`이면 응답 본문의
+`message`와 `request_id`를 먼저 확인한다. `검색 서비스 호출에 실패했습니다.`는
+SSE 시작 전 검색 준비 단계의 실패다. `/health 200`은 이 검색 경로를 검증하지 않는다.
+
+2026-11-10 운영 컨테이너에서 Qdrant client 1.20.0, server 1.19.1과 컬렉션
+목록 `sisa_terms`만 확인했다. 기본 검색에 필요한
+`fss_practical_finance_4e_3p_kure_v1`,
+`bok_economic_financial_terms_2026_kure_v1_rrf`가 이 연결에 없어 복구가 필요하다.
+교재 BM25 어휘 파일만으로는 컬렉션의 본문·벡터를 복원할 수 없다.
+
+검색 실패 시 `Retrieval failed collection=... mode=... error_type=...` 로그로 소스를
+찾고 `Learning API failure request_id=...`로 해당 요청을 추적한다. 질문·인증 헤더·
+예외 원문은 기록하지 않는다. 이 변경은 배포 후 실제 메시지의 첫 토큰과 `done` 수신을
+확인해야 운영 해결 여부를 판정할 수 있다.
+
 ## 환경변수와 키 관리
 
 | 변수 | 용도 / 주의 |
