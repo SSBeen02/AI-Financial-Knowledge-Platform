@@ -1,7 +1,7 @@
 """사용자별 이벤트 반영과 게임 상태 조회. 모든 변경은 캐릭터 잠금 안에서 수행한다."""
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Protocol
 from uuid import uuid4
 
@@ -28,6 +28,13 @@ class EventSource(Protocol):
 class RankVisual:
     outfit: str
     background: str
+
+
+def _next_updated_at(previous: datetime) -> datetime:
+    """Keep update timestamps increasing when the OS clock repeats a tick."""
+    if previous.tzinfo is None:
+        previous = previous.replace(tzinfo=timezone.utc)
+    return max(utcnow(), previous + timedelta(microseconds=1))
 
 
 class GameService:
@@ -78,7 +85,7 @@ class GameService:
             character = self._locked_character(session, user_id)
             state = session.get(CharacterStateRow, character.character_id)
             state.active_title = title_id
-            state.updated_at = utcnow()
+            state.updated_at = _next_updated_at(state.updated_at)
             return self._state(session, user_id)
         return self.uow.run(work)
 
@@ -127,7 +134,7 @@ class GameService:
             if status == "success":
                 before_balance = state.coin_balance
                 state.coin_balance -= item.accessory.price
-                state.updated_at = utcnow()
+                state.updated_at = _next_updated_at(state.updated_at)
                 session.add_all([
                     CoinTransactionRow(tx_id=str(uuid4()), character_id=cid, amount=-item.accessory.price,
                                        reason="purchase", idempotency_key=f"purchase:{key}",
@@ -164,7 +171,7 @@ class GameService:
                     session.add(EquippedAccessoryRow(character_id=cid, accessory_id=accessory_id))
                 else:
                     equipped.accessory_id, equipped.equipped_at = accessory_id, utcnow()
-            state.updated_at = utcnow()
+            state.updated_at = _next_updated_at(state.updated_at)
             self._audit(session, character, "accessory_equipped", "user_action", str(uuid4()),
                         {"accessory_id": before_item}, {"accessory_id": accessory_id})
             session.flush()
@@ -356,8 +363,9 @@ class GameService:
                             {"stage": stage, "reward_id": reward.story_reward_id, "owned": True})
         progress.passed_concept_count, progress.current_story_step = event.passed_count, step
         progress.last_event_id = event.event_id
+        progress.updated_at = _next_updated_at(progress.updated_at)
         self._set_crown(session, cid, state, self.rules.crown_for(stage, event.passed_count), event.event_id)
-        state.updated_at = utcnow()
+        state.updated_at = _next_updated_at(state.updated_at)
 
     def _complete(self, session, cid, state, event, stage):
         completed = session.get(StageCompletionRow, (cid, stage))
@@ -381,7 +389,7 @@ class GameService:
             self._set_crown(session, cid, state, self.rules.crown_for(5, event.passed_count, completed=True), event.event_id)
         state.completion_presentation = {"stage": stage, "event_id": event.event_id,
                                          "rank": state.current_rank, "crown": state.crown}
-        state.updated_at = utcnow()
+        state.updated_at = _next_updated_at(state.updated_at)
 
     @staticmethod
     def _set_crown(session, cid, state, crown, event_id):
