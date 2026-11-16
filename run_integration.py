@@ -41,6 +41,7 @@ from chatbot.integrations import get_current_user_id as chat_user_id
 from chatbot.router import router as chat_router, _call as learning_call
 from dependencies import get_current_user_id as quiz_user_id
 from server_auth import auth_settings, get_verified_user_id
+from integration_test_stage import router as integration_test_stage_router
 from game.integration import prepare_game_runtime
 from game.router import router as game_router
 from pretest.dependencies import get_current_user_id as pretest_user_id
@@ -129,7 +130,7 @@ def create_app() -> FastAPI:
         CORSMiddleware, allow_origins=settings.cors_origins,
         allow_origin_regex=FIGMA_MAKE_PREVIEW_ORIGIN,
         allow_credentials=True, allow_methods=["GET", "POST", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID"],
+        allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "X-Request-ID", "X-Integration-Test-Token"],
         expose_headers=["X-Request-ID"],
     )
     application.dependency_overrides[chat_user_id] = get_verified_user_id
@@ -137,6 +138,7 @@ def create_app() -> FastAPI:
     application.dependency_overrides[pretest_user_id] = get_verified_user_id
     application.dependency_overrides[get_diagnostic_service] = get_pretest_service
     application.include_router(chat_router)
+    application.include_router(integration_test_stage_router)
     application.include_router(quiz_router)
     application.include_router(quiz_review_router)
     application.include_router(game_router)

@@ -5,11 +5,11 @@ from __future__ import annotations
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
 from fastapi import Depends, Header, HTTPException
-from sqlalchemy import case, delete, func, select
+from sqlalchemy import case, delete, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -422,6 +422,90 @@ class SqlConceptStatusService(ConceptStatusService):
                 raise ConceptStatusError("현재 스테이지만 전체 통과 처리할 수 있습니다.")
             self._pass_stage_in_session(session, user_id, stage)
             session.commit()
+
+    def complete_current_stage_for_integration_test(
+        self, user_id: str, expected_stage_id: str
+    ) -> dict[str, Any]:
+        """통합시험 계정의 현재 Stage와 게임 이벤트를 원자적으로 완료한다."""
+        with Session(self._engine) as session:
+            if session.bind.dialect.name == "postgresql":
+                session.execute(
+                    text("SELECT pg_advisory_xact_lock(hashtext(:user_id))"),
+                    {"user_id": user_id},
+                )
+            current_stage = self._current_stage(session, user_id)
+            if current_stage != expected_stage_id:
+                raise ConceptStatusError(
+                    f"현재 Stage는 {current_stage}입니다. 요청한 Stage를 완료하지 않았습니다."
+                )
+            progress = session.get(UserStageProgressRow, (user_id, current_stage))
+            if progress is not None and progress.status == "completed":
+                raise ConceptStatusError("현재 Stage는 이미 완료되었습니다.")
+
+            concepts = self._stage_concepts(session, current_stage)
+            rows = session.scalars(
+                select(UserConceptProgressRow).where(
+                    UserConceptProgressRow.user_id == user_id,
+                    UserConceptProgressRow.stage_id == current_stage,
+                )
+            ).all()
+            if any(row.status == STATUS_IN_PROGRESS for row in rows):
+                raise ConceptStatusError("학습 중인 개념을 먼저 완료해야 합니다.")
+            passed_ids = {row.concept_id for row in rows if row.status == STATUS_PASSED}
+            missing = [concept for concept in concepts if concept.concept_id not in passed_ids]
+            if not concepts or not missing:
+                raise ConceptStatusError("완료할 잔여 개념이 없습니다.")
+
+            now = datetime.now(timezone.utc)
+            self._pass_stage_in_session(session, user_id, current_stage)
+            next_stage_id = self._ordered_stage_ids(session)
+            index = next_stage_id.index(current_stage)
+            next_stage = next_stage_id[index + 1] if index + 1 < len(next_stage_id) else None
+            total_count = len(concepts)
+            for passed_count, concept in enumerate(missing, start=len(passed_ids) + 1):
+                event_time = now + timedelta(microseconds=passed_count)
+                event_id = str(uuid.uuid4())
+                payload = {
+                    "event_id": event_id,
+                    "event_type": "concept_passed",
+                    "user_id": user_id,
+                    "stage_id": current_stage,
+                    "concept_id": concept.concept_id,
+                    "first_pass": True,
+                    "passed_count": passed_count,
+                    "total_count": total_count,
+                    "stage_completed": passed_count == total_count,
+                    "occurred_at": _iso_utc(event_time),
+                }
+                session.add(LearningEventRow(
+                    event_id=event_id, event_type="concept_passed", user_id=user_id,
+                    payload=payload, occurred_at=event_time, processed_at=None,
+                ))
+            stage_event_time = now + timedelta(microseconds=total_count + 1)
+            event_id = str(uuid.uuid4())
+            payload = {
+                "event_id": event_id,
+                "event_type": "stage_completed",
+                "user_id": user_id,
+                "stage_id": current_stage,
+                "passed_count": total_count,
+                "total_count": total_count,
+                "next_stage_id": next_stage,
+                "occurred_at": _iso_utc(stage_event_time),
+            }
+            session.add(LearningEventRow(
+                event_id=event_id, event_type="stage_completed", user_id=user_id,
+                payload=payload, occurred_at=stage_event_time, processed_at=None,
+            ))
+            session.commit()
+            return {
+                "completed_stage_id": current_stage,
+                "next_stage_id": next_stage,
+                "previously_passed_count": len(passed_ids),
+                "test_completed_count": len(missing),
+                "total_count": total_count,
+                "event_count": len(missing) + 1,
+            }
 
     def reset_user(self, user_id: str) -> None:
         with Session(self._engine) as session:

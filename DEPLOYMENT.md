@@ -67,6 +67,8 @@ SSE 시작 전 검색 준비 단계의 실패다. `/health 200`은 이 검색 �
 
 ## 환경변수와 키 관리
 
+통합시험 Stage 보조 완료 API를 사용할 때만 `INTEGRATION_TEST_USER_ID`에 테스트 계정의 Supabase Auth UUID를, `INTEGRATION_TEST_STAGE_TOKEN`에 32자 이상 무작위 비밀값을 Cloudtype 시크릿으로 설정한다. 둘 중 하나라도 없으면 `/learning/integration-test/complete-current-stage`는 404로 비활성화된다. 담당자에게 토큰은 안전한 경로로 전달하고 프론트 코드·저장소·테스트 결과에 넣지 않는다. 통합시험 종료 후 두 시크릿을 제거한다. 이 API는 Stage 3~5의 현재 Stage만 완료하며 요청에 `expected_stage_id`를 요구한다. 세부 절차는 `docs/통합테스트_공통_실행기준.md`를 따른다.
+
 | 변수 | 용도 / 주의 |
 | --- | --- |
 | `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL` | 챗봇 LLM. 현재 인수인계는 Upstage이며 퀴즈 OpenAI 키와 별개 |
