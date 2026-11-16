@@ -8,3 +8,10 @@ __pycache__/
 .test-deps/
 .test-tmp/
 *.db
+
+# Figma Make UI exports generated in the local workspace
+/assets/ui/
+
+*.png
+*.jpg
+*.jpeg
