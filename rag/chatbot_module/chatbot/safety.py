@@ -41,9 +41,31 @@ _EDUCATIONAL_CONTEXT = (
 )
 _PERSONAL_ADVICE = (
     "종목추천", "매수추천", "매도시점", "하나만골라", "전부넣을", "올인",
-    "지금사도", "지금살", "내게맞는상품", "내상황에맞는", "대출한도최대화",
+    "내게맞는상품", "내상황에맞는", "대출한도최대화",
     "최대한빌릴", "수익보장해", "확정수익줘", "무조건수익",
 )
+_TRADE_DECISIONS = (
+    "사야", "살까", "팔아야", "팔까", "사도돼", "사도될까", "지금살", "지금팔",
+    "매수할까", "매도할까",
+)
+_INVESTMENT_TARGETS = (
+    "주식", "주가", "종목", "코인", "비트코인", "이더리움", "가상자산", "etf", "펀드",
+    "채권", "부동산", "아파트", "삼성전자",
+)
+
+
+def _investment_decision_question(compact: str) -> bool:
+    """투자 대상과 본인의 매매 판단 요청이 함께 있을 때만 REVIEW로 분류한다."""
+    if compact.startswith(("왜", "어째서", "어떻게", "언제")):
+        return False
+    target = any(term in compact for term in _INVESTMENT_TARGETS)
+    target = target or ("금" in compact and "투자" in compact)
+    if not target or not any(term in compact for term in _TRADE_DECISIONS):
+        return False
+    return any(term in compact for term in (
+        "지금", "내가", "제가", "나는", "저는", "할까", "해야돼", "사야돼",
+        "살까", "팔까", "사도돼", "사도될까",
+    ))
 _FRAUD = ("금융사기", "투자사기", "보이스피싱", "스미싱", "금융기관사칭", "금전편취")
 _FRAUD_ARTIFACT = ("대본", "문자", "메시지", "인증서", "안내문", "증명서", "수익인증")
 _MAKE = ("만들", "작성", "써줘", "보내", "위조", "조작", "속이", "기만")
@@ -102,7 +124,7 @@ def classify_question(question: str, llm: LLMAdapter) -> SafetyLevel:
         or (has(("세금", "소득")) and has(("숨기", "탈세", "허위신고")) and has(("방법", "하는법", "도와", "알려")))
     ):
         return "BLOCK"
-    if has(("지금사도", "지금살", "사도될까", "전부넣을", "하나만골라")):
+    if _investment_decision_question(compact) or has(("전부넣을", "하나만골라")):
         return "REVIEW"
     if (
         has(("etf", "주식", "종목", "펀드", "코인"))

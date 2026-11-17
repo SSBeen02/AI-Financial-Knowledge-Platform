@@ -317,4 +317,5 @@ class MessageListItem(BaseModel):
     is_related: bool | None = None
     band: Band | None = None
     display_sources: list[SourceOut]
+    notice: str | None = None
     created_at: datetime

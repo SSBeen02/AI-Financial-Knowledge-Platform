@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from chatbot.concept_synonyms import automatic_synonym_report
 from chatbot.schemas import ChatMode, ConceptOut, ConceptsResponse
 from chatbot.tone import (
     ChatTone,
@@ -80,6 +81,7 @@ class ConceptStatusReader(Protocol):
 
 
 def load_stage_catalog(path: Path) -> StageCatalog:
+    automatic_synonym_report()
     if not path.is_file():
         raise FileNotFoundError(f"stages.json을 찾을 수 없습니다: {path}")
     data = json.loads(path.read_text(encoding="utf-8"))

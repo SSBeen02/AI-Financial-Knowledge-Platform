@@ -32,6 +32,7 @@ from chatbot.concepts import (
     recommend_concepts,
 )
 from chatbot.config import AnswerKnowledgeMode, Settings
+from chatbot.concept_synonyms import concept_terms, explicit_matches
 from chatbot.integrations import ConceptStatusService
 from chatbot.llm import LLMAdapter, LLMError, Utf8ChunkDecoder
 from chatbot.prompts import HistoryTurn, Prompt, build_answer_prompt
@@ -39,7 +40,6 @@ from chatbot.relevance import (
     detect_concept,
     is_question_related,
     mentioned_concepts,
-    normalize_term,
 )
 
 from chatbot.retrieval import ConceptCache, CachedConcept, RetrievalResult, RetrievedDoc, Retriever, PUBLIC_DATA_SOURCE_LABEL, FSS_COLLECTION, display_source_label, normalize_search_query, to_source_out
@@ -78,6 +78,7 @@ from chatbot.tone import (
     ChatTone,
     excluded_concept_notice,
     extra_concept_notice,
+    free_question_notice,
     low_band_notice,
     learning_guide,
     no_active_session_complete_hint,
@@ -177,6 +178,9 @@ class PreparedMessage:
     answer_knowledge_mode: AnswerKnowledgeMode
     safety_level: SafetyLevel = "ALLOW"
     safe_answer: str | None = None
+    catalog: StageCatalog | None = None
+    cache: ConceptCache | None = None
+    screen_mode: ChatMode = "normal"
 
 
 def list_concept_page(
@@ -479,6 +483,8 @@ def prepare_message(
         notice = None
     if suggested_concept is not None:
         notice = suggested_concept_notice(suggested_concept.term, settings.chat_tone)
+    if notice is None and plan.concept is None and suggested_concept is None:
+        notice = free_question_notice(settings.chat_tone)
     prompt = build_answer_prompt(
         question=request.message,
         current_concept=cached,
@@ -509,6 +515,9 @@ def prepare_message(
         chat_tone=settings.chat_tone,
         answer_knowledge_mode=settings.answer_knowledge_mode,
         current_concept=cached,
+        catalog=catalog,
+        cache=cache,
+        screen_mode=screen.mode,
     )
 
 
@@ -695,6 +704,9 @@ def _persist_prepared_message(
             answer=answer,
         )
     ]
+    notice, suggested_concept = _notice_from_answer_definition(
+        prepared, answer, status_service
+    )
     pair = store.save_message_pair(
         user_id=prepared.user_id,
         session_id=session.session_id if session is not None else None,
@@ -705,6 +717,7 @@ def _persist_prepared_message(
         top_score=retrieval.top_score,
         sources=[source.model_dump() for source in source_models],
         display_sources=[source.model_dump() for source in display_source_models],
+        notice=notice,
         latency_ms=latency_ms,
     )
     concept_state = None
@@ -728,9 +741,72 @@ def _persist_prepared_message(
         sources=source_models,
         display_sources=display_source_models,
         message_id=pair.assistant.message_id,
-        notice=prepared.notice,
-        suggested_concept=prepared.suggested_concept,
+        notice=notice,
+        suggested_concept=suggested_concept,
     )
+
+
+def _notice_from_answer_definition(
+    prepared: PreparedMessage,
+    answer: str,
+    status_service: ConceptStatusService,
+) -> tuple[str | None, SuggestedConceptOut | None]:
+    """첫 정의 문장의 사전 근거가 확인될 때만 자유 질문 안내를 재판정한다."""
+    notice = prepared.notice
+    suggested = prepared.suggested_concept
+    if (
+        prepared.plan.concept is not None
+        or suggested is not None
+        or notice != free_question_notice(prepared.chat_tone)
+        or prepared.screen_mode != "normal"
+        or prepared.catalog is None
+        or prepared.cache is None
+        or prepared.retrieval.band == "low"
+    ):
+        return notice, suggested
+
+    try:
+        first_sentence, matches = _first_definition_sources(answer, prepared.retrieval.sources)
+        concept_ids = {doc.concept_id for doc in prepared.retrieval.concept_hits}
+        matched = next(
+            (doc for doc in matches if doc.collection == "sisa_terms" and doc.concept_id in concept_ids),
+            None,
+        )
+        if matched is None:
+            return notice, suggested
+        focused = RetrievalResult(
+            sources=[matched], concept_hits=[matched],
+            band=prepared.retrieval.band, top_score=matched.score,
+        )
+        replacement = _message_notice(
+            catalog=prepared.catalog,
+            status_service=status_service,
+            cache=prepared.cache,
+            user_id=prepared.user_id,
+            question=first_sentence,
+            retrieval=focused,
+            chat_tone=prepared.chat_tone,
+        )
+        if replacement is not None:
+            return replacement, suggested
+        stage_id = status_service.get_current_stage(prepared.user_id)
+        statuses = status_service.get_statuses(prepared.user_id, stage_id)
+        detected = detect_concept(
+            question=first_sentence,
+            candidates=[
+                ref for ref in prepared.catalog.stages[stage_id].concepts
+                if statuses.get(ref.concept_id, STATUS_NOT_STARTED) == STATUS_NOT_STARTED
+            ],
+            cache=prepared.cache,
+            retrieval=focused,
+            band_high=float("inf"),
+        )
+        if detected is not None:
+            suggested = SuggestedConceptOut(concept_id=detected.concept_id, term=detected.term)
+            return suggested_concept_notice(detected.term, prepared.chat_tone), suggested
+    except Exception:
+        logger.exception("Answer definition notice classification failed")
+    return notice, suggested
 
 
 _STREAM_END = object()
@@ -1312,24 +1388,24 @@ def _message_notice(
     """Build deterministic UI guidance without asking the LLM to phrase it."""
 
     top = retrieval.concept_hits[0] if retrieval.concept_hits else None
-    explicitly_mentioned = top is not None and _mentions_retrieved_doc(question, top)
-    if explicitly_mentioned and top is not None:
-        stage_tags = set(top.stages)
-        if "excluded" in stage_tags:
-            return excluded_concept_notice(top.term, chat_tone)
-        if "extra" in stage_tags:
-            return extra_concept_notice(top.term, chat_tone)
-
-    normalized_question = normalize_term(question)
+    entries = [
+        (concept.concept_id, term)
+        for concept in cache.values()
+        for term in concept_terms(concept.concept_id, concept.term, concept.aliases)
+    ]
+    entries.extend(
+        (hit.concept_id, term)
+        for hit in retrieval.concept_hits
+        for term in (hit.term, *hit.aliases)
+    )
+    matches = explicit_matches(question, entries)
+    matched_ids = {concept_id for concept_id, _ in matches}
+    explicitly_mentioned = top is not None and top.concept_id in matched_ids
     rank = {hit.concept_id: index for index, hit in enumerate(retrieval.concept_hits)}
     mentioned_learning = [
         concept
         for concept in cache.values()
-        if any(
-            normalized_term and normalized_term in normalized_question
-            for term in (concept.term, *concept.aliases)
-            if (normalized_term := normalize_term(term))
-        )
+        if concept.concept_id in matched_ids
     ]
     mentioned_learning.sort(key=lambda concept: rank.get(concept.concept_id, len(rank)))
     learning_doc = mentioned_learning[0] if mentioned_learning else None
@@ -1385,18 +1461,16 @@ def _message_notice(
             ):
                 return passed_concept_notice(learning_doc.term, chat_tone)
 
+    if explicitly_mentioned and top is not None and learning_doc is None:
+        stage_tags = set(top.stages)
+        if "excluded" in stage_tags:
+            return excluded_concept_notice(top.term, chat_tone)
+        if "extra" in stage_tags:
+            return extra_concept_notice(top.term, chat_tone)
+
     if retrieval.band == "low":
         return low_band_notice(chat_tone)
     return None
-
-
-def _mentions_retrieved_doc(question: str, doc: RetrievedDoc) -> bool:
-    normalized_question = normalize_term(question)
-    return any(
-        normalized_term and normalized_term in normalized_question
-        for term in (doc.term, *doc.aliases)
-        if (normalized_term := normalize_term(term))
-    )
 
 
 def _ensure_answer_suffixes(
@@ -1426,14 +1500,26 @@ def _ensure_answer_suffixes(
             return f"{result}\n\n핵심 정의 출처: {PUBLIC_DATA_SOURCE_LABEL} ({current_concept.term})"
         return result
     if knowledge_mode == "dictionary_plus" and (retrieval.sources or current_concept is not None):
-        first_sentence = re.split(r"(?<=[.!?。])\s+", result, maxsplit=1)[0]
-        matched = [
-            source for source in retrieval.sources
-            if _definition_term_matches(first_sentence, source.term, source.aliases)
-        ]
+        first_sentence, matched = _first_definition_sources(result, retrieval.sources)
         current_matches = current_concept is not None and _definition_term_matches(
             first_sentence, current_concept.term, current_concept.aliases
         )
+        if current_matches and current_concept is not None:
+            current_spans = _definition_term_spans(
+                first_sentence, current_concept.term, current_concept.aliases
+            )
+            source_spans = [
+                span for source in retrieval.sources
+                for span in _definition_term_spans(first_sentence, source.term, source.aliases)
+            ]
+            current_matches = any(
+                not any(
+                    source_start <= start and end <= source_end
+                    and source_end - source_start > end - start
+                    for source_start, source_end in source_spans
+                )
+                for start, end in current_spans
+            )
         if matched or current_matches:
             entries = [
                 f"{display_source_label(source.label, source.collection)} ({source.term})"
@@ -1474,18 +1560,49 @@ def _ensure_answer_suffixes(
     return f"{result}\n\n{prefix} {', '.join(labels)}"
 
 
+def _first_definition_sources(
+    answer: str, sources: list[RetrievedDoc]
+) -> tuple[str, list[RetrievedDoc]]:
+    """출처 표시와 자유 질문 안내에 같은 첫 문장·용어 일치 기준을 적용한다."""
+    body = answer.split("\n\n", 1)[0]
+    first_sentence = re.split(r"(?<=[.!?。])\s+", body, maxsplit=1)[0]
+    spans_by_source = [
+        (source, span)
+        for source in sources
+        for span in _definition_term_spans(first_sentence, source.term, source.aliases)
+    ]
+    matched = [
+        source for source in sources
+        if any(
+            item is source and not any(
+                other_start <= start and end <= other_end
+                and other_end - other_start > end - start
+                for _, (other_start, other_end) in spans_by_source
+            )
+            for item, (start, end) in spans_by_source
+        )
+    ]
+    return first_sentence, matched
+
+
 def _definition_term_matches(sentence: str, term: str, aliases: tuple[str, ...]) -> bool:
-    """첫 정의 문장의 완전한 용어만 인정하며 긴 단어 안의 부분 문자열은 제외한다."""
+    """첫 문장에서 용어가 정의 대상인 표현에만 출처·안내 근거를 부여한다."""
+    return bool(_definition_term_spans(sentence, term, aliases))
+
+
+def _definition_term_spans(sentence: str, term: str, aliases: tuple[str, ...]) -> list[tuple[int, int]]:
     base_term = re.sub(r"\([^)]*\)", "", term).strip()
     candidates = [base_term, *re.split(r"[/·]", base_term), *re.findall(r"\(([^)]*)\)", term), *aliases]
-    suffix = r"(?:은|는|이|가|란|이라|이라고|라고|라는|이라는|을|를|과|와|도|까지|부터|의|으로|로|이오|요)?(?![가-힣A-Za-z0-9])"
+    subject = r"(?:이라는\s*것은|라는\s*것은|이란|란|은|는)(?![가-힣A-Za-z0-9])"
+    naming = r"(?:(?:이라고|라고)\s*(?:부르|불러|하)|(?:이라|라)\s*하)"
+    spans: list[tuple[int, int]] = []
     for candidate in dict.fromkeys(c.strip() for c in candidates if c.strip()):
         if len(candidate) < 2:
             continue
-        pattern = r"(?<![가-힣A-Za-z0-9])" + r"\s*".join(re.escape(char) for char in candidate.replace(" ", "")) + suffix
-        if re.search(pattern, sentence, flags=re.IGNORECASE):
-            return True
-    return False
+        name = r"\s*".join(re.escape(char) for char in candidate.replace(" ", ""))
+        pattern = rf"(?<![가-힣A-Za-z0-9]){name}(?:\s*\([^()]*\))?\s*(?:{subject}|{naming})"
+        spans.extend(match.span() for match in re.finditer(pattern, sentence, flags=re.IGNORECASE))
+    return spans
 
 
 def _message_list_item(
@@ -1519,6 +1636,7 @@ def _message_list_item(
         is_related=message.is_related,
         band=message.band,  # type: ignore[arg-type]
         display_sources=display_sources,
+        notice=message.notice,
         created_at=message.created_at,
     )
 

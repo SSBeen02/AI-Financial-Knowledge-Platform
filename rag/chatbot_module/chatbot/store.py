@@ -17,6 +17,7 @@ from sqlalchemy import (
     DateTime,
     Index,
     String,
+    Text,
     UniqueConstraint,
     create_engine,
     delete,
@@ -116,6 +117,7 @@ class MessageRecord:
     top_score: float | None
     sources: list[dict[str, Any]] | None
     display_sources: list[dict[str, Any]] | None
+    notice: str | None
     latency_ms: int | None
     created_at: datetime
 
@@ -200,6 +202,7 @@ class ChatStore(ABC):
         sources: list[dict[str, Any]],
         latency_ms: int,
         display_sources: list[dict[str, Any]] | None = None,
+        notice: str | None = None,
     ) -> StoredMessagePair: ...
 
     @abstractmethod
@@ -309,6 +312,7 @@ class LearningMessageRow(Base):
     top_score: Mapped[float | None] = mapped_column(nullable=True)
     sources: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
     display_sources: Mapped[list[Any] | None] = mapped_column(JSON, nullable=True)
+    notice: Mapped[str | None] = mapped_column(Text, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
@@ -395,6 +399,15 @@ class SqlChatStore(ChatStore):
                     "learning_sessions.stage_id가 없습니다. "
                     "migrations/004_rename_learning_sessions_stage.sql을 먼저 적용하세요."
                 )
+            message_columns = {
+                column["name"]
+                for column in inspect(self._engine).get_columns("learning_messages")
+            }
+            if "notice" not in message_columns:
+                raise DatabaseSchemaNotReadyError(
+                    "learning_messages.notice가 없습니다. "
+                    "migrations/006_add_learning_message_notice.sql을 먼저 적용하세요."
+                )
 
     def close(self) -> None:
         self._engine.dispose()
@@ -446,6 +459,11 @@ class SqlChatStore(ChatStore):
                 with self._engine.begin() as connection:
                     connection.exec_driver_sql(
                         "ALTER TABLE learning_messages ADD COLUMN display_sources JSON"
+                    )
+            if "notice" not in columns:
+                with self._engine.begin() as connection:
+                    connection.exec_driver_sql(
+                        "ALTER TABLE learning_messages ADD COLUMN notice TEXT NULL"
                     )
             with self._engine.begin() as connection:
                 for column in ("sources", "display_sources"):
@@ -662,6 +680,7 @@ class SqlChatStore(ChatStore):
         sources: list[dict[str, Any]],
         latency_ms: int,
         display_sources: list[dict[str, Any]] | None = None,
+        notice: str | None = None,
     ) -> StoredMessagePair:
         if band not in {"high", "mid", "low"}:
             raise ChatStoreError(f"알 수 없는 band입니다: {band}")
@@ -681,6 +700,7 @@ class SqlChatStore(ChatStore):
             top_score=None,
             sources=None,
             display_sources=None,
+            notice=None,
             latency_ms=None,
             created_at=now,
         )
@@ -695,6 +715,7 @@ class SqlChatStore(ChatStore):
             top_score=top_score,
             sources=sources,
             display_sources=display_sources or [],
+            notice=notice,
             latency_ms=latency_ms,
             created_at=now + timedelta(microseconds=1),
         )
@@ -984,6 +1005,7 @@ def _message_record(
         top_score=row.top_score,
         sources=sources,
         display_sources=display_sources,
+        notice=row.notice,
         latency_ms=row.latency_ms,
         created_at=_as_utc(row.created_at),
     )
