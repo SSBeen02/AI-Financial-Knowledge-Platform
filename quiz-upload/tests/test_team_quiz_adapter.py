@@ -133,6 +133,14 @@ class TeamQuizAdapterTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_grading_reports_pass_fail_and_duplicate_submission_id(self):
         async def generate(**kwargs):
+            if kwargs["learning_session_id"] == "grade-False":
+                prompts = [
+                    "여러 사람이 담당 업무를 나누면 분업이라 하오.",
+                    "각자의 전문 분야를 맡아 생산하는 방식은 분업이오.",
+                    "공장에서 작업자가 조립과 포장을 각각 맡는 상황을 고르시오.",
+                ]
+                return [dict(question, prompt=prompt)
+                        for question, prompt in zip(SAMPLE_QUESTIONS, prompts)]
             return SAMPLE_QUESTIONS
         adapter = TeamQuizService(asyncio.get_running_loop(), QuizService(generate))
         for passed, choices in [(True, ["O", "O", "A"]), (False, ["X", "X", "B"])]:

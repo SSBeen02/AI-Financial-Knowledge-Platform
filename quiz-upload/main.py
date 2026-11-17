@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from app.services.learning_notes import router as learning_note_concepts_router
 
 from app.api.v1.endpoints.quizzes import router as quizzes_router
 from app.api.v1.endpoints.quiz_reviews import router as reviews_router
@@ -46,6 +47,7 @@ app.add_middleware(
 
 app.include_router(quizzes_router)
 app.include_router(reviews_router)
+app.include_router(learning_note_concepts_router)
 register_quiz_exception_handlers(app)
 
 

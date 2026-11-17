@@ -32,6 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.endpoints.quizzes import router as quiz_router
 from app.api.v1.endpoints.quiz_reviews import router as quiz_review_router
+from app.services.learning_notes import router as learning_note_concepts_router
 from app.db import dispose_quiz_database, ensure_quiz_schema
 from app.errors import QuizAPIError, quiz_api_error_handler, validation_error_handler
 from app.services.team_quiz import register_quiz_integration
@@ -141,6 +142,7 @@ def create_app() -> FastAPI:
     application.include_router(integration_test_stage_router)
     application.include_router(quiz_router)
     application.include_router(quiz_review_router)
+    application.include_router(learning_note_concepts_router)
     application.include_router(game_router)
     application.include_router(pretest_state_router)
     application.include_router(diagnostics_router)

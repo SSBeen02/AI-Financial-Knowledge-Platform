@@ -82,7 +82,27 @@
     let quiz = null;
     let submitted = false;
     let currentIndex = 0;
-    const submissionKey = "page-" + crypto.randomUUID();
+    const draftKey = "quiz-draft-v1:" + QUIZ_ID;
+    let submissionKey = "page-" + crypto.randomUUID();
+
+    function saveDraft() {
+      try { sessionStorage.setItem(draftKey, JSON.stringify({answers, currentIndex, submissionKey})); }
+      catch (_) { /* Storage may be disabled; server still protects the first submission. */ }
+    }
+
+    function restoreDraft() {
+      try {
+        const draft = JSON.parse(sessionStorage.getItem(draftKey) || "null");
+        if (!draft || typeof draft !== "object") return;
+        for (const q of quiz.questions) {
+          const answer = draft.answers && draft.answers[q.question_index];
+          if (q.choices.some(c => c.key === answer)) answers[q.question_index] = answer;
+        }
+        if (Number.isInteger(draft.currentIndex) && draft.currentIndex >= 0 && draft.currentIndex < 3
+            && quiz.questions.slice(0, draft.currentIndex).every(q => answers[q.question_index])) currentIndex = draft.currentIndex;
+        if (typeof draft.submissionKey === "string" && draft.submissionKey.length > 0 && draft.submissionKey.length <= 200) submissionKey = draft.submissionKey;
+      } catch (_) { /* Invalid local data must not prevent a quiz from loading. */ }
+    }
 
     async function quizFetch(url, options = {}) {
       const headers = new Headers(options.headers || {});
@@ -145,6 +165,7 @@
           submitAnswers();
         } else {
           currentIndex += 1;
+          saveDraft();
           renderQuiz();
         }
       });
@@ -154,6 +175,7 @@
     function selectAnswer(questionIndex, key) {
       if (submitted) return;
       answers[questionIndex] = key;
+      saveDraft();
       document.querySelectorAll(".question").forEach((card) => {
         const question = quiz.questions[currentIndex];
         card.querySelectorAll(".choice").forEach((button) => {
@@ -200,6 +222,7 @@
     }
 
     async function submitAnswers() {
+      saveDraft();
       submitted = true;
       document.querySelector("#submit").disabled = true;
       setStatus("채점하는 중입니다.");
@@ -233,6 +256,7 @@
       result.append(title, detail);
       outcomeEl.appendChild(result);
       renderResults(body);
+      try { sessionStorage.removeItem(draftKey); } catch (_) {}
       setStatus("");
       } catch (error) {
         submitted = false;
@@ -250,6 +274,7 @@
         return;
       }
       quiz = body;
+      restoreDraft();
       setStatus(quiz.concept_id + " 개념입니다. 보기를 고른 뒤 제출하세요.");
       renderQuiz();
       } catch (error) {

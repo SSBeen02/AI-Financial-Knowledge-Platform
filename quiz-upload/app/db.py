@@ -138,6 +138,14 @@ async def init_quiz_models() -> None:
                     if set(table.columns.keys()) - columns:
                         raise RuntimeError("퀴즈 DB 컬럼 migration이 필요합니다: " + table.name)
             await connection.run_sync(verify_schema)
+        def verify_first_submission(sync_connection):
+            inspector = inspect(sync_connection)
+            constraints = inspector.get_unique_constraints("quiz_submissions")
+            indexes = inspector.get_indexes("quiz_submissions")
+            return any(c.get("column_names") == ["quiz_set_id"] for c in constraints) or any(
+                i.get("unique") and i.get("column_names") == ["quiz_set_id"] for i in indexes)
+        if not await connection.run_sync(verify_first_submission):
+            raise RuntimeError("퀴즈당 최초 제출 유일 제약이 없습니다. 기존 데이터의 중복을 확인한 뒤 quiz_002_first_submission.sql을 적용하세요.")
 
 
 @asynccontextmanager

@@ -15,6 +15,7 @@ from pretest.services.errors import (
     InvalidAnswersError,
     LlmReportError,
     ReportNotFoundError,
+    ReportRetryLimitError,
 )
 
 
@@ -66,6 +67,8 @@ def describe_diagnostic_error(exc: DiagnosticError) -> tuple[int, str, str]:
         )
     if isinstance(exc, ReportNotFoundError):
         return 404, "REPORT_NOT_FOUND", exc.message
+    if isinstance(exc, ReportRetryLimitError):
+        return 429, "REPORT_RETRY_LIMIT_EXCEEDED", "리포트 재생성은 응시당 최대 3회까지 가능합니다. 채점 결과는 보존됩니다."
     if isinstance(exc, LlmReportError):
         return 502, "REPORT_GENERATION_FAILED", exc.message
     if isinstance(exc, DiagnosticStorageError):

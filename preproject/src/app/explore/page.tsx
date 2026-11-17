@@ -10,6 +10,7 @@ export const metadata = {
 
 export default async function ExplorePage() {
   let preTestScore: number | null = null;
+  let userId: string | null = null;
 
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
@@ -21,12 +22,13 @@ export default async function ExplorePage() {
       redirect("/login?next=/explore");
     }
 
-    preTestScore = await getLatestPreTestScore(user.id);
+    userId = user.id;
+    preTestScore = await getLatestPreTestScore(userId);
   }
 
   return (
     <div className="section-container py-6 sm:py-8">
-      <ExploreChat preTestScore={preTestScore} />
+      <ExploreChat preTestScore={preTestScore} userId={userId} />
     </div>
   );
 }

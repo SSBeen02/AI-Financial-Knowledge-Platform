@@ -9,6 +9,8 @@ from typing import Callable
 from pydantic import BaseModel, ConfigDict
 from pretest.schemas.llm_report import DomainLevelComment, LevelDiagnosis, LlmReportAnalysis, RecommendationItem, WrongAnswerAnalysis, WrongAnswerItem
 from pretest.services.errors import LlmReportError
+from pretest.services.report_language import KOREAN_REPORT_PROMPT
+from pretest.services.report_safety import SAFETY_PROMPT
 
 logger = logging.getLogger("diagnostics")
 REPORT_BUDGET_SECONDS = 28.0
@@ -21,6 +23,7 @@ STYLE_PROMPT = """경제 사전테스트의 친절한 튜터로서 입력 보기
 같은 문장 시작·끝, '헷갈렸을 수 있소' 같은 추측의 반복을 피하고 실제 선택과 정답의 핵심 차이 및 문제 단서를 직접 짚으시오. 숫자·기간·주체는 입력에 충실해야 하오.
 대괄호 태그, 불렛, 번호, 마크다운 강조와 숙제형 지시(표 만들기·자기 말로 쓰기·해설 가리고 재풀이)를 쓰지 마시오.
 recommendation은 오답 정의 나열이 아니라 이후 학습 방향과 접근 전략이오. 실제 혼동 지점 → 개념의 본질적인 비교 기준 → 실전 접근 전략을 주제별 3~5문장의 자연스러운 단일 문단으로 연결하시오. 반복 라벨 없이 어미도 다양하게 쓰시오. 학습 권장 문단에서 ~시오로 끝나는 직접 지시는 최대 한 문장만 쓰고, 나머지는 이유와 전략을 설명하는 ~이오/~하오/~좋겠소/~유리하오 등으로 연결하시오. 같은 종결 표현을 3문장 이상 반복하지 마시오. 오답 분석도 모든 항목을 ~가리키오/~단서이오로 끝내지 마시오."""
+STYLE_PROMPT += "\n" + KOREAN_REPORT_PROMPT + "\n" + SAFETY_PROMPT
 
 
 class _Overview(BaseModel):
