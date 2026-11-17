@@ -15,7 +15,8 @@ from server_auth import get_verified_user_id
 
 
 router = APIRouter(prefix="/learning/integration-test", tags=["integration-test"])
-TestStage = Literal["stage3", "stage4", "stage5"]
+TestStage = Literal["stage1", "stage2", "stage3", "stage4", "stage5"]
+NextStage = Literal["stage2", "stage3", "stage4", "stage5"]
 
 
 class CompleteStageRequest(BaseModel):
@@ -26,7 +27,7 @@ class CompleteStageRequest(BaseModel):
 
 class CompleteStageResponse(BaseModel):
     completed_stage_id: TestStage
-    next_stage_id: Literal["stage4", "stage5"] | None
+    next_stage_id: NextStage | None
     previously_passed_count: int
     test_completed_count: int
     total_count: int
