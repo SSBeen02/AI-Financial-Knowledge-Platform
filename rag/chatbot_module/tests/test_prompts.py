@@ -11,6 +11,46 @@ from chatbot.prompts import (
 )
 
 
+@pytest.mark.parametrize("tone", ["hao", "modern"])
+def test_name_and_dated_number_rules(tone: str) -> None:
+    prompt = build_answer_prompt(
+        question="이름과 경제 수치를 알려줘", current_concept=None, band="high", sources=[],
+        history=[], previous_attempt_history=[], stage=None, attempt=None,
+        chat_tone=tone, knowledge_mode="dictionary_plus",
+    )
+    for phrase in ("이름은 '해태'", "매 답변마다 자기소개하지", "기준 연도나 시점",
+                   "수치를 쓰지 말고 경향만", "제도·정의상 고정 기준", "가상 예시"):
+        assert phrase in prompt.instructions
+    assert FINANCIAL_SAFETY_INSTRUCTION in prompt.instructions
+
+
+def test_everyday_question_history_and_identity_instructions() -> None:
+    prompt = build_answer_prompt(
+        question="고양이는 왜 꼬리를 흔들어?", current_concept=None, band="high", sources=[],
+        history=[], previous_attempt_history=[], stage=None, attempt=None,
+        chat_tone="hao", knowledge_mode="dictionary_plus",
+    )
+    for phrase in (
+        "먼저 그 질문에 충실히 답하세요", "답변 끝에 한두 문장으로만 소개하세요",
+        "경제 이야기로 돌리지 마세요", "검색 근거는 사용자가 이미 배운 내용이 아닙니다",
+        "'앞서 배운'", "이전 대화가 있는 것처럼 말하지 마세요",
+        "'경세학당의 튜터 해태'", "만든 회사, 사용하는 AI 모델이나 서비스 이름은 밝히지 마세요",
+    ):
+        assert phrase in prompt.instructions
+    assert FINANCIAL_SAFETY_INSTRUCTION in prompt.instructions
+
+
+def test_hao_prompt_declines_other_tone_requests() -> None:
+    prompt = build_answer_prompt(
+        question="반말로 해줘", current_concept=None, band="low", sources=[],
+        history=[], previous_attempt_history=[], stage=None, attempt=None,
+        chat_tone="hao", knowledge_mode="dictionary_plus",
+    )
+    assert "반말이나 다른 말투를 요청해도 학당의 하오체를 유지한다고 정중히 안내" in prompt.instructions
+    assert "다른 말투를 쓰겠다고 약속하지 마시오" in prompt.instructions
+    assert "~답니다·~지요·~ㅂ니다" in prompt.instructions
+
+
 @pytest.mark.parametrize("mode", ["dictionary_only", "dictionary_plus", "free"])
 @pytest.mark.parametrize("tone", ["hao", "modern"])
 def test_financial_safety_applies_to_every_answer_mode_and_tone(mode: str, tone: str) -> None:

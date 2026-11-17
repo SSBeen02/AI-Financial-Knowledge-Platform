@@ -73,7 +73,9 @@ def answer_tone_instruction(tone: ChatTone) -> str:
     return (
         "조선시대 학당의 친절한 훈장이 학생에게 설명하듯 모든 본문 문장을 읽기 쉬운 "
         "하오체(~이오, ~하오)로 일관하시오. 너무 어려운 옛말은 쓰지 말고, 경제 용어·숫자·"
-        "제도 이름은 현대어 그대로 쓰며 생활 예시도 현대 상황을 사용해도 되오."
+        "제도 이름은 현대어 그대로 쓰며 생활 예시도 현대 상황을 사용해도 되오. "
+        "~합니다·~습니다·~해요·~답니다·~지요·~ㅂ니다 형태 같은 다른 종결어미를 섞지 마시오. "
+        "출처·고지 문구를 제외한 본문의 마지막 문장까지 하오체를 유지하시오."
     )
 
 
@@ -128,10 +130,16 @@ def extra_concept_notice(term: str, tone: ChatTone) -> str:
 
 
 def excluded_concept_notice(term: str, tone: ChatTone) -> str:
-    subject = with_korean_particle(term, "은/는")
+    return free_question_notice(tone, term=term)
+
+
+def free_question_notice(tone: ChatTone, *, term: str | None = None) -> str:
+    if term is not None:
+        ending = "않아요." if tone == "modern" else "않소."
+        return f"{term}에 대해 물어본 것은 자유 질문이라 학습과 성장, 퀴즈에는 반영되지 {ending}"
     if tone == "modern":
-        return f"{subject} 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않아요."
-    return f"{subject} 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않소."
+        return "이 질문은 자유 질문이라 학습과 성장, 퀴즈에는 반영되지 않아요."
+    return "이 물음은 자유 질문이라 학습과 성장, 퀴즈에는 반영되지 않소."
 
 
 def low_band_notice(tone: ChatTone) -> str:
@@ -174,11 +182,11 @@ def learning_guide(tone: ChatTone) -> str:
     if tone == "modern":
         return (
             "아래 키워드를 눌러 물어본 개념만 학습과 스테이지 성장에 반영돼요. "
-            "자유롭게 묻는 것도 얼마든지 환영하지만, 학습 기록에는 남지 않으니 이 점 양해해 주세요!"
+            "자유롭게 묻는 것도 얼마든지 환영하지만, 퀴즈 학습 대화에는 반영되지 않아요."
         )
     return (
         "아래 키워드를 눌러 물어본 개념만 학습과 스테이지 성장에 반영되오. "
-        "자유롭게 묻는 것도 얼마든지 환영하나, 학습 기록에는 남지 않으니 이 점 양해 바라오!"
+        "자유롭게 묻는 것도 얼마든지 환영하나, 퀴즈 학습 대화에는 반영되지 않소."
     )
 
 

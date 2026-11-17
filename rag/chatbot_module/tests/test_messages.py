@@ -1059,10 +1059,10 @@ def test_extra_and_excluded_notice_require_explicit_term_or_alias(
         "다만 성장과 퀴즈에는 반영되지 않소."
     )
     assert excluded["notice"] == (
-        "비경제용어는 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않소."
+        "비경제용어에 대해 물어본 것은 자유 질문이라 학습과 성장, 퀴즈에는 반영되지 않소."
     )
     assert "경제 학습 범위 밖 용어" not in excluded["answer"]
-    assert incidental["notice"] is None
+    assert incidental["notice"] == "이 물음은 자유 질문이라 학습과 성장, 퀴즈에는 반영되지 않소."
 
 
 def test_retrieval_failure_returns_502_without_writes(message_env: MessageEnv) -> None:
@@ -1406,6 +1406,41 @@ def test_message_history_restores_session_and_free_messages(message_env: Message
         headers={"X-User-Id": "other-user"},
     )
     assert hidden.status_code == 404
+
+
+def test_two_free_questions_restore_in_order(message_env: MessageEnv) -> None:
+    for question in ("오늘 날씨 어때?", "내일 날씨 어때?"):
+        response = message_env.client.post("/learning/messages", headers=HEADERS, json={"message": question})
+        assert response.status_code == 200
+        assert response.json()["session_id"] is None
+    history = message_env.client.get("/learning/history", params={"limit": 10}, headers=HEADERS).json()
+    assert [item["content"] for item in history if item["role"] == "user"] == ["오늘 날씨 어때?", "내일 날씨 어때?"]
+    assert len(history) == 4
+    assert all(item["session_id"] is None for item in history)
+
+
+def test_etf_synonym_prefers_regular_concept_over_extra(message_env: MessageEnv) -> None:
+    etf_id = "sisa_1410"
+    for concept in load_stage_catalog(STAGES_PATH).stages["stage1"].concepts:
+        force_concept_status(message_env.status, USER, concept.concept_id, "stage1", STATUS_PASSED)
+    message_env.cache._docs[etf_id] = CachedConcept(etf_id, "상장지수펀드", (), "설명: 지수를 추종하는 펀드", None)
+    original_search = message_env.retriever.search
+
+    def search(question: str) -> RetrievalResult:
+        if "ETF" in question:
+            hit = _doc("extra_etf", "ETF", 0.8, stage="extra")
+        elif "상장지수펀드" in question:
+            hit = _doc(etf_id, "상장지수펀드", 0.8, stage="stage2")
+        else:
+            return original_search(question)
+        return RetrievalResult([hit], [hit], "high", hit.score)
+
+    message_env.retriever.search = search  # type: ignore[method-assign]
+    for question in ("ETF가 뭐야?", "상장지수펀드가 뭐야?"):
+        body = message_env.client.post("/learning/messages", headers=HEADERS, json={"message": question}).json()
+        assert body["suggested_concept"] == {"concept_id": etf_id, "term": "상장지수펀드"}
+        assert "이번 스테이지에서 배우는 개념" in body["notice"]
+        assert body["session_id"] is None
 
 
 def test_stream_completes_then_persists_and_sends_done_metadata(
