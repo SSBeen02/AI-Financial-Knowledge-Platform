@@ -485,6 +485,10 @@ def prepare_message(
         notice = suggested_concept_notice(suggested_concept.term, settings.chat_tone)
     if notice is None and plan.concept is None and suggested_concept is None:
         notice = free_question_notice(settings.chat_tone)
+    if plan.session is not None:
+        # 활성 학습 세션의 후속 질문은 관련성 판정이나 검색 용어와 무관하게
+        # 같은 세션에 저장된다. 이 메시지에는 별도 학습/자유 질문 안내를 띄우지 않는다.
+        notice = None
     prompt = build_answer_prompt(
         question=request.message,
         current_concept=cached,
