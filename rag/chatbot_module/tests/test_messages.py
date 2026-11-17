@@ -1006,7 +1006,7 @@ def test_chat_emoji_setting_does_not_enable_emphasis(message_env: MessageEnv) ->
     assert "이모지와 이모티콘을 사용하지 마세요" in enabled_prompt
 
 
-def test_notice_for_other_stage_is_returned_inside_active_session(
+def test_other_stage_notice_is_hidden_inside_active_session(
     message_env: MessageEnv,
 ) -> None:
     started = message_env.client.post(
@@ -1020,12 +1020,31 @@ def test_notice_for_other_stage_is_returned_inside_active_session(
 
     assert body["session_id"] == started["session_id"]
     assert body["concept"]["concept_id"] == DIVISION
-    assert body["notice"] == (
-        "인플레이션을 궁금해하는 그대의 배움의 자세, 참으로 감탄스럽소! 다만 이 개념은 "
-        "지금 공부하는 사회경제현상과 소비생활이 아니라 거시경제와 통화·재정정책에서 배우는 것이라, "
-        "이번 스테이지 성장과 퀴즈에는 반영되지 않소. 훗날 그 스테이지에 이르면 다시 도전해 보시겠소?"
-    )
+    assert body["notice"] is None
     assert message_env.status.get_statuses(USER, "stage3")[INFLATION] == STATUS_NOT_STARTED
+
+
+def test_extra_follow_up_hides_notice_even_when_related_in_both_paths(
+    message_env: MessageEnv,
+) -> None:
+    started = message_env.client.post(
+        "/learning/messages", headers=HEADERS,
+        json={"message": "분업/특화를 알려줘", "concept_id": DIVISION},
+    ).json()
+    message_env.llm.judgment = True
+    question = "경제상식별칭을 설명해줘"
+    regular = message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": question},
+    ).json()
+    streamed = message_env.client.post(
+        "/learning/messages/stream", headers=HEADERS, json={"message": question},
+    )
+    done = next(data for event, data in _sse_events(streamed.text) if event == "done")
+    assert regular["session_id"] == done["session_id"] == started["session_id"]
+    assert regular["is_related"] is done["is_related"] is True
+    assert regular["notice"] is done["notice"] is None
+    history = message_env.client.get("/learning/history", headers=HEADERS).json()
+    assert history[-1]["notice"] is None
 
 
 def test_notice_for_passed_current_stage_concept(scenario_env: MessageEnv) -> None:
@@ -1720,7 +1739,7 @@ def test_termless_follow_up_low_uses_current_concept_with_fake_llm(
     assert "[현재 개념] sisa_2173 장수리스크:" in message_env.llm.prompts[-1].input
 
 
-def test_unrelated_low_during_learning_keeps_out_of_scope_notice(message_env: MessageEnv) -> None:
+def test_unrelated_low_during_learning_hides_out_of_scope_notice(message_env: MessageEnv) -> None:
     started = message_env.client.post(
         "/learning/messages", headers=HEADERS,
         json={"message": "장수리스크에 대해 알려줘", "concept_id": LONGEVITY},
@@ -1731,7 +1750,7 @@ def test_unrelated_low_during_learning_keeps_out_of_scope_notice(message_env: Me
     ).json()
     assert body["band"] == "low"
     assert body["is_related"] is False
-    assert body["notice"] == "이 물음은 학당의 경제 공부 범위 밖이라 사전의 근거 없이 답하였소."
+    assert body["notice"] is None
     assert "핵심 정의 출처" not in body["answer"]
     assert "참고한 사전 항목" not in body["answer"]
 
