@@ -27,7 +27,17 @@ import type { QuizAttemptInput } from "@/lib/notes/types";
 
 
 
+export interface QuizProgress {
+  currentIndex: number;
+  selected: number | boolean | null;
+  showResult: boolean;
+  attempts: QuizAttemptInput[];
+}
+
 interface QuizModalProps {
+  initialProgress?: QuizProgress;
+  onProgress: (progress: QuizProgress) => void;
+  onFinish: () => void;
 
   questions: ExploreQuizQuestion[];
 
@@ -48,24 +58,28 @@ export default function QuizModal({
   keywords,
 
   messages,
-
+  initialProgress,
+  onProgress,
+  onFinish,
   onClose,
 
 }: QuizModalProps) {
 
   const router = useRouter();
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(initialProgress?.currentIndex ?? 0);
 
-  const [selected, setSelected] = useState<number | boolean | null>(null);
+  const [selected, setSelected] = useState<number | boolean | null>(initialProgress?.selected ?? null);
 
-  const [showResult, setShowResult] = useState(false);
+  const [showResult, setShowResult] = useState(initialProgress?.showResult ?? false);
 
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useState(
+    () => initialProgress?.attempts.filter((attempt) => attempt.isCorrect).length ?? 0,
+  );
 
   const [finished, setFinished] = useState(false);
 
-  const [attempts, setAttempts] = useState<QuizAttemptInput[]>([]);
+  const [attempts, setAttempts] = useState<QuizAttemptInput[]>(initialProgress?.attempts ?? []);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -91,6 +105,11 @@ export default function QuizModal({
 
 
 
+  const handleSelect = (answer: number | boolean) => {
+    setSelected(answer);
+    onProgress({ currentIndex, selected: answer, showResult: false, attempts });
+  };
+
   const handleConfirm = () => {
 
     if (selected === null) return;
@@ -107,22 +126,12 @@ export default function QuizModal({
 
 
 
-    setAttempts((prev) => [
-
-      ...prev,
-
-      {
-
-        questionId: question.id,
-
-        selectedAnswer: selected,
-
-        isCorrect: correct,
-
-      },
-
-    ]);
-
+    const nextAttempts = [
+      ...attempts,
+      { questionId: question.id, selectedAnswer: selected, isCorrect: correct },
+    ];
+    setAttempts(nextAttempts);
+    onProgress({ currentIndex, selected, showResult: true, attempts: nextAttempts });
     setShowResult(true);
 
   };
@@ -133,7 +142,8 @@ export default function QuizModal({
 
     if (currentIndex < questions.length - 1) {
 
-      setCurrentIndex((i) => i + 1);
+      onProgress({ currentIndex: currentIndex + 1, selected: null, showResult: false, attempts });
+      setCurrentIndex(currentIndex + 1);
 
       setSelected(null);
 
@@ -141,6 +151,7 @@ export default function QuizModal({
 
     } else {
 
+      onFinish();
       setFinished(true);
 
     }
@@ -411,7 +422,7 @@ export default function QuizModal({
 
                       disabled={showResult}
 
-                      onClick={() => setSelected(value)}
+                      onClick={() => handleSelect(value)}
 
                       className={`w-full rounded-xl border px-4 py-3 text-left font-semibold transition ${
 
@@ -451,7 +462,7 @@ export default function QuizModal({
 
                       disabled={showResult}
 
-                      onClick={() => setSelected(optionNum)}
+                      onClick={() => handleSelect(optionNum)}
 
                       className={`w-full rounded-xl border px-4 py-3 text-left text-sm transition ${
 
