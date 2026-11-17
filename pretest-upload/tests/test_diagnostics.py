@@ -10,7 +10,9 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from pretest.database.repository import InMemoryDiagnosticRepository
 from pretest.main import app
+from pretest.services.diagnostic_service import DiagnosticService, get_diagnostic_service
 from pretest.services.errors import LlmReportError
 from pretest.services.grading import grade_attempt
 from pretest.services.question_bank import count_by_domain, load_questions
@@ -65,7 +67,7 @@ class GradingTest(unittest.TestCase):
         self.assertEqual(graded["vulnerabilities"][0]["score"], 0.0)
         self.assertEqual(graded["vulnerabilities"][1]["severity"], "medium")
         self.assertEqual(graded["vulnerabilities"][1]["score"], 50.0)
-        self.assertIn("금융·투자 0점", graded["summary"]["analysis"])
+        self.assertIn("금융과 투자 0점", graded["summary"]["analysis"])
 
     def test_clear_result_has_no_vulnerability(self):
         questions = [
@@ -81,6 +83,11 @@ class GradingTest(unittest.TestCase):
 
 class DiagnosticApiTest(unittest.TestCase):
     def setUp(self):
+        self.questions = load_questions()
+        service = DiagnosticService(self.questions, InMemoryDiagnosticRepository())
+        overrides = patch.dict(app.dependency_overrides, {get_diagnostic_service: lambda: service})
+        overrides.start()
+        self.addCleanup(overrides.stop)
         self.client = TestClient(app)
         self.client.__enter__()
         self.addCleanup(self.client.__exit__, None, None, None)
@@ -90,7 +97,6 @@ class DiagnosticApiTest(unittest.TestCase):
                 kwargs.setdefault("headers", {"Idempotency-Key": "test-key"})
             return original_post(url, **kwargs)
         self.client.post = post
-        self.questions = load_questions()
 
     def _answers(self, overrides: dict[str, int] | None = None) -> list[dict]:
         overrides = overrides or {}
@@ -117,7 +123,15 @@ class DiagnosticApiTest(unittest.TestCase):
         self.assertEqual(body["total_questions"], 24)
         self.assertRegex(body["started_at"], ISO_UTC)
         self.assertEqual(len(body["questions"]), 24)
-        self.assertEqual(body["questions"][0]["options"][1], "2) 복리")
+        self.assertEqual(
+            [question["domain"] for question in body["questions"]],
+            ["socioeconomic_phenomena_consumer_life"] * 6
+            + ["finance_investment"] * 6
+            + ["macroeconomy_monetary_fiscal_policy"] * 6
+            + ["international_economy_industry_technology"] * 6,
+        )
+        interest_question = next(question for question in body["questions"] if question["id"] == "finance_investment_001")
+        self.assertEqual(interest_question["options"][1], "2) 복리")
         _assert_no_keys(body, HIDDEN_KEYS)
 
         spec = self.client.get("/openapi.json").json()
@@ -127,6 +141,7 @@ class DiagnosticApiTest(unittest.TestCase):
                 "/diagnostics",
                 "/diagnostics/{id}/submit",
                 "/reports/{id}",
+                "/reports/{id}/retry",
             },
         )
         start_parameters = spec["paths"]["/diagnostics"]["post"].get("parameters", [])

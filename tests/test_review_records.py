@@ -11,6 +11,7 @@ from app.api.v1.endpoints.quiz_reviews import router
 from app.db import Base, get_session
 from app.errors import register_quiz_exception_handlers
 from app.models.quiz import QuizSet, QuizSubmission, QuizReview
+from app.services.quiz_service import _note_items
 
 
 def test_review_storage_replay_and_owner_isolation(tmp_path):
@@ -30,6 +31,33 @@ def test_review_storage_replay_and_owner_isolation(tmp_path):
                 idempotency_key="first", submitted_answers=[{"question_index": 1, "answer": "X"}],
                 is_correct_list=[False], correct_count=0, is_passed=False))
             await session.commit()
+        legacy_questions = [
+            {**question, "prompt": "An English question", "explanation": "An English explanation"},
+            {
+                **question, "question_index": 2, "question_type": "situation", "answer": "A",
+                "choices": [{"key": "A", "text": "한국어 보기"}, {"key": "B", "text": "An English choice"}],
+            },
+        ]
+        async with factory() as session:
+            legacy_quiz = QuizSet(
+                id="legacy-quiz", user_id="owner", concept_id="concept", stage_id="stage1",
+                learning_session_id="legacy-learning", status="completed", questions=legacy_questions,
+            )
+            session.add(legacy_quiz)
+            await session.flush()
+            legacy_submission = QuizSubmission(
+                id="legacy-submission", quiz_set_id=legacy_quiz.id, user_id="owner",
+                idempotency_key="legacy-first",
+                submitted_answers=[{"question_index": 1, "answer": "O"}, {"question_index": 2, "answer": "A"}],
+                is_correct_list=[True, True], correct_count=2, is_passed=False,
+            )
+            session.add(legacy_submission)
+            await session.commit()
+            first_note, second_note = _note_items(legacy_quiz, legacy_submission)
+            assert "한국어 문제" in first_note.prompt
+            assert "한국어 해설" in first_note.explanation
+            assert "한국어 보기" == second_note.choices[0].text
+            assert "한국어 내용" in second_note.choices[1].text
         app = FastAPI()
         app.include_router(router)
         register_quiz_exception_handlers(app)
@@ -56,6 +84,11 @@ def test_review_storage_replay_and_owner_isolation(tmp_path):
             assert history[0]["id"] == second.json()["id"]
             assert history[0]["submitted_answer"] == "X"
             assert (await client.post(path, json={"answer": "Z", "idempotency_key": "bad"})).status_code == 422
+            for question_index, answer in [(1, "O"), (2, "A")]:
+                legacy_path = path.replace("/submission/questions/1", f"/legacy-submission/questions/{question_index}")
+                rejected = await client.post(legacy_path, json={"answer": answer, "idempotency_key": "legacy"})
+                assert rejected.status_code == 422
+                assert "한국어 문제와 보기" in rejected.text
             identity["user"] = "other"
             assert (await client.get(path)).status_code == 404
             assert (await client.post(path, json=body)).status_code == 404

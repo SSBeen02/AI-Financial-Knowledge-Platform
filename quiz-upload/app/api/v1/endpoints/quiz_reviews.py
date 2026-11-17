@@ -10,7 +10,7 @@ from app.api.deps import AuthenticatedUserId
 from app.db import get_session
 from app.errors import QuizAPIError, invalid_submission, quiz_not_found
 from app.models.quiz import QuizSet, QuizSubmission, QuizReview
-from app.services.quiz_service import answers_match
+from app.services.quiz_service import answers_match, has_playable_korean_text
 from app.timeutil import to_utc_iso
 router = APIRouter(prefix="/api/v1/learning-notes", tags=["학습노트 복습"])
 
@@ -56,6 +56,8 @@ async def submit_review(
         raise quiz_not_found()
     if not any(int(a["question_index"]) == question_index for a in submission.submitted_answers):
         raise invalid_submission("최초 풀이가 있는 문항만 복습할 수 있습니다.")
+    if not has_playable_korean_text(question):
+        raise invalid_submission("한국어 문제와 보기를 확인할 수 없어 복습할 수 없습니다.")
     if payload.answer not in {str(c["key"]) for c in question["choices"]}:
         raise invalid_submission("문제의 보기 중 하나를 선택해 주세요.")
 
