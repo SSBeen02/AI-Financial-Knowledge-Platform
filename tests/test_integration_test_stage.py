@@ -66,6 +66,27 @@ def test_secret_account_and_configuration_are_required(stage_service, monkeypatc
     assert stage_service.get_unprocessed_events(user_id=USER) == []
 
 
+def test_opens_stage3_by_completing_each_earlier_stage(stage_service):
+    user = "early-stage-test-user"
+    with pytest.MonkeyPatch.context() as env:
+        env.setenv("INTEGRATION_TEST_USER_ID", user)
+        for stage, next_stage, count in [("stage1", "stage2", 30), ("stage2", "stage3", 40)]:
+            result = complete_current_stage(
+                CompleteStageRequest(expected_stage_id=stage), user, TOKEN, stage_service
+            )
+            assert result.completed_stage_id == stage
+            assert result.next_stage_id == next_stage
+            assert result.test_completed_count == count
+            assert result.event_count == count + 1
+            assert stage_service.get_current_stage(user) == next_stage
+
+    events = stage_service.get_unprocessed_events(user_id=user)
+    assert [(event.stage_id, event.next_stage_id) for event in events
+            if event.event_type == "stage_completed"] == [
+        ("stage1", "stage2"), ("stage2", "stage3")
+    ]
+
+
 def test_active_learning_blocks_completion(stage_service):
     concept_id = next(iter(stage_service.get_statuses(USER, "stage3")))
     stage_service.mark_in_progress(USER, concept_id, "stage3")
