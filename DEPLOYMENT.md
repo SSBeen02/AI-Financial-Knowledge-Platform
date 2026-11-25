@@ -12,6 +12,8 @@ Figma Make 프론트 → Cloudtype FastAPI → Supabase Auth / PostgreSQL / Qdra
 | `server_auth.py` | Supabase 사용자 토큰 검증 | 서버 공통 |
 | `rag/chatbot_module/` | 검색·대화·학습 상태·진행률·게임 이벤트 확정 | 안유빈 |
 | `quiz-upload/` | 퀴즈 생성·조회·채점·결과 콜백 | 박서현 |
+| `game/` | 게임 상태·보상 동기화·상점·액세서리 API | 게임 모듈 |
+| `pretest-upload/` | 사전테스트·진단 리포트 API | 사전테스트 모듈 |
 
 학습 완료 요청은 챗봇의 동기 작업 스레드에서 실제 `TeamQuizService`로 전달된다. 어댑터는 동일 프로세스의 실행 중인 이벤트 루프에서 비동기 퀴즈 서비스를 호출한다. 채점·생성 실패 결과는 학습 관리 provider로 돌아간다. 퀴즈 채점은 박서현 모듈, 최종 개념 상태·진행률 변경은 안유빈 모듈이 맡는다. 이 구조는 워커 1개·레플리카 1개 기준이다.
 
@@ -19,7 +21,7 @@ Figma Make 프론트 → Cloudtype FastAPI → Supabase Auth / PostgreSQL / Qdra
 
 배포 디렉터리는 **저장소 루트**다. `main_dev:app`은 챗봇 단독 개발 진입점이며 운영 통합은 `run_integration:app`을 사용한다.
 
-루트 `requirements.txt`는 두 모듈의 의존성을 직접 나열한 독립 설치 목록이다. 설치 단계에서 하위 소스 폴더가 아직 복사되지 않아도 동작하도록 `-r rag/...` 등의 하위 파일 참조를 사용하지 않는다. 모듈 requirements가 변경되면 루트 목록의 버전·extras도 함께 맞춘다. `Could not open requirements file: rag/chatbot_module/requirements.txt`가 나오면 이 수정이 포함된 최신 main 커밋으로 빌드하는지 확인한다. 배포 경로는 계속 빈칸이다.
+루트 `requirements.txt`는 통합 서버의 의존성을 직접 나열한 독립 설치 목록이다. 설치 단계에서 하위 소스 폴더가 아직 복사되지 않아도 동작하도록 `-r rag/...` 등의 하위 파일 참조를 사용하지 않는다. 모듈 requirements가 변경되면 루트 목록의 버전·extras도 함께 맞춘다. `Could not open requirements file: rag/chatbot_module/requirements.txt`가 나오면 이 수정이 포함된 최신 main 커밋으로 빌드하는지 확인한다. 배포 경로는 계속 빈칸이다.
 
 설치 명령:
 
@@ -38,13 +40,13 @@ python -m uvicorn run_integration:app --host 0.0.0.0 --port 8000 --workers 1
 - `.env.example`의 이름을 기준으로 Cloudtype 환경변수/시크릿을 등록한다. 이 통합 진입점은 로컬·중첩 `.env`를 자동으로 읽지 않는다.
 - CORS는 origin을 쉼표로 나눈다. 게시 origin에 필요한 Figma 미리보기 origin을 추가할 수 있다. 경로·마지막 슬래시는 넣지 않는다.
 - `SUPABASE_PUBLISHABLE_KEY`는 Supabase 프로젝트의 publishable key다. 기존 anon key는 `SUPABASE_ANON_KEY`로도 설정할 수 있다. 인증에 service_role 키는 필요하지 않다.
-- Supabase Auth `/auth/v1/user`에 Bearer 토큰을 전달해 서버에서 검증하고 반환된 UUID를 두 모듈이 공유한다. 요청마다 인증 서버 왕복이 있으므로 인증 서버 장애·지연은 503으로 나타날 수 있다.
-- 프론트는 `Authorization: Bearer <로그인 access_token>`을 모든 학습·퀴즈 요청에 넣는다. X-User-Id는 운영 인증이 아니다. 선택 concept_id와 완료 요청 Idempotency-Key도 유지한다.
+- Supabase Auth `/auth/v1/user`에 Bearer 토큰을 전달해 서버에서 검증하고 반환된 UUID를 통합 API가 공유한다. 요청마다 인증 서버 왕복이 있으므로 인증 서버 장애·지연은 503으로 나타날 수 있다.
+- 프론트는 `Authorization: Bearer <로그인 access_token>`을 학습·퀴즈·게임·사전테스트 요청에 넣는다. X-User-Id는 운영 인증이 아니다. 선택 concept_id와 완료·구매 요청 Idempotency-Key도 유지한다.
 - 챗봇 DB URL은 psycopg, 퀴즈는 asyncpg 형식이다. 비밀번호 URL 인코딩 및 드라이버별 SSL 옵션을 적용한다. 개발 SQLite 기본값으로 배포하지 않는다.
-- 챗봇 migrations 001~004 및 퀴즈 sql/quiz_001_tables.sql 적용 여부를 먼저 확인한다. `DB_AUTO_CREATE=false`에서 퀴즈는 테이블·컬럼 존재만 검사한다(타입·제약·RLS 정책 검증은 별도).
-- 게임 보상 API 및 사전테스트 라우터는 이번 통합 진입점에 포함되지 않는다. 챗봇·퀴즈 연결만 제공한다.
+- 챗봇 migrations 001~004 및 퀴즈 sql/quiz_001_tables.sql 적용 여부를 먼저 확인한다. `DB_AUTO_CREATE=false`에서 퀴즈는 테이블·컬럼 존재만 검사한다(타입·제약·RLS 정책 검증은 별도). `GAME_ENABLED=true`이면 게임 테이블·컬럼과 RLS·조회 권한을 시작 시 검사하고, `PRETEST_ENABLED=true`이면 사전테스트용 `diagnostic_attempts` 테이블이 필요하다.
+- `run_integration.py`는 게임 `/game/*`와 사전테스트·진단 `/diagnostics/*`, `/reports/*` 라우터도 등록한다. 게임 서비스는 `GAME_ENABLED=true`, 사전테스트 서비스는 `PRETEST_ENABLED=true`에서 초기화한다. 비활성화 상태에서는 해당 API가 준비되지 않았다는 503 응답을 반환할 수 있다.
 
-배포 검증 순서: `/health` → 무토큰 요청 401 → 로그인 토큰으로 `/learning/current` → concept_id를 포함한 학습 메시지 → 완료(Idempotency-Key) → 실제 퀴즈 조회·제출 → 통과 또는 재학습 상태 확인. 새로고침 복원·타 사용자 접근 거절도 확인한다. 실제 퀴즈 생성에는 API 비용이 발생한다.
+배포 검증 순서: `/health` → 무토큰 요청 401 → 로그인 토큰으로 `/learning/current` → concept_id를 포함한 학습 메시지 → 완료(Idempotency-Key) → 실제 퀴즈 조회·제출 → 통과 또는 재학습 상태 확인. 활성화된 게임은 `/game/state`, `/game/shop`, `/game/sync`를, 사전테스트는 `/diagnostics/current`를 확인한다. 새로고침 복원·타 사용자 접근 거절도 확인한다. 실제 퀴즈 생성에는 API 비용이 발생한다.
 
 현재 로컬 변경을 GitHub에 반영한 뒤 Cloudtype에서 위 설정으로 배포해야 서비스에 적용된다. 이 문서 생성만으로 원격 배포나 프론트 API 주소가 변경되지는 않는다.
 
@@ -76,10 +78,12 @@ SSE 시작 전 검색 준비 단계의 실패다. `/health 200`은 이 검색 �
 | `STAGES_JSON_PATH` | 기본 `data/stages.json`. 상대 경로는 `rag/chatbot_module` 기준 |
 | `CHAT_DB_URL` | 동기 PostgreSQL 접속: `postgresql+psycopg://...` |
 | `QUIZ_DATABASE_URL` | 비동기 PostgreSQL 접속: `postgresql+asyncpg://...` |
+| `GAME_ENABLED`, `GAME_DATABASE_URL` | 게임 활성화 여부(기본 `false`). URL이 비어 있으면 `CHAT_DB_URL`을 재사용하며, 활성화 전에 게임 스키마·RLS를 적용해야 함 |
+| `PRETEST_ENABLED`, `LLM_REPORT_MODE`, `GEMINI_API_KEY`, `GEMINI_MODEL` | 사전테스트 활성화 여부(기본 `false`). 리포트 제공자는 `gemini` 또는 `openai`; `gemini`이면 Gemini 키, `openai`이면 `OPENAI_API_KEY` 필요 |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | 퀴즈 생성. 모델 기본값은 퀴즈 설정을 따름 |
 | `SUPABASE_URL` | 프론트 로그인과 같은 Supabase 프로젝트의 HTTPS origin |
 | `SUPABASE_PUBLISHABLE_KEY` | 인증 서버 호출용 publishable key. 대체 이름 `SUPABASE_ANON_KEY` |
-| `CORS_ALLOW_ORIGINS` | 게시 사이트 등 고정 origin의 쉼표 구분 목록. 통합 서버는 `app-…makeproxy-c.figma.site`와 UUID형 `…-figmacachedpreview.figma.site` Figma Make Preview origin도 허용 |
+| `CORS_ALLOW_ORIGINS` | 게시 사이트 등 고정 origin의 쉼표 구분 목록. 통합 서버는 `app-…makeproxy-c.figma.site`, `ta-…makeproxy-m.figma.site`, UUID형 `…-figmacachedpreview.figma.site` Figma Make Preview origin도 허용 |
 | `DB_AUTO_CREATE`, `DEV_ENABLE_TOOLS`, `DEV_MODE`, `DEV_SIMULATE_QUIZ_GENERATION_FAILURE` | 운영에서는 전부 `false` |
 
 키·DB 비밀번호는 Cloudtype 시크릿으로 등록하고 문서·이슈·커밋·프론트에 쓰지 않는다. DB URL 두 개는 같은 DB를 가리킬 수 있으나 드라이버와 SSL 옵션은 서로 다르다. Supabase 프로젝트를 바꿀 때 프론트 로그인 프로젝트와 서버 인증·DB가 서로 맞는지 확인한다.
@@ -88,7 +92,7 @@ SSE 시작 전 검색 준비 단계의 실패다. `/health 200`은 이 검색 �
 
 1. GitHub에서 `ui-game`의 작업 단위 커밋을 검토하고 `main`으로 병합한다. Cloudtype이 자동 배포에 연결돼 있다면 main 변경이 곧 배포를 유발할 수 있으므로 환경변수·메모리·실행 명령을 먼저 준비한다.
 2. 적용 대상 커밋과 Cloudtype 배포 브랜치·서브 디렉터리를 확인한다. 챗봇 하위 디렉터리를 계속 사용하면 통합 진입점과 퀴즈 경로를 찾지 못한다.
-3. DB 마이그레이션 적용 상태를 확인한다. 공유 DB에 이미 적용된 SQL을 무조건 재실행하지 않는다. 이번 통합 코드 변경에는 새 마이그레이션 SQL이 없다.
+3. DB 마이그레이션 적용 상태를 확인한다. 게임 활성화 시 `game/schema.py` 기준 테이블·RLS·권한, 사전테스트 활성화 시 `pretest-upload/sql/diagnostic_attempts.sql` 적용 상태도 확인한다. 공유 DB에 이미 적용된 SQL을 무조건 재실행하지 않는다. 코드만 바꾸는 배포에 새 DB 마이그레이션이 필요한지는 변경 내용별로 확인한다.
 4. 환경변수·메모리·단일 워커/레플리카 설정을 반영하고 배포한다. 키 이름만 기록하고 값은 로그로 남기지 않는다.
 5. `/health`와 아래 인수 테스트를 실행한다. KURE를 처음 받을 때는 다운로드/로딩 시간을 고려해 Cloudtype 시작 제한을 확인한다.
 6. 실패하면 로그의 오류 종류를 확인하고 이전 정상 배포를 복원한다. 이전 배포의 실행 명령·환경변수·DB 호환성도 함께 확인한다. 데이터베이스를 초기화하거나 자동 생성 플래그를 켜서 우회하지 않는다.
@@ -112,7 +116,7 @@ SSE 시작 전 검색 준비 단계의 실패다. `/health 200`은 이 검색 �
 - 게시 프론트에서 키워드를 선택하고 문구를 수정해도 `concept_id`를 보존하는지 확인한다.
 - 학습 완료에 `Idempotency-Key`를 보내고 같은 요청을 반복해 중복 퀴즈·상태 변경이 없는지 확인한다.
 - 통과·실패·생성 실패·재요청·새로고침 복원 흐름을 확인한다. 테스트 계정의 학습 기록은 실제로 바뀌며 LLM 호출 비용이 생긴다.
-- 로컬 검증: 통합 테스트 9개, 챗봇 설정 테스트 16개, 기존 퀴즈 테스트 23개(+3 subtests) 통과. 기존 퀴즈 테스트는 `DEV_MODE=true`, `DB_AUTO_CREATE=true`의 개발 조건이다.
+- 기존 로컬 검증 기록: 통합 테스트 9개, 챗봇 설정 테스트 16개, 퀴즈 테스트 23개(+3 subtests) 통과. 이는 문서 작성 당시 결과이며 현재 전체 모듈의 회귀 결과를 뜻하지 않는다. 퀴즈 테스트는 `DEV_MODE=true`, `DB_AUTO_CREATE=true`의 개발 조건이었다.
 - 실제 Supabase의 퀴즈 필수 컬럼 및 학습 세션 `stage_id` 존재는 읽기 전용 조회로 확인했다. 실제 로그인 토큰·KURE·Qdrant·LLM을 사용하는 배포 후 전체 흐름은 별도 검증 대상이다.
 - 서버 버전, 배포 커밋, 적용 시각, `/health`, 인수 테스트 결과를 배포 시마다 팀 기록에 남긴다.
 

@@ -163,7 +163,8 @@ def test_ut05_coin_dedup_false_ack_stage5_and_ledger(factory):
 
 def test_ut06_shop_boundaries_rejection_state(factory):
     s=standard_service(factory); s.create_character('user-a','학당'); fund(s,19)
-    assert not next(i for i in s.list_shop_items('user-a') if i.accessory.accessory_id=='shoes').unlocked
+    early = next(i for i in s.list_shop_items('user-a') if i.accessory.accessory_id=='shoes')
+    assert early.unlocked and not early.can_purchase
     p=dict(learning_event('twenty',20),concept_id='twenty'); s.process_event('user-a',p)
     item=next(i for i in s.list_shop_items('user-a') if i.accessory.accessory_id=='shoes')
     assert item.unlocked and item.can_purchase and item.accessory.price==200
@@ -178,6 +179,26 @@ def test_ut06_shop_boundaries_rejection_state(factory):
     assert snapshot(factory,('game_purchase_requests',))==before
 
 
+def test_current_rank_item_uses_saved_coins_without_pass_threshold(factory):
+    service = standard_service(factory)
+    service.create_character('user-a', '학당')
+    fund(service, 20)
+    service.process_event('user-a', completion(1))
+    for count in range(1, 15):
+        event = learning_event(f'saved-stage2-{count}', count)
+        event.update(stage_id='stage2', total_count=40)
+        service.process_event('user-a', event)
+    service.process_event('user-a', completion(2))
+
+    assert service.get_game_state('user-a').current_rank == Rank.SCHOLAR
+    items = {item.accessory.accessory_id: item for item in service.list_shop_items('user-a')}
+    assert not items['shoes'].unlocked and not items['shoes'].can_purchase
+    assert not items['rice_paddle'].unlocked and not items['rice_paddle'].can_purchase
+    assert items['silver_glasses'].unlocked and items['silver_glasses'].can_purchase
+    assert service.purchase_accessory('user-a', 'shoes', 'late-shoes').status == 'unavailable'
+    assert service.purchase_accessory('user-a', 'silver_glasses', 'saved-coins').status == 'success'
+
+
 def test_ut06_literal_no_storage_change_on_rejection(factory):
     s=standard_service(factory); s.create_character('user-a','학당')
     before=snapshot(factory,('game_purchase_requests',))
@@ -190,7 +211,7 @@ def test_ut06_literal_no_storage_change_on_rejection(factory):
 def test_rejected_purchase_key_replays_first_result_after_conditions_change(factory):
     s=standard_service(factory); s.create_character('user-a','학당')
     first=s.purchase_accessory('user-a','shoes','retry')
-    assert first.status=='unavailable'
+    assert first.status=='insufficient_balance'
     fund(s)
     before=snapshot(factory)
     assert s.purchase_accessory('user-a','shoes','retry')==first

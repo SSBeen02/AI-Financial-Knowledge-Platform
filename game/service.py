@@ -94,16 +94,14 @@ class GameService:
         if character is None:
             raise LookupError("캐릭터 생성이 필요합니다.")
         state = session.get(CharacterStateRow, character.character_id)
-        # 왕의 구매 해금은 Stage 5 진행률이 아니라 Stage 4 통과 개수로 유지한다.
-        rank_stage = {Rank.BEGGAR: 1, Rank.COMMONER: 2, Rank.SCHOLAR: 3, Rank.KING: 4}[Rank(state.current_rank)]
-        progress = session.get(StoryProgressRow, (character.character_id, rank_stage))
+        # 현재 신분의 상품은 통과 개수와 무관하게 보유 엽전으로 구매한다.
         owned = set(session.scalars(select(UserAccessoryRow.accessory_id).where(
             UserAccessoryRow.character_id == character.character_id)))
         items = []
         for accessory in self.accessories.values():
             if not accessory.on_sale:
                 continue
-            unlocked = accessory.rank == state.current_rank and progress.passed_concept_count >= accessory.unlock_pass_count
+            unlocked = accessory.rank == state.current_rank
             items.append(ShopItem(accessory=accessory, owned=accessory.accessory_id in owned,
                                   unlocked=unlocked, can_purchase=unlocked and accessory.accessory_id not in owned
                                   and state.coin_balance >= accessory.price))
