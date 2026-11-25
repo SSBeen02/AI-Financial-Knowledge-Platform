@@ -4,9 +4,9 @@ import time
 import unittest
 from types import SimpleNamespace
 
-from services.errors import LlmReportError
-from services.grading import grade_attempt
-from services.report_parallel import build_tasks, generate_parallel_report, ReportDeadlineError
+from pretest.services.errors import LlmReportError
+from pretest.services.grading import grade_attempt
+from pretest.services.report_parallel import build_tasks, generate_parallel_report, ReportDeadlineError
 
 
 def graded():
@@ -78,17 +78,17 @@ class ParallelReportTest(unittest.TestCase):
 class ServiceDeadlineTest(unittest.TestCase):
     def test_provider_timeout_preserves_grades_and_failure_status(self):
         from unittest.mock import patch
-        from database.repository import InMemoryDiagnosticRepository
-        from schemas.diagnostic import SubmitRequest
-        from services.diagnostic_service import DiagnosticService
-        from services.question_bank import load_questions
+        from pretest.database.repository import InMemoryDiagnosticRepository
+        from pretest.schemas.diagnostic import SubmitRequest
+        from pretest.services.diagnostic_service import DiagnosticService
+        from pretest.services.question_bank import load_questions
         qs = load_questions()
         repo = InMemoryDiagnosticRepository()
         service = DiagnosticService(qs, repo)
         started = service.start("user")
         service.submit(started.id, "user", SubmitRequest(answers=[{"question_id": q["id"], "selected_answer": q["answer"]} for q in qs]), "key")
         before = service.get_report(started.id, "user").model_dump()
-        with patch("services.diagnostic_service.generate_llm_report", side_effect=ReportDeadlineError("timeout")):
+        with patch("pretest.services.diagnostic_service.generate_llm_report", side_effect=ReportDeadlineError("timeout")):
             service.generate_report(started.id, "user")
         result = service.get_report(started.id, "user")
         self.assertEqual(result.status, "failed")

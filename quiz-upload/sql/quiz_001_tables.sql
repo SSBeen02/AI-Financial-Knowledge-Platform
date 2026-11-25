@@ -34,8 +34,7 @@ create table if not exists public.quiz_submissions (
   correct_count integer not null,
   is_passed boolean not null,
   created_at timestamptz not null,
-  unique (user_id, idempotency_key),
-  constraint uq_quiz_submissions_quiz_set unique (quiz_set_id)
+  unique (user_id, idempotency_key)
 );
 
 comment on table public.quiz_submissions is

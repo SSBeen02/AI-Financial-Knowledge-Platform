@@ -32,7 +32,7 @@ SAMPLE_QUESTIONS = [
     for index in (1, 2)
 ] + [
     dict(question_index=3, question_type="situation", prompt="분업에 해당하는 사례는?",
-         choices=[{"key": key, "text": f"사례 {number}"} for number, key in enumerate("ABCD", 1)],
+         choices=[{"key": key, "text": f"사례 {key}"} for key in "ABCD"],
          answer="A", explanation="각자 맡은 업무를 수행한다.")
 ]
 
@@ -133,10 +133,18 @@ class TeamQuizAdapterTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_grading_reports_pass_fail_and_duplicate_submission_id(self):
         async def generate(**kwargs):
+            if kwargs["learning_session_id"] == "grade-False":
+                prompts = [
+                    "여러 사람이 담당 업무를 나누면 분업이라 하오.",
+                    "각자의 전문 분야를 맡아 생산하는 방식은 분업이오.",
+                    "공장에서 작업자가 조립과 포장을 각각 맡는 상황을 고르시오.",
+                ]
+                return [dict(question, prompt=prompt)
+                        for question, prompt in zip(SAMPLE_QUESTIONS, prompts)]
             return SAMPLE_QUESTIONS
         adapter = TeamQuizService(asyncio.get_running_loop(), QuizService(generate))
         for passed, choices in [(True, ["O", "O", "A"]), (False, ["X", "X", "B"])]:
-            inputs = dict(self.inputs, session_id="grade-" + str(passed), concept_id="grade-concept-" + str(passed))
+            inputs = dict(self.inputs, session_id="grade-" + str(passed))
             created = await asyncio.to_thread(adapter.create_quiz_set, **inputs)
             kwargs = dict(user_id=inputs["user_id"], quiz_set_id=created.quiz_set_id,
                           submitted_answers=[dict(question_index=i+1, answer=a) for i,a in enumerate(choices)],

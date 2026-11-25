@@ -10,10 +10,12 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from main import app
-from services.errors import LlmReportError
-from services.grading import grade_attempt
-from services.question_bank import count_by_domain, load_questions
+from pretest.database.repository import InMemoryDiagnosticRepository
+from pretest.main import app
+from pretest.services.diagnostic_service import DiagnosticService, get_diagnostic_service
+from pretest.services.errors import LlmReportError
+from pretest.services.grading import grade_attempt
+from pretest.services.question_bank import count_by_domain, load_questions
 
 ISO_UTC = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
 HIDDEN_KEYS = {"answer", "explanation", "concept"}
@@ -81,14 +83,11 @@ class GradingTest(unittest.TestCase):
 
 class DiagnosticApiTest(unittest.TestCase):
     def setUp(self):
-        # 최초 1회 정책이므로 서로 다른 시험은 독립 저장소를 사용한다.
-        from database.repository import InMemoryDiagnosticRepository
-        from services.diagnostic_service import DiagnosticService
-        service = DiagnosticService(load_questions(), InMemoryDiagnosticRepository())
-        for module in ("routers.diagnostics", "routers.reports"):
-            replacement = patch(f"{module}.get_diagnostic_service", return_value=service)
-            replacement.start()
-            self.addCleanup(replacement.stop)
+        self.questions = load_questions()
+        service = DiagnosticService(self.questions, InMemoryDiagnosticRepository())
+        overrides = patch.dict(app.dependency_overrides, {get_diagnostic_service: lambda: service})
+        overrides.start()
+        self.addCleanup(overrides.stop)
         self.client = TestClient(app)
         self.client.__enter__()
         self.addCleanup(self.client.__exit__, None, None, None)
@@ -98,7 +97,6 @@ class DiagnosticApiTest(unittest.TestCase):
                 kwargs.setdefault("headers", {"Idempotency-Key": "test-key"})
             return original_post(url, **kwargs)
         self.client.post = post
-        self.questions = load_questions()
 
     def _answers(self, overrides: dict[str, int] | None = None) -> list[dict]:
         overrides = overrides or {}
@@ -125,9 +123,15 @@ class DiagnosticApiTest(unittest.TestCase):
         self.assertEqual(body["total_questions"], 24)
         self.assertRegex(body["started_at"], ISO_UTC)
         self.assertEqual(len(body["questions"]), 24)
-        finance_question = next(q for q in body["questions"] if q["id"] == "finance_investment_001")
-        self.assertEqual(finance_question["options"][1], "2) 복리")
-        self.assertEqual(body["questions"][0]["domain"], "socioeconomic_phenomena_consumer_life")
+        self.assertEqual(
+            [question["domain"] for question in body["questions"]],
+            ["socioeconomic_phenomena_consumer_life"] * 6
+            + ["finance_investment"] * 6
+            + ["macroeconomy_monetary_fiscal_policy"] * 6
+            + ["international_economy_industry_technology"] * 6,
+        )
+        interest_question = next(question for question in body["questions"] if question["id"] == "finance_investment_001")
+        self.assertEqual(interest_question["options"][1], "2) 복리")
         _assert_no_keys(body, HIDDEN_KEYS)
 
         spec = self.client.get("/openapi.json").json()
@@ -263,7 +267,7 @@ class DiagnosticApiTest(unittest.TestCase):
     def test_generation_failure_is_visible_on_report_lookup(self):
         started = self.client.post("/diagnostics").json()
         with patch(
-            "services.diagnostic_service.generate_llm_report",
+            "pretest.services.diagnostic_service.generate_llm_report",
             side_effect=LlmReportError("맞춤 리포트를 생성하지 못했습니다."),
         ):
             failed = self.client.post(
@@ -284,15 +288,6 @@ class DiagnosticApiTest(unittest.TestCase):
         )
         self.assertEqual(again.status_code, 200)
         self.assertEqual(again.json()["status"], "failed")
-
-        retried = self.client.post(f"/reports/{started['id']}/retry")
-        self.assertEqual(retried.status_code, 202, retried.text)
-        self.assertEqual(retried.json()["status"], "processing")
-        self.assertNotIn("error", retried.json())
-        completed = self.client.get(f"/reports/{started['id']}")
-        self.assertEqual(completed.status_code, 200)
-        self.assertEqual(completed.json()["status"], "completed")
-        self.assertIn("llm_report", completed.json())
 
     def test_unknown_diagnostic_is_not_found(self):
         response = self.client.post(

@@ -248,7 +248,7 @@ def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, A
             ]
             answer = mapped
         else:
-            choices = [dict(choice, text=choice_in_modern(choice["text"])) for choice in choices]
+            choices = [dict(choice, text=choice_in_modern(localize_quiz_text(choice["text"]))) for choice in choices]
             for choice in choices:
                 validate_korean_text(choice["text"], allow_numeric=True)
             keys = [choice["key"] for choice in choices]
@@ -296,11 +296,15 @@ def answers_match(question: dict[str, Any], submitted: str) -> bool:
     return False
 
 
-def _quiz_display_text(text: str, *, allow_numeric: bool = False) -> str:
+def _quiz_display_text(
+    text: str, *, allow_numeric: bool = False, fallback: str | None = None,
+) -> str:
     localized = localize_quiz_text(text)
     try:
         validate_korean_text(localized, allow_numeric=allow_numeric)
     except ValueError as exc:
+        if fallback is not None:
+            return fallback
         raise QuizAPIError(
             409, "QUIZ_LANGUAGE_UNSUPPORTED",
             "저장된 퀴즈에 한국어로 표시할 수 없는 내용이 있습니다.",
@@ -315,6 +319,19 @@ def _public_question(question: dict[str, Any]) -> QuizQuestionPublic:
         prompt=question_in_hao(_quiz_display_text(question["prompt"])),
         choices=[QuizChoicePublic(key=choice["key"], text=choice["key"] if question["question_type"] == "ox" else choice_in_modern(_quiz_display_text(choice["text"], allow_numeric=True))) for choice in question["choices"]],
     )
+
+
+def has_playable_korean_text(question: dict[str, Any]) -> bool:
+    choices = question["choices"]
+    if not choices or any(choice["key"] not in {"O", "X", "A", "B", "C", "D"} for choice in choices):
+        return False
+    try:
+        _public_question(question)
+    except QuizAPIError as exc:
+        if exc.code != "QUIZ_LANGUAGE_UNSUPPORTED":
+            raise
+        return False
+    return True
 
 
 def _public_quiz(quiz: QuizSet) -> QuizSetPublicResponse:
@@ -734,12 +751,27 @@ def _note_items(quiz: QuizSet, submission: QuizSubmission | None) -> list[Learni
                 learning_session_id=quiz.learning_session_id,
                 question_index=index,
                 question_type=question["question_type"],
-                prompt=question_in_hao(question["prompt"]),
-                choices=[QuizChoicePublic(key=choice["key"], text=choice["key"] if question["question_type"] == "ox" else choice_in_modern(choice["text"])) for choice in question["choices"]],
+                prompt=question_in_hao(_quiz_display_text(
+                    question["prompt"], fallback="이 문항의 한국어 문제를 확인할 수 없소.",
+                )),
+                choices=[
+                    QuizChoicePublic(
+                        key=choice["key"],
+                        text=choice["key"] if question["question_type"] == "ox" else choice_in_modern(
+                            _quiz_display_text(
+                                choice["text"], allow_numeric=True,
+                                fallback="이 보기의 한국어 내용을 확인할 수 없소.",
+                            )
+                        ),
+                    )
+                    for choice in question["choices"]
+                ],
                 submitted_answer=answers.get(index) if submitted else None,
                 is_correct=flags.get(index) if submitted else None,
                 answer=question["answer"] if submitted else None,
-                explanation=explanation_in_hao(question["explanation"]) if submitted else None,
+                explanation=explanation_in_hao(_quiz_display_text(
+                    question["explanation"], fallback="이 문항의 한국어 해설을 확인할 수 없소.",
+                )) if submitted else None,
                 is_passed=submission.is_passed if submission is not None else None,
                 created_at=created_at,
             )

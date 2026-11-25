@@ -1,0 +1,11 @@
+{
+  "session_id": "session-retry-example-1",
+  "original_session_id": "session-example-1",
+  "concept_id": "sisa_1281",
+  "stage_id": "stage1",
+  "attempt": 1,
+  "quiz": {
+    "quiz_set_id": "quiz-set-retry-example-1",
+    "status": "pending"
+  }
+}

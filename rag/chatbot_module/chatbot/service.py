@@ -1,0 +1,1707 @@
+"""세션·상태 조회.
+
+재학습은 in_progress 개념의 최신 퀴즈 상태가 failed일 때만 연다.
+최신 상태가 pending이거나, passed인데 개념 상태가 아직 in_progress이면 quiz_pending이다.
+quiz_pending에서는 진행 중인 세션이 있을 수 없다.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import re
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from contextlib import suppress
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from threading import RLock
+from time import perf_counter
+
+from chatbot.answer_format import IncrementalAnswerFormatter, normalize_answer_text, with_advice_disclaimer
+from chatbot.concepts import (
+    STATUS_IN_PROGRESS,
+    STATUS_PASSED,
+    STATUS_NOT_STARTED,
+    ConceptRef,
+    ConceptStatusReader,
+    InProgressConceptView,
+    StageCatalog,
+    find_concept,
+    lock_presentation,
+    recommend_concepts,
+)
+from chatbot.config import AnswerKnowledgeMode, Settings
+from chatbot.concept_synonyms import concept_terms, explicit_matches
+from chatbot.integrations import ConceptStatusService
+from chatbot.llm import LLMAdapter, LLMError, Utf8ChunkDecoder
+from chatbot.prompts import HistoryTurn, Prompt, build_answer_prompt
+from chatbot.relevance import (
+    detect_concept,
+    is_question_related,
+    mentioned_concepts,
+)
+
+from chatbot.retrieval import ConceptCache, CachedConcept, RetrievalResult, RetrievedDoc, Retriever, PUBLIC_DATA_SOURCE_LABEL, FSS_COLLECTION, display_source_label, normalize_search_query, to_source_out
+from chatbot.safety import classify_question, limited_answer, redact_sensitive
+from chatbot.schemas import (
+    ChatMode,
+    ConceptStateOut,
+    ConceptsResponse,
+    ContextSourceOut,
+    CurrentStageProgressOut,
+    LearningConceptOut,
+    LearningContextListItem,
+    LearningCompletionOut,
+    LearningContextOut,
+    LearningTurnOut,
+    MessageIn,
+    MessageListItem,
+    MessageResponse,
+    MentionedConceptOut,
+    ProgressResponse,
+    QuizResultOut,
+    QuizRetryOut,
+    QuizSetOut,
+    SessionOut,
+    SafetyLevel,
+    SourceOut,
+    StageProgressOut,
+    StateResponse,
+    SuggestedConceptOut,
+)
+from chatbot.store import ChatStore, LatestQuiz, MessageRecord, SessionRecord
+from chatbot.quiz import QuizService, QuizServiceError
+from chatbot.timing import RequestTiming, current_timing
+from chatbot.tone import (
+    active_learning_notice,
+    ChatTone,
+    excluded_concept_notice,
+    extra_concept_notice,
+    free_question_notice,
+    low_band_notice,
+    learning_guide,
+    no_active_session_complete_hint,
+    other_stage_notice,
+    passed_concept_notice,
+    suggested_concept_notice,
+    with_korean_particle,
+)
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _CompletionInProgress:
+    """QuizService의 동기 콜백과 완료 저장 사이를 연결하는 요청 범위 상태."""
+
+    context: LearningContextOut
+    generation_failed: bool = False
+
+
+_completion_lock = RLock()
+_completions_in_progress: dict[tuple[int, str, str], _CompletionInProgress] = {}
+
+
+class SessionNotFound(Exception):
+    """없는 세션이거나 다른 사용자의 세션일 때."""
+
+
+class ScreenInvariantError(Exception):
+    """화면 모드와 세션 상태가 함께 있을 수 없을 때."""
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class MessageConflictError(Exception):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class ExternalServiceError(Exception):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class MessageInvariantError(Exception):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+class LearningCompletionError(Exception):
+    def __init__(self, detail: str, *, status_code: int = 400) -> None:
+        super().__init__(detail)
+        self.detail = detail
+        self.status_code = status_code
+
+
+class QuizResultConflictError(Exception):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
+@dataclass(frozen=True)
+class Screen:
+    mode: ChatMode
+    concept: ConceptRef | None
+    active_session: SessionRecord | None
+
+
+@dataclass(frozen=True)
+class MessagePlan:
+    concept: ConceptRef | None
+    session: SessionRecord | None
+    start_type: str | None
+    attempt: int | None
+
+
+@dataclass(frozen=True)
+class PreparedMessage:
+    user_id: str
+    request: MessageIn
+    plan: MessagePlan
+    retrieval: RetrievalResult
+    current_concept: CachedConcept | None
+    is_related: bool
+    notice: str | None
+    suggested_concept: SuggestedConceptOut | None
+    prompt: Prompt
+    started_at: float
+    display_source_min_score: float
+    chat_tone: ChatTone
+    answer_knowledge_mode: AnswerKnowledgeMode
+    safety_level: SafetyLevel = "ALLOW"
+    safe_answer: str | None = None
+    catalog: StageCatalog | None = None
+    cache: ConceptCache | None = None
+    screen_mode: ChatMode = "normal"
+
+
+def list_concept_page(
+    catalog: StageCatalog,
+    status_service: ConceptStatusReader,
+    store: ChatStore,
+    user_id: str,
+    *,
+    offset: int,
+    limit: int,
+    chat_tone: ChatTone = "hao",
+) -> ConceptsResponse:
+    screen = resolve_screen(catalog, status_service, store, user_id)
+    response = recommend_concepts(
+        catalog,
+        status_service,
+        user_id,
+        offset=offset,
+        limit=limit,
+        screen_mode=screen.mode,
+        locked_concept=screen.concept,
+        chat_tone=chat_tone,
+    )
+    if screen.mode == "normal" and screen.concept is not None:
+        response.locked_concept = _concept_out(screen.concept)
+        response.notice = active_learning_notice(screen.concept.term, chat_tone)
+    return response
+
+
+def get_chat_state(
+    catalog: StageCatalog,
+    status_service: ConceptStatusReader,
+    store: ChatStore,
+    user_id: str,
+    chat_tone: ChatTone = "hao",
+) -> StateResponse:
+    screen = resolve_screen(catalog, status_service, store, user_id)
+    _mode, locked, notice, _suggested = lock_presentation(
+        screen.mode,
+        screen.concept,
+        chat_tone=chat_tone,
+    )
+    active = screen.active_session
+    if screen.mode == "normal" and screen.concept is not None:
+        locked = _concept_out(screen.concept)
+        notice = active_learning_notice(screen.concept.term, chat_tone)
+    return StateResponse(
+        mode=screen.mode,
+        active_session=_session_out(active) if active is not None else None,
+        locked_concept=locked,
+        notice=notice,
+        complete_hint=(
+            no_active_session_complete_hint(chat_tone) if active is None else None
+        ),
+        learning_guide=learning_guide(chat_tone),
+        status_labels={
+            "not_started": "미학습",
+            "in_progress": "학습중",
+            "passed": "통과",
+        },
+        progress=get_progress(catalog, status_service, user_id).current,
+        quick_prompts=_quick_prompts(screen),
+    )
+
+
+def get_progress(
+    catalog: StageCatalog,
+    status_service: ConceptStatusReader,
+    user_id: str,
+) -> ProgressResponse:
+    """Return per-stage progress calculated only from concept statuses."""
+
+    current_stage = status_service.get_current_stage(user_id)
+    ordered_ids = tuple(catalog.stages)
+    current_index = ordered_ids.index(current_stage)
+    stages: list[StageProgressOut] = []
+    current: CurrentStageProgressOut | None = None
+    for index, stage_id in enumerate(ordered_ids):
+        stage = catalog.stages[stage_id]
+        statuses = status_service.get_statuses(user_id, stage_id)
+        total = len(stage.concepts)
+        passed = sum(
+            statuses.get(concept.concept_id, STATUS_NOT_STARTED) == STATUS_PASSED
+            for concept in stage.concepts
+        )
+        in_progress = sum(
+            statuses.get(concept.concept_id, STATUS_NOT_STARTED) == STATUS_IN_PROGRESS
+            for concept in stage.concepts
+        )
+        not_started = total - passed - in_progress
+        summary = CurrentStageProgressOut(
+            stage_id=stage.id,
+            name_ko=stage.name_ko,
+            total_count=total,
+            passed_count=passed,
+            in_progress_count=in_progress,
+            not_started_count=not_started,
+            remaining_count=total - passed,
+            percent=(passed * 100) // total if total else 0,
+        )
+        if stage_id == current_stage:
+            current = summary
+        stages.append(
+            StageProgressOut(
+                **summary.model_dump(),
+                unlocked=index <= current_index,
+                completed=passed == total,
+            )
+        )
+    if current is None:
+        raise MessageInvariantError(f"알 수 없는 현재 스테이지입니다: {current_stage}")
+    return ProgressResponse(current=current, stages=stages)
+
+
+def get_user_session(store: ChatStore, user_id: str, session_id: str) -> SessionOut:
+    record = store.get_session(user_id, session_id)
+    if record is None:
+        raise SessionNotFound()
+    return _session_out(record)
+
+
+def get_session_message_history(
+    store: ChatStore,
+    settings: Settings,
+    user_id: str,
+    session_id: str,
+) -> list[MessageListItem]:
+    if store.get_session(user_id, session_id) is None:
+        raise SessionNotFound()
+    return [
+        _message_list_item(message, settings.display_source_min_score)
+        for message in store.get_session_messages(user_id, session_id)
+    ]
+
+
+def get_message_history(
+    store: ChatStore,
+    settings: Settings,
+    user_id: str,
+    *,
+    limit: int,
+) -> list[MessageListItem]:
+    return [
+        _message_list_item(message, settings.display_source_min_score)
+        for message in store.get_recent_messages(user_id, limit=limit)
+    ]
+
+
+def send_message(
+    *,
+    catalog: StageCatalog,
+    status_service: ConceptStatusService,
+    store: ChatStore,
+    cache: ConceptCache,
+    retriever: Retriever,
+    llm: LLMAdapter,
+    settings: Settings,
+    user_id: str,
+    request: MessageIn,
+) -> MessageResponse:
+    """POST /learning/messages의 전체 분기를 처리한다."""
+    prepared = prepare_message(
+        catalog=catalog,
+        status_service=status_service,
+        store=store,
+        cache=cache,
+        retriever=retriever,
+        llm=llm,
+        settings=settings,
+        user_id=user_id,
+        request=request,
+    )
+    if prepared.safe_answer is not None:
+        answer = prepared.safe_answer
+    else:
+        try:
+            raw_answer = llm.generate(prepared.prompt)
+        except LLMError as exc:
+            raise ExternalServiceError(exc.detail) from exc
+        formatter = IncrementalAnswerFormatter()
+        formatter.feed(raw_answer)
+        formatter.finish()
+        answer = _ensure_answer_suffixes(
+            formatter.body,
+            prepared.retrieval,
+            prepared.answer_knowledge_mode,
+            current_concept=prepared.current_concept,
+            chat_tone=prepared.chat_tone,
+            use_current_concept_on_low=prepared.is_related and prepared.current_concept is not None,
+            normalized=True,
+            model_cited=formatter.model_cited,
+        )
+    answer = with_advice_disclaimer(answer, prepared.request.message, prepared.safety_level)
+    return _persist_prepared_message(
+        prepared=prepared,
+        answer=answer,
+        status_service=status_service,
+        store=store,
+    )
+
+
+def prepare_message(
+    *,
+    catalog: StageCatalog,
+    status_service: ConceptStatusService,
+    store: ChatStore,
+    cache: ConceptCache,
+    retriever: Retriever,
+    llm: LLMAdapter,
+    settings: Settings,
+    user_id: str,
+    request: MessageIn,
+) -> PreparedMessage:
+    """비스트리밍과 SSE가 공유하는 분기·검색·검증·프롬프트 준비."""
+    started_at = perf_counter()
+    safe_question = redact_sensitive(request.message)
+    safety_level = classify_question(safe_question, llm)
+    if safety_level != "ALLOW":
+        return PreparedMessage(
+            user_id=user_id,
+            request=MessageIn(
+                message="[안전 정책에 따라 처리된 요청]" if safety_level == "BLOCK" else safe_question
+            ),
+            plan=MessagePlan(concept=None, session=None, start_type=None, attempt=None),
+            retrieval=RetrievalResult(sources=[], concept_hits=[], band="low", top_score=0.0),
+            current_concept=None,
+            is_related=False,
+            notice=None,
+            suggested_concept=None,
+            prompt=Prompt(instructions="", input=""),
+            started_at=started_at,
+            display_source_min_score=settings.display_source_min_score,
+            chat_tone=settings.chat_tone,
+            answer_knowledge_mode=settings.answer_knowledge_mode,
+            safety_level=safety_level,
+            safe_answer=limited_answer(safety_level, safe_question, settings.chat_tone),
+        )
+    request = request.model_copy(update={"message": safe_question})
+    screen = resolve_screen(catalog, status_service, store, user_id)
+    plan = _initial_message_plan(catalog, status_service, store, user_id, request, screen)
+    timing = current_timing()
+    if timing is not None:
+        timing.mark("state_plan_complete")
+
+    try:
+        search_query = normalize_search_query(
+            request.message,
+            (term for concept in cache.values() for term in (concept.term, *concept.aliases)),
+        )
+        retrieval = retriever.search(search_query)
+        if timing is not None:
+            timing.mark("retrieval_complete")
+    except Exception as exc:
+        raise ExternalServiceError("검색 서비스 호출에 실패했습니다.") from exc
+
+    suggested_concept: SuggestedConceptOut | None = None
+    if plan.concept is None and plan.start_type is None and screen.mode == "normal":
+        detected = _detect_for_current_stage(
+            catalog, status_service, cache, settings, user_id, request.message, retrieval
+        )
+        if detected is not None:
+            if settings.free_question_auto_start:
+                plan = MessagePlan(
+                    concept=detected,
+                    session=None,
+                    start_type="detected",
+                    attempt=store.get_next_attempt(
+                        user_id, detected.concept_id, detected.stage_id
+                    ),
+                )
+            else:
+                suggested_concept = SuggestedConceptOut(
+                    concept_id=detected.concept_id,
+                    term=detected.term,
+                )
+
+    cached = _cached_concept(cache, plan.concept) if plan.concept is not None else None
+    history = _message_history(store, user_id, plan.session)
+    previous_attempt_history = _previous_attempt_history(store, user_id, plan)
+    is_related = _related_for_plan(
+        question=request.message,
+        plan=plan,
+        cached=cached,
+        cache=cache,
+        retrieval=retrieval,
+        llm=llm,
+        history=history,
+    )
+    use_current_concept_on_low = retrieval.band == "low" and is_related and cached is not None
+    notice = _message_notice(
+        catalog=catalog,
+        status_service=status_service,
+        cache=cache,
+        user_id=user_id,
+        question=request.message,
+        retrieval=retrieval,
+        chat_tone=settings.chat_tone,
+    )
+    if use_current_concept_on_low and notice == low_band_notice(settings.chat_tone):
+        notice = None
+    if suggested_concept is not None:
+        notice = suggested_concept_notice(suggested_concept.term, settings.chat_tone)
+    if notice is None and plan.concept is None and suggested_concept is None:
+        notice = free_question_notice(settings.chat_tone)
+    if plan.session is not None:
+        # 활성 학습 세션의 후속 질문은 관련성 판정이나 검색 용어와 무관하게
+        # 같은 세션에 저장된다. 이 메시지에는 별도 학습/자유 질문 안내를 띄우지 않는다.
+        notice = None
+    prompt = build_answer_prompt(
+        question=request.message,
+        current_concept=cached,
+        band=retrieval.band,
+        sources=retrieval.sources,
+        history=history,
+        previous_attempt_history=previous_attempt_history,
+        stage=plan.concept.stage_id if plan.concept is not None else None,
+        attempt=plan.attempt,
+        chat_tone=settings.chat_tone,
+        knowledge_mode=settings.answer_knowledge_mode,
+        chat_emoji=settings.chat_emoji,
+        use_current_concept_on_low=use_current_concept_on_low,
+    )
+    if timing is not None:
+        timing.mark("prompt_complete")
+    return PreparedMessage(
+        user_id=user_id,
+        request=request,
+        plan=plan,
+        retrieval=retrieval,
+        is_related=is_related,
+        notice=notice,
+        suggested_concept=suggested_concept,
+        prompt=prompt,
+        started_at=started_at,
+        display_source_min_score=settings.display_source_min_score,
+        chat_tone=settings.chat_tone,
+        answer_knowledge_mode=settings.answer_knowledge_mode,
+        current_concept=cached,
+        catalog=catalog,
+        cache=cache,
+        screen_mode=screen.mode,
+    )
+
+
+async def stream_message_events(
+    *,
+    prepared: PreparedMessage,
+    status_service: ConceptStatusService,
+    store: ChatStore,
+    llm: LLMAdapter,
+    is_disconnected: Callable[[], Awaitable[bool]],
+    request_id: str,
+    timing: RequestTiming | None = None,
+) -> AsyncIterator[str]:
+    """답변을 SSE로 보내고, 완주 및 연결 유지가 확인된 뒤에만 상태를 반영한다."""
+    formatter = IncrementalAnswerFormatter()
+    utf8_decoder = Utf8ChunkDecoder()
+    iterator: Iterator[str | bytes] | None = None
+    try:
+        if prepared.safe_answer is not None:
+            answer = with_advice_disclaimer(
+                prepared.safe_answer, prepared.request.message, prepared.safety_level
+            )
+            if await is_disconnected():
+                return
+            if timing is not None:
+                timing.mark("generation_complete")
+                timing.mark("first_sse_token_yield")
+            yield _sse("token", {"delta": answer})
+            await asyncio.sleep(0)
+            if await is_disconnected():
+                return
+            response = _persist_prepared_message(
+                prepared=prepared,
+                answer=answer,
+                status_service=status_service,
+                store=store,
+            )
+            if timing is not None:
+                timing.mark("save_complete")
+            yield _sse("done", response.model_dump(mode="json", exclude={"answer"}))
+            return
+        iterator = iter(llm.stream(prepared.prompt))
+        first_raw = True
+        first_sent = True
+        while True:
+            if await is_disconnected():
+                return
+            chunk = await asyncio.to_thread(_next_or_end, iterator)
+            if chunk is _STREAM_END:
+                break
+            if first_raw and chunk:
+                first_raw = False
+                if timing is not None:
+                    timing.mark("llm_first_content")
+            text = utf8_decoder.feed(chunk if isinstance(chunk, (str, bytes)) else str(chunk))
+            if not text:
+                continue
+            for delta in formatter.feed(text):
+                if await is_disconnected():
+                    return
+                if first_sent:
+                    first_sent = False
+                    if timing is not None:
+                        timing.mark("first_sse_token_yield")
+                yield _sse("token", {"delta": delta})
+
+        for delta in formatter.feed(utf8_decoder.finish()):
+            if await is_disconnected():
+                return
+            if first_sent:
+                first_sent = False
+                if timing is not None:
+                    timing.mark("first_sse_token_yield")
+            yield _sse("token", {"delta": delta})
+        if not formatter.has_input:
+            raise LLMError("LLM이 비어 있는 응답을 반환했습니다.")
+        for delta in formatter.finish():
+            if await is_disconnected():
+                return
+            if first_sent:
+                first_sent = False
+                if timing is not None:
+                    timing.mark("first_sse_token_yield")
+            yield _sse("token", {"delta": delta})
+        if not formatter.body:
+            raise LLMError("LLM이 비어 있는 응답을 반환했습니다.")
+        answer = _ensure_answer_suffixes(
+            formatter.body,
+            prepared.retrieval,
+            prepared.answer_knowledge_mode,
+            current_concept=prepared.current_concept,
+            chat_tone=prepared.chat_tone,
+            use_current_concept_on_low=prepared.is_related and prepared.current_concept is not None,
+            normalized=True,
+            model_cited=formatter.model_cited,
+        )
+        answer = with_advice_disclaimer(answer, prepared.request.message, prepared.safety_level)
+        if not answer.startswith(formatter.body):
+            raise LLMError("답변 서식 정리 중 오류가 발생했습니다.")
+        suffix = answer[len(formatter.body):]
+        if await is_disconnected():
+            return
+        if suffix:
+            if first_sent:
+                first_sent = False
+                if timing is not None:
+                    timing.mark("first_sse_token_yield")
+            yield _sse("token", {"delta": suffix})
+
+        if timing is not None:
+            timing.mark("generation_complete")
+
+        # 마지막 토큰 전송 뒤 취소 신호가 처리될 기회를 주고, 커밋 직전에 다시 확인한다.
+        await asyncio.sleep(0)
+        if await is_disconnected():
+            return
+        response = _persist_prepared_message(
+            prepared=prepared,
+            answer=answer,
+            status_service=status_service,
+            store=store,
+        )
+        if timing is not None:
+            timing.mark("save_complete")
+        metadata = response.model_dump(mode="json", exclude={"answer"})
+        yield _sse("done", metadata)
+    except LLMError as exc:
+        if not await is_disconnected():
+            yield _sse(
+                "error",
+                {
+                    "code": "external_service_error",
+                    "message": exc.detail,
+                    "request_id": request_id,
+                },
+            )
+    except asyncio.CancelledError:
+        raise
+    finally:
+        if iterator is not None:
+            with suppress(Exception):
+                iterator.close()  # type: ignore[attr-defined]
+
+
+def _persist_prepared_message(
+    *,
+    prepared: PreparedMessage,
+    answer: str,
+    status_service: ConceptStatusService,
+    store: ChatStore,
+) -> MessageResponse:
+    if "\ufffd" in answer:
+        logger.warning("Answer contains U+FFFD replacement character before persistence")
+    latency_ms = max(0, round((perf_counter() - prepared.started_at) * 1000))
+
+    plan = prepared.plan
+    retrieval = prepared.retrieval
+    session = plan.session
+    session_started = False
+    if plan.start_type is not None and plan.concept is not None:
+        if plan.start_type in {"keyword", "detected"}:
+            status_service.mark_in_progress(
+                prepared.user_id,
+                plan.concept.concept_id,
+                plan.concept.stage_id,
+            )
+        session = store.create_session(
+            user_id=prepared.user_id,
+            stage=plan.concept.stage_id,
+            concept_id=plan.concept.concept_id,
+            term=plan.concept.term,
+            attempt=plan.attempt or 1,
+            start_type=plan.start_type,  # type: ignore[arg-type]
+        )
+        session_started = True
+
+    source_models = [to_source_out(source) for source in retrieval.sources]
+    display_source_models = [
+        to_source_out(source)
+        for source in _display_sources(
+            retrieval,
+            current_concept_id=session.concept_id if session is not None else None,
+            minimum_score=prepared.display_source_min_score,
+            answer=answer,
+        )
+    ]
+    notice, suggested_concept = _notice_from_answer_definition(
+        prepared, answer, status_service
+    )
+    pair = store.save_message_pair(
+        user_id=prepared.user_id,
+        session_id=session.session_id if session is not None else None,
+        question=prepared.request.message,
+        answer=answer,
+        is_related=prepared.is_related,
+        band=retrieval.band,
+        top_score=retrieval.top_score,
+        sources=[source.model_dump() for source in source_models],
+        display_sources=[source.model_dump() for source in display_source_models],
+        notice=notice,
+        latency_ms=latency_ms,
+    )
+    concept_state = None
+    if session is not None:
+        concept_state = ConceptStateOut(
+            concept_id=session.concept_id,
+            term=session.term,
+            stage_id=session.stage,  # type: ignore[arg-type]
+            status=STATUS_IN_PROGRESS,
+            attempt=session.attempt,
+        )
+    return MessageResponse(
+        answer=answer,
+        safety_level=prepared.safety_level,
+        session_id=session.session_id if session is not None else None,
+        session_started=session_started,
+        concept=concept_state,
+        is_related=prepared.is_related,
+        band=retrieval.band,
+        top_score=retrieval.top_score,
+        sources=source_models,
+        display_sources=display_source_models,
+        message_id=pair.assistant.message_id,
+        notice=notice,
+        suggested_concept=suggested_concept,
+    )
+
+
+def _notice_from_answer_definition(
+    prepared: PreparedMessage,
+    answer: str,
+    status_service: ConceptStatusService,
+) -> tuple[str | None, SuggestedConceptOut | None]:
+    """첫 정의 문장의 사전 근거가 확인될 때만 자유 질문 안내를 재판정한다."""
+    notice = prepared.notice
+    suggested = prepared.suggested_concept
+    if (
+        prepared.plan.concept is not None
+        or suggested is not None
+        or notice != free_question_notice(prepared.chat_tone)
+        or prepared.screen_mode != "normal"
+        or prepared.catalog is None
+        or prepared.cache is None
+        or prepared.retrieval.band == "low"
+    ):
+        return notice, suggested
+
+    try:
+        first_sentence, matches = _first_definition_sources(answer, prepared.retrieval.sources)
+        concept_ids = {doc.concept_id for doc in prepared.retrieval.concept_hits}
+        matched = next(
+            (doc for doc in matches if doc.collection == "sisa_terms" and doc.concept_id in concept_ids),
+            None,
+        )
+        if matched is None:
+            return notice, suggested
+        focused = RetrievalResult(
+            sources=[matched], concept_hits=[matched],
+            band=prepared.retrieval.band, top_score=matched.score,
+        )
+        replacement = _message_notice(
+            catalog=prepared.catalog,
+            status_service=status_service,
+            cache=prepared.cache,
+            user_id=prepared.user_id,
+            question=first_sentence,
+            retrieval=focused,
+            chat_tone=prepared.chat_tone,
+        )
+        if replacement is not None:
+            return replacement, suggested
+        stage_id = status_service.get_current_stage(prepared.user_id)
+        statuses = status_service.get_statuses(prepared.user_id, stage_id)
+        detected = detect_concept(
+            question=first_sentence,
+            candidates=[
+                ref for ref in prepared.catalog.stages[stage_id].concepts
+                if statuses.get(ref.concept_id, STATUS_NOT_STARTED) == STATUS_NOT_STARTED
+            ],
+            cache=prepared.cache,
+            retrieval=focused,
+            band_high=float("inf"),
+        )
+        if detected is not None:
+            suggested = SuggestedConceptOut(concept_id=detected.concept_id, term=detected.term)
+            return suggested_concept_notice(detected.term, prepared.chat_tone), suggested
+    except Exception:
+        logger.exception("Answer definition notice classification failed")
+    return notice, suggested
+
+
+_STREAM_END = object()
+
+
+def _next_or_end(iterator: Iterator[str | bytes]) -> str | bytes | object:
+    try:
+        return next(iterator)
+    except StopIteration:
+        return _STREAM_END
+
+
+def _sse(event: str, data: dict[str, object]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+def complete_learning_session(
+    *,
+    status_service: ConceptStatusService,
+    store: ChatStore,
+    cache: ConceptCache,
+    quiz_service: QuizService,
+    user_id: str,
+    session_id: str,
+    idempotency_key: str,
+) -> LearningCompletionOut:
+    replay = store.get_completion_request(user_id, idempotency_key)
+    if replay is not None:
+        if replay.session_id != session_id:
+            raise LearningCompletionError(
+                "같은 Idempotency-Key를 다른 학습 완료 요청에 사용할 수 없습니다.",
+                status_code=409,
+            )
+        return LearningCompletionOut.model_validate(replay.payload)
+
+    session = store.get_session(user_id, session_id)
+    if session is None:
+        raise SessionNotFound()
+    if session.status != "active":
+        raise LearningCompletionError("이미 완료된 세션입니다.", status_code=409)
+    if store.get_pending_quiz(user_id) is not None:
+        raise LearningCompletionError(
+            "퀴즈 결과를 기다리는 학습 맥락이 있습니다.", status_code=409
+        )
+
+    messages = store.get_session_messages(user_id, session_id)
+    turns = _learning_turns(messages)
+    if not any(turn.is_related for turn in turns):
+        raise LearningCompletionError("학습 완료에는 관련 대화가 최소 1턴 필요합니다.")
+
+    cached = cache.get(session.concept_id)
+    if cached is None:
+        raise MessageInvariantError(f"개념 캐시에 문서가 없습니다: {session.concept_id}")
+    mentions = _session_mentions(messages, cache, current_concept_id=session.concept_id)
+    status = status_service.get_statuses(user_id, session.stage).get(session.concept_id, STATUS_IN_PROGRESS)
+    completed_at = datetime.now(timezone.utc)
+    context = LearningContextOut(
+        session_id=session.session_id,
+        user_id=user_id,
+        status="completed",
+        quiz_status="pending",
+        concept=LearningConceptOut(
+            concept_id=session.concept_id,
+            term=session.term,
+            stage_id=session.stage,  # type: ignore[arg-type]
+            status=status,  # type: ignore[arg-type]
+            attempt=session.attempt,
+            definition=_definition_from_text(cached.text),
+        ),
+        turns=turns,
+        mentioned_concepts=mentions,
+        reference_chunk_ids=_reference_chunk_ids(turns),
+        completed_at=completed_at,
+    )
+    context_payload = context.model_dump(mode="json")
+    completion_key = (id(store), user_id, session.session_id)
+    pending_completion = _CompletionInProgress(context=context)
+    with _completion_lock:
+        if completion_key in _completions_in_progress:
+            raise LearningCompletionError("학습 완료 처리가 이미 진행 중입니다.", status_code=409)
+        _completions_in_progress[completion_key] = pending_completion
+    try:
+        try:
+            quiz_result = quiz_service.create_quiz_set(
+                user_id=user_id,
+                session_id=session.session_id,
+                concept_id=session.concept_id,
+                stage_id=session.stage,
+                learning_context=context_payload,
+                reference_chunk_ids=context.reference_chunk_ids,
+            )
+        except QuizServiceError as exc:
+            raise ExternalServiceError("퀴즈 생성 요청에 실패했습니다.") from exc
+        quiz = QuizSetOut(
+            quiz_set_id=quiz_result.quiz_set_id,
+            status=quiz_result.status,
+        )
+        # 잠금을 잡은 채 최종 저장하면 이 시점과 DB commit 사이에 들어온 콜백도
+        # 저장 전 플래그 또는 저장 후 DB 갱신 중 정확히 한 경로로 처리된다.
+        with _completion_lock:
+            if pending_completion.generation_failed or quiz.status == "failed":
+                context.quiz_status = "generation_failed"
+                context_payload = context.model_dump(mode="json")
+            completion = LearningCompletionOut(
+                **context.model_dump(),
+                quiz=quiz,
+            )
+            record = store.complete_session_with_context(
+                session_id=session.session_id,
+                user_id=user_id,
+                concept_id=session.concept_id,
+                idempotency_key=idempotency_key,
+                payload=context_payload,
+                completion_payload=completion.model_dump(mode="json"),
+                quiz_status=context.quiz_status,
+                completed_at=completed_at,
+            )
+            del record
+            _completions_in_progress.pop(completion_key, None)
+        return completion
+    finally:
+        with _completion_lock:
+            if _completions_in_progress.get(completion_key) is pending_completion:
+                _completions_in_progress.pop(completion_key, None)
+
+
+def report_quiz_generation_failed(
+    *, store: ChatStore, user_id: str, session_id: str
+) -> LearningContextOut:
+    """퀴즈 모듈의 실패 콜백을 세션당 한 번만 반영한다."""
+    session = store.get_session(user_id, session_id)
+    if session is None:
+        raise SessionNotFound()
+    record = store.get_learning_context(user_id, session_id)
+    if record is None:
+        completion_key = (id(store), user_id, session_id)
+        with _completion_lock:
+            pending_completion = _completions_in_progress.get(completion_key)
+            if pending_completion is not None:
+                pending_completion.generation_failed = True
+                return pending_completion.context.model_copy(
+                    update={"quiz_status": "generation_failed"}
+                )
+        # 완료 commit과의 경계에서 대기 상태가 먼저 제거됐을 수 있으므로 재조회한다.
+        record = store.get_learning_context(user_id, session_id)
+        if record is None:
+            raise QuizResultConflictError("완료된 세션의 학습 맥락을 찾을 수 없습니다.")
+    if record.quiz_status == "pending":
+        store.set_quiz_status(user_id, session_id, "generation_failed")
+    return get_learning_context(store, user_id, session_id)
+
+
+def retry_quiz_generation(
+    *,
+    status_service: ConceptStatusService,
+    store: ChatStore,
+    quiz_service: QuizService,
+    user_id: str,
+    session_id: str,
+    idempotency_key: str,
+) -> QuizRetryOut:
+    get_retry = getattr(status_service, "get_quiz_retry_request", None)
+    save_retry = getattr(status_service, "save_quiz_retry_request", None)
+    if get_retry is None or save_retry is None:
+        raise MessageInvariantError("학습 관리 서비스가 퀴즈 재요청 멱등 처리를 지원하지 않습니다.")
+    replay = get_retry(user_id, session_id, idempotency_key)
+    if replay is not None:
+        return QuizRetryOut.model_validate(replay)
+    original = store.get_session(user_id, session_id)
+    context_record = store.get_learning_context(user_id, session_id)
+    if original is None or context_record is None:
+        raise SessionNotFound()
+    if context_record.quiz_status != "generation_failed":
+        raise QuizResultConflictError("퀴즈 생성에 실패한 세션만 다시 요청할 수 있습니다.")
+    retry = store.create_session(
+        user_id=user_id,
+        stage=original.stage,
+        concept_id=original.concept_id,
+        term=original.term,
+        attempt=original.attempt,
+        start_type="quiz_retry",
+        status="completed",
+        completed_at=datetime.now(timezone.utc),
+    )
+    retry_context = dict(context_record.payload)
+    retry_context["session_id"] = retry.session_id
+    retry_context["quiz_status"] = "pending"
+    store.save_learning_context(
+        session_id=retry.session_id,
+        user_id=user_id,
+        concept_id=retry.concept_id,
+        payload=retry_context,
+        quiz_status="pending",
+    )
+    reference_chunk_ids = list(retry_context.get("reference_chunk_ids") or [])
+    try:
+        quiz_result = quiz_service.create_quiz_set(
+            user_id=user_id,
+            session_id=retry.session_id,
+            concept_id=retry.concept_id,
+            stage_id=retry.stage,
+            learning_context=retry_context,
+            reference_chunk_ids=reference_chunk_ids,
+        )
+    except QuizServiceError as exc:
+        store.set_quiz_status(user_id, retry.session_id, "generation_failed")
+        raise ExternalServiceError("퀴즈 재요청에 실패했습니다.") from exc
+    if quiz_result.status == "failed":
+        store.set_quiz_status(user_id, retry.session_id, "generation_failed")
+    response = QuizRetryOut(
+        session_id=retry.session_id,
+        original_session_id=session_id,
+        concept_id=retry.concept_id,
+        stage_id=retry.stage,  # type: ignore[arg-type]
+        attempt=retry.attempt,
+        quiz=QuizSetOut(
+            quiz_set_id=quiz_result.quiz_set_id,
+            status=quiz_result.status,
+        ),
+    )
+    saved = save_retry(
+        user_id=user_id,
+        original_session_id=session_id,
+        retry_session_id=retry.session_id,
+        idempotency_key=idempotency_key,
+        response_payload=response.model_dump(mode="json"),
+    )
+    return QuizRetryOut.model_validate(saved)
+
+
+def get_learning_context(
+    store: ChatStore,
+    user_id: str,
+    session_id: str,
+) -> LearningContextOut:
+    record = store.get_learning_context(user_id, session_id)
+    if record is None:
+        raise SessionNotFound()
+    payload = dict(record.payload)
+    payload["quiz_status"] = record.quiz_status
+    return LearningContextOut.model_validate(payload)
+
+
+def list_learning_contexts(
+    store: ChatStore,
+    user_id: str,
+) -> list[LearningContextListItem]:
+    result: list[LearningContextListItem] = []
+    for record in store.list_learning_contexts(user_id):
+        context = dict(record.payload)
+        concept = context.get("concept") or {}
+        result.append(
+            LearningContextListItem(
+                session_id=record.session_id,
+                concept_id=record.concept_id,
+                term=str(concept.get("term") or ""),
+                status="completed",
+                quiz_status=record.quiz_status,
+                completed_at=context.get("completed_at"),
+            )
+        )
+    return result
+
+
+def report_quiz_result(
+    *,
+    status_service: ConceptStatusService,
+    store: ChatStore,
+    user_id: str,
+    session_id: str,
+    submission_id: str,
+    concept_id: str,
+    stage_id: str,
+    correct_count: int,
+    passed: bool,
+) -> QuizResultOut:
+    session = store.get_session(user_id, session_id)
+    if session is None:
+        raise SessionNotFound()
+    result = status_service.apply_quiz_result(
+        user_id=user_id,
+        submission_id=submission_id,
+        session_id=session_id,
+        concept_id=concept_id,
+        stage_id=stage_id,
+        correct_count=correct_count,
+        passed=passed,
+    )
+    return QuizResultOut.model_validate(result)
+
+
+def _learning_turns(messages: list[MessageRecord]) -> list[LearningTurnOut]:
+    turns: list[LearningTurnOut] = []
+    question: MessageRecord | None = None
+    for message in messages:
+        if message.role == "user":
+            question = message
+            continue
+        if message.role != "assistant" or question is None:
+            continue
+        sources = [
+            ContextSourceOut(
+                concept_id=str(source.get("concept_id") or ""),
+                collection=str(source.get("collection") or ""),
+                label=str(source.get("label") or ""),
+                images=source.get("images") if isinstance(source.get("images"), list) else None,
+                term=str(source.get("term")) if source.get("term") is not None else None,
+                printed_page=source.get("printed_page") if type(source.get("printed_page")) is int else None,
+                source_url=str(source.get("source_url")) if source.get("source_url") else None,
+            )
+            for source in (message.sources or [])
+        ]
+        turns.append(
+            LearningTurnOut(
+                question=question.content,
+                answer=message.content,
+                is_related=message.is_related is True,
+                sources=sources,
+                created_at=question.created_at,
+            )
+        )
+        question = None
+    return turns
+
+
+def _reference_chunk_ids(turns: list[LearningTurnOut]) -> list[str]:
+    """퀴즈 연동용 근거 청크 ID를 대화 순서대로 중복 제거한다."""
+    seen: set[str] = set()
+    result: list[str] = []
+    for turn in turns:
+        for source in turn.sources:
+            chunk_id = source.concept_id
+            if chunk_id and chunk_id not in seen:
+                seen.add(chunk_id)
+                result.append(chunk_id)
+    return result
+
+
+def _session_mentions(
+    messages: list[MessageRecord],
+    cache: ConceptCache,
+    *,
+    current_concept_id: str,
+) -> list[MentionedConceptOut]:
+    found: dict[str, MentionedConceptOut] = {}
+    question: MessageRecord | None = None
+    for message in messages:
+        if message.role == "user":
+            question = message
+            continue
+        if message.role != "assistant" or question is None:
+            continue
+        for concept in mentioned_concepts(
+            question.content,
+            cache.values(),
+            exclude_concept_id=current_concept_id,
+        ):
+            found.setdefault(
+                concept.concept_id,
+                MentionedConceptOut(concept_id=concept.concept_id, term=concept.term),
+            )
+        question = None
+    return list(found.values())
+
+
+def _definition_from_text(text: str) -> str:
+    marker = "설명:"
+    if marker not in text:
+        return text.strip()
+    return text.split(marker, 1)[1].strip()
+
+
+def _display_sources(
+    retrieval: RetrievalResult,
+    *,
+    current_concept_id: str | None,
+    minimum_score: float,
+    answer: str | None = None,
+) -> list[RetrievedDoc]:
+    """화면용 출처만 고른다. LLM 근거 및 저장용 sources에는 영향이 없다."""
+    if retrieval.band == "low":
+        return []
+
+    candidates = list(retrieval.sources)
+    if current_concept_id is not None and not any(
+        source.concept_id == current_concept_id for source in candidates
+    ):
+        current_hit = next(
+            (hit for hit in retrieval.concept_hits if hit.concept_id == current_concept_id),
+            None,
+        )
+        if current_hit is not None:
+            candidates.insert(0, current_hit)
+
+    selected: list[RetrievedDoc] = []
+    seen: set[tuple[str, str]] = set()
+    first_sentence = re.split(r"(?<=[.!?。])\s+", answer or "", maxsplit=1)[0]
+    for source in candidates:
+        key = (source.collection, source.concept_id)
+        if key in seen:
+            continue
+        cited_definition = bool(first_sentence) and _definition_term_matches(
+            first_sentence, source.term, source.aliases
+        )
+        if (source.concept_id == current_concept_id or source.collection == FSS_COLLECTION
+                or source.score >= minimum_score or cited_definition):
+            selected.append(source)
+            seen.add(key)
+    return selected
+
+
+def resolve_screen(
+    catalog: StageCatalog,
+    status_service: ConceptStatusReader,
+    store: ChatStore,
+    user_id: str,
+) -> Screen:
+    stage = status_service.get_current_stage(user_id)
+    in_progress = status_service.get_in_progress_concept(user_id, stage)
+    latest = (
+        store.get_latest_quiz(user_id, in_progress.concept_id, in_progress.stage)
+        if in_progress is not None
+        else None
+    )
+    mode, concept = _mode_for(catalog, in_progress, latest)
+    active = store.get_active_session(user_id)
+    if mode in ("quiz_pending", "quiz_generation_failed") and active is not None:
+        raise ScreenInvariantError("퀴즈 대기 중에는 진행 중인 세션이 있을 수 없습니다.")
+    return Screen(mode=mode, concept=concept, active_session=active)
+
+
+def _initial_message_plan(
+    catalog: StageCatalog,
+    status_service: ConceptStatusService,
+    store: ChatStore,
+    user_id: str,
+    request: MessageIn,
+    screen: Screen,
+) -> MessagePlan:
+    if screen.active_session is not None:
+        active = screen.active_session
+        concept = find_concept(catalog, active.concept_id, active.stage)
+        return MessagePlan(concept, active, None, active.attempt)
+    if screen.mode in ("quiz_pending", "quiz_generation_failed"):
+        return MessagePlan(None, None, None, None)
+    if screen.mode == "relearn":
+        if screen.concept is None:
+            raise MessageInvariantError("재학습 개념을 찾을 수 없습니다.")
+        if request.concept_id is None:
+            return MessagePlan(None, None, None, None)
+        if request.concept_id != screen.concept.concept_id:
+            raise MessageConflictError("학습 중인 개념을 먼저 통과해야 합니다.")
+        return MessagePlan(
+            screen.concept,
+            None,
+            "relearn",
+            store.get_next_attempt(
+                user_id, screen.concept.concept_id, screen.concept.stage_id
+            ),
+        )
+    if request.concept_id is not None:
+        stage_id = status_service.get_current_stage(user_id)
+        try:
+            concept = find_concept(catalog, request.concept_id, stage_id)
+        except Exception as exc:
+            raise MessageConflictError("선택한 개념을 해당 스테이지에서 찾을 수 없습니다.") from exc
+        statuses = status_service.get_statuses(user_id, stage_id)
+        if statuses.get(concept.concept_id, STATUS_NOT_STARTED) != STATUS_NOT_STARTED:
+            raise MessageConflictError("현재 선택할 수 있는 학습 대상 개념이 아닙니다.")
+        return MessagePlan(
+            concept,
+            None,
+            "keyword",
+            store.get_next_attempt(user_id, concept.concept_id, stage_id),
+        )
+    return MessagePlan(None, None, None, None)
+
+
+def _detect_for_current_stage(
+    catalog: StageCatalog,
+    status_service: ConceptStatusService,
+    cache: ConceptCache,
+    settings: Settings,
+    user_id: str,
+    question: str,
+    retrieval: RetrievalResult,
+) -> ConceptRef | None:
+    stage_id = status_service.get_current_stage(user_id)
+    stage = catalog.stages.get(stage_id)
+    if stage is None:
+        raise MessageInvariantError(f"현재 스테이지를 찾을 수 없습니다: {stage_id}")
+    statuses = status_service.get_statuses(user_id, stage_id)
+    candidates = [
+        concept
+        for concept in stage.concepts
+        if statuses.get(concept.concept_id, STATUS_NOT_STARTED) == STATUS_NOT_STARTED
+    ]
+    return detect_concept(
+        question=question,
+        candidates=candidates,
+        cache=cache,
+        retrieval=retrieval,
+        band_high=settings.band_high,
+    )
+
+
+def _cached_concept(cache: ConceptCache, concept: ConceptRef):
+    cached = cache.get(concept.concept_id)
+    if cached is None:
+        raise MessageInvariantError(f"개념 캐시에 문서가 없습니다: {concept.concept_id}")
+    return cached
+
+
+def _message_history(
+    store: ChatStore,
+    user_id: str,
+    session: SessionRecord | None,
+) -> list[HistoryTurn]:
+    if session is None:
+        return []
+    return [
+        HistoryTurn(question=turn.question, answer=turn.answer)
+        for turn in store.get_recent_turns(user_id, session.session_id, limit=6)
+    ]
+
+
+def _previous_attempt_history(
+    store: ChatStore,
+    user_id: str,
+    plan: MessagePlan,
+) -> list[HistoryTurn]:
+    if plan.concept is None or plan.attempt is None or plan.attempt < 2:
+        return []
+    return [
+        HistoryTurn(question=turn.question, answer=turn.answer)
+        for turn in store.get_previous_attempt_turns(
+            user_id,
+            plan.concept.concept_id,
+            plan.concept.stage_id,
+            before_attempt=plan.attempt,
+            limit=4,
+        )
+    ]
+
+
+def _related_for_plan(
+    *,
+    question: str,
+    plan: MessagePlan,
+    cached,
+    cache: ConceptCache,
+    retrieval: RetrievalResult,
+    llm: LLMAdapter,
+    history: list[HistoryTurn],
+) -> bool:
+    if plan.concept is None or cached is None:
+        return False
+    return is_question_related(
+        question=question,
+        current=cached,
+        cache=cache,
+        retrieval=retrieval,
+        llm=llm,
+        history=history,
+        force_true=plan.start_type in {"keyword", "detected"},
+    )
+
+
+def _message_notice(
+    *,
+    catalog: StageCatalog,
+    status_service: ConceptStatusReader,
+    cache: ConceptCache,
+    user_id: str,
+    question: str,
+    retrieval: RetrievalResult,
+    chat_tone: ChatTone,
+) -> str | None:
+    """Build deterministic UI guidance without asking the LLM to phrase it."""
+
+    top = retrieval.concept_hits[0] if retrieval.concept_hits else None
+    entries = [
+        (concept.concept_id, term)
+        for concept in cache.values()
+        for term in concept_terms(concept.concept_id, concept.term, concept.aliases)
+    ]
+    entries.extend(
+        (hit.concept_id, term)
+        for hit in retrieval.concept_hits
+        for term in (hit.term, *hit.aliases)
+    )
+    matches = explicit_matches(question, entries)
+    matched_ids = {concept_id for concept_id, _ in matches}
+    explicitly_mentioned = top is not None and top.concept_id in matched_ids
+    rank = {hit.concept_id: index for index, hit in enumerate(retrieval.concept_hits)}
+    mentioned_learning = [
+        concept
+        for concept in cache.values()
+        if concept.concept_id in matched_ids
+    ]
+    mentioned_learning.sort(key=lambda concept: rank.get(concept.concept_id, len(rank)))
+    learning_doc = mentioned_learning[0] if mentioned_learning else None
+    if learning_doc is None and explicitly_mentioned and top is not None and top.concept_id in catalog.by_concept:
+        learning_doc = top
+
+    if learning_doc is not None:
+        current_stage = status_service.get_current_stage(user_id)
+        current_ref = next(
+            (
+                ref
+                for ref in catalog.by_concept.get(learning_doc.concept_id, ())
+                if ref.stage_id == current_stage
+            ),
+            None,
+        )
+        if current_ref is not None:
+            current_status = status_service.get_statuses(user_id, current_stage).get(
+                learning_doc.concept_id, STATUS_NOT_STARTED
+            )
+            if current_status == STATUS_PASSED:
+                return passed_concept_notice(learning_doc.term, chat_tone)
+        else:
+            ordered = tuple(catalog.stages)
+            current_index = ordered.index(current_stage)
+            future_refs = sorted(
+                (
+                    ref
+                    for ref in catalog.by_concept.get(learning_doc.concept_id, ())
+                    if ordered.index(ref.stage_id) > current_index
+                    and status_service.get_statuses(user_id, ref.stage_id).get(
+                        ref.concept_id, STATUS_NOT_STARTED
+                    )
+                    != STATUS_PASSED
+                ),
+                key=lambda ref: ordered.index(ref.stage_id),
+            )
+            if future_refs:
+                target = future_refs[0]
+                return other_stage_notice(
+                    learning_doc.term,
+                    catalog.stages[current_stage].name_ko,
+                    target.stage_name_ko,
+                    chat_tone,
+                )
+            prior_refs = catalog.by_concept.get(learning_doc.concept_id, ())
+            if prior_refs and all(
+                status_service.get_statuses(user_id, ref.stage_id).get(
+                    ref.concept_id, STATUS_NOT_STARTED
+                )
+                == STATUS_PASSED
+                for ref in prior_refs
+            ):
+                return passed_concept_notice(learning_doc.term, chat_tone)
+
+    if explicitly_mentioned and top is not None and learning_doc is None:
+        stage_tags = set(top.stages)
+        if "excluded" in stage_tags:
+            return excluded_concept_notice(top.term, chat_tone)
+        if "extra" in stage_tags:
+            return extra_concept_notice(top.term, chat_tone)
+
+    if retrieval.band == "low":
+        return low_band_notice(chat_tone)
+    return None
+
+
+def _ensure_answer_suffixes(
+    answer: str,
+    retrieval: RetrievalResult,
+    knowledge_mode: AnswerKnowledgeMode,
+    *,
+    current_concept: CachedConcept | None = None,
+    chat_tone: ChatTone = "hao",
+    use_current_concept_on_low: bool = False,
+    normalized: bool = False,
+    model_cited: bool = False,
+) -> str:
+    if normalized:
+        result = answer
+    else:
+        result, model_cited = normalize_answer_text(answer)
+    if retrieval.band == "low":
+        # low 검색 근거는 쓰지 않는다. 관련 학습 대화는 현재 개념 캐시만 근거로 쓴다.
+        result = re.sub(
+            r"(?m)^\s*(?:참고한 (?:사전 항목|자료)\s*:|※\s*(?:핵심 정의는|보충 설명은)).*$",
+            "",
+            result,
+        )
+        result = re.sub(r"\n{3,}", "\n\n", result).strip()
+        if use_current_concept_on_low and current_concept is not None:
+            return f"{result}\n\n핵심 정의 출처: {PUBLIC_DATA_SOURCE_LABEL} ({current_concept.term})"
+        return result
+    if knowledge_mode == "dictionary_plus" and (retrieval.sources or current_concept is not None):
+        first_sentence, matched = _first_definition_sources(result, retrieval.sources)
+        current_matches = current_concept is not None and _definition_term_matches(
+            first_sentence, current_concept.term, current_concept.aliases
+        )
+        if current_matches and current_concept is not None:
+            current_spans = _definition_term_spans(
+                first_sentence, current_concept.term, current_concept.aliases
+            )
+            source_spans = [
+                span for source in retrieval.sources
+                for span in _definition_term_spans(first_sentence, source.term, source.aliases)
+            ]
+            current_matches = any(
+                not any(
+                    source_start <= start and end <= source_end
+                    and source_end - source_start > end - start
+                    for source_start, source_end in source_spans
+                )
+                for start, end in current_spans
+            )
+        if matched or current_matches:
+            entries = [
+                f"{display_source_label(source.label, source.collection)} ({source.term})"
+                for source in matched
+            ]
+            if current_matches and current_concept is not None and not any(
+                source.concept_id == current_concept.concept_id for source in matched
+            ):
+                entries.append(f"{PUBLIC_DATA_SOURCE_LABEL} ({current_concept.term})")
+            return f"{result}\n\n핵심 정의 출처: {', '.join(dict.fromkeys(entries))}"
+        if not retrieval.sources:
+            return result
+        if any(source.collection == FSS_COLLECTION for source in retrieval.sources):
+            labels = ", ".join(dict.fromkeys(
+                display_source_label(source.label, source.collection)
+                for source in retrieval.sources
+            ))
+            note = (
+                "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했어요"
+                if chat_tone == "modern"
+                else "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했소"
+            )
+            return f"{result}\n\n참고한 자료: {labels}\n{note}"
+        terms = ", ".join(dict.fromkeys(source.term for source in retrieval.sources))
+        note = (
+            "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했어요"
+            if chat_tone == "modern"
+            else "※ 핵심 정의는 일반 경제 지식을 바탕으로 설명했소"
+        )
+        return f"{result}\n\n참고한 사전 항목: ({terms})\n{note}"
+    labels = list(dict.fromkeys(
+        display_source_label(source.label, source.collection)
+        for source in retrieval.sources
+    ))
+    if not labels or (knowledge_mode == "free" and not model_cited):
+        return result
+    prefix = "핵심 정의 출처:" if knowledge_mode == "dictionary_plus" else "출처:"
+    return f"{result}\n\n{prefix} {', '.join(labels)}"
+
+
+def _first_definition_sources(
+    answer: str, sources: list[RetrievedDoc]
+) -> tuple[str, list[RetrievedDoc]]:
+    """출처 표시와 자유 질문 안내에 같은 첫 문장·용어 일치 기준을 적용한다."""
+    body = answer.split("\n\n", 1)[0]
+    first_sentence = re.split(r"(?<=[.!?。])\s+", body, maxsplit=1)[0]
+    spans_by_source = [
+        (source, span)
+        for source in sources
+        for span in _definition_term_spans(first_sentence, source.term, source.aliases)
+    ]
+    matched = [
+        source for source in sources
+        if any(
+            item is source and not any(
+                other_start <= start and end <= other_end
+                and other_end - other_start > end - start
+                for _, (other_start, other_end) in spans_by_source
+            )
+            for item, (start, end) in spans_by_source
+        )
+    ]
+    return first_sentence, matched
+
+
+def _definition_term_matches(sentence: str, term: str, aliases: tuple[str, ...]) -> bool:
+    """첫 문장에서 용어가 정의 대상인 표현에만 출처·안내 근거를 부여한다."""
+    return bool(_definition_term_spans(sentence, term, aliases))
+
+
+def _definition_term_spans(sentence: str, term: str, aliases: tuple[str, ...]) -> list[tuple[int, int]]:
+    base_term = re.sub(r"\([^)]*\)", "", term).strip()
+    candidates = [base_term, *re.split(r"[/·]", base_term), *re.findall(r"\(([^)]*)\)", term), *aliases]
+    subject = r"(?:이라는\s*것은|라는\s*것은|이란|란|은|는)(?![가-힣A-Za-z0-9])"
+    naming = r"(?:(?:이라고|라고)\s*(?:부르|불러|하)|(?:이라|라)\s*하)"
+    spans: list[tuple[int, int]] = []
+    for candidate in dict.fromkeys(c.strip() for c in candidates if c.strip()):
+        if len(candidate) < 2:
+            continue
+        name = r"\s*".join(re.escape(char) for char in candidate.replace(" ", ""))
+        pattern = rf"(?<![가-힣A-Za-z0-9]){name}(?:\s*\([^()]*\))?\s*(?:{subject}|{naming})"
+        spans.extend(match.span() for match in re.finditer(pattern, sentence, flags=re.IGNORECASE))
+    return spans
+
+
+def _message_list_item(
+    message: MessageRecord,
+    minimum_score: float,
+) -> MessageListItem:
+    raw_sources = message.display_sources
+    if raw_sources is None:
+        raw_sources = [
+            source
+            for source in (message.sources or [])
+            if message.band != "low" and float(source.get("score") or 0) >= minimum_score
+        ]
+    display_sources: list[SourceOut] = []
+    for source in raw_sources:
+        try:
+            validated = SourceOut.model_validate(source)
+            display_sources.append(validated.model_copy(update={
+                "label": display_source_label(validated.label, validated.collection)
+            }))
+        except (TypeError, ValueError):
+            continue
+    return MessageListItem(
+        message_id=message.message_id,
+        session_id=message.session_id,
+        attempt=message.attempt,
+        concept_id=message.concept_id,
+        start_type=message.start_type,
+        role=message.role,
+        content=message.content,
+        is_related=message.is_related,
+        band=message.band,  # type: ignore[arg-type]
+        display_sources=display_sources,
+        notice=message.notice,
+        created_at=message.created_at,
+    )
+
+
+def _mode_for(
+    catalog: StageCatalog,
+    in_progress: InProgressConceptView | None,
+    latest: LatestQuiz | None,
+) -> tuple[ChatMode, ConceptRef | None]:
+    if in_progress is None or latest is None:
+        if in_progress is None:
+            return "normal", None
+        return "normal", find_concept(catalog, in_progress.concept_id, in_progress.stage)
+    concept = find_concept(catalog, in_progress.concept_id, in_progress.stage)
+    if latest.quiz_status == "failed":
+        return "relearn", concept
+    if latest.quiz_status in ("pending", "passed"):
+        return "quiz_pending", concept
+    if latest.quiz_status == "generation_failed":
+        return "quiz_generation_failed", concept
+    return "normal", None
+
+
+def _concept_out(concept: ConceptRef):
+    from chatbot.schemas import ConceptOut
+
+    return ConceptOut(
+        concept_id=concept.concept_id,
+        term=concept.term,
+        term_full=concept.term_full,
+        subcategory=concept.subcategory,
+        order=concept.order,
+    )
+
+
+def _quick_prompts(screen: Screen) -> list[str]:
+    if screen.concept is None or screen.mode in ("quiz_pending", "quiz_generation_failed"):
+        return []
+    term = screen.concept.term
+    if screen.mode == "relearn":
+        return [
+            f"{term}에 대해 다시 알려줘",
+            f"{term}의 다른 예시를 들어줘",
+            f"{with_korean_particle(term, '와/과')} 비슷한 개념은 뭐야?",
+        ]
+    return [
+        f"{term}에 대해 더 자세히 알려줘",
+        f"{term}의 예시를 더 들어줘",
+        f"{with_korean_particle(term, '와/과')} 비슷한 개념은 뭐야?",
+    ]
+
+
+def _session_out(record: SessionRecord) -> SessionOut:
+    return SessionOut(
+        session_id=record.session_id,
+        stage_id=record.stage,  # type: ignore[arg-type]
+        concept_id=record.concept_id,
+        term=record.term,
+        attempt=record.attempt,
+        start_type=record.start_type,
+        status=record.status,
+        created_at=record.created_at,
+        completed_at=record.completed_at,
+    )

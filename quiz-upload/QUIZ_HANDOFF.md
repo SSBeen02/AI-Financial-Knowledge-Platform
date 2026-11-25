@@ -51,13 +51,13 @@ Provider는 인자 없이 호출 가능한 동기 함수여야 합니다. FastAP
 
 ## DB SQL
 
-`sql/quiz_001_tables.sql`: `quiz_sets`, `quiz_submissions`, 인덱스·유일 제약·RLS를 생성합니다. 기존 `sql/quiz.sql`과 같은 테이블입니다. 공유 Supabase 적용은 아직 하지 않았습니다.
+`sql/quiz_001_tables.sql`: `quiz_sets`, `quiz_submissions`, 인덱스·유일 제약·RLS를 생성합니다. 기존 `sql/quiz.sql`과 같은 테이블입니다. 공유 Supabase에 적용했고 2026-10-11 실제 저장·조회·채점·중복 제출·Stage 5 검증을 통과했습니다.
 
-현재 Stage 5 풀이도 위 테이블에 저장합니다. `exam_questions`, `exam_submissions`는 구현되어 있지 않습니다. 이 별도 테이블이 팀 통합의 필수 조건이면 정책·스키마를 합의한 후 별도 migration이 필요합니다. 이 인수인계에 해당 테이블이 있다고 전제하면 안 됩니다.
+Stage 5 저장 방식은 퀴즈 테이블로 통합합니다. 고정 문제 원본은 `stage5_questions.json`, 사용자에게 제공한 세트는 `quiz_sets`, 풀이 결과는 `quiz_submissions`에 저장합니다. 별도 `exam_questions`, `exam_submissions` 테이블은 만들지 않습니다. 팀 공유 문서의 해당 두 행도 이 규칙으로 교체하세요.
 
 ## 환경변수·패키지
 
-- `QUIZ_DATABASE_URL`: SQLite 기본 `sqlite+aiosqlite:///./data/quiz.db`; Supabase `postgresql+asyncpg://USER:PASSWORD@HOST:PORT/postgres` (비밀번호 URL 인코딩, 실제 SSL/연결 방식은 배포 환경에 맞춰 설정).
+- `QUIZ_DATABASE_URL`: SQLite 기본 `sqlite+aiosqlite:///./data/quiz.db`; Supabase `postgresql+asyncpg://USER:PASSWORD@HOST:PORT/postgres?ssl=require` (비밀번호 URL 인코딩, 실제 SSL/연결 방식은 배포 환경에 맞춰 설정).
 - `OPENAI_API_KEY`: Stage 1~4 퀴즈 생성 서버 키. 비밀값은 개인 채널 전달.
 - `OPENAI_MODEL`: 퀴즈 생성 모델. 리포트와 현재 같은 설정을 사용합니다.
 - `DEV_MODE=false`: 운영에서는 통합 서버의 공통 인증을 연결합니다.
@@ -81,3 +81,22 @@ Provider는 인자 없이 호출 가능한 동기 함수여야 합니다. FastAP
 유빈님 패키지가 현재 작업 폴더에 없으므로 실제 학습 상태·진행률·게임 이벤트가 갱신됐다는 통합 검증은 아직 할 수 없습니다. 통합 서버에서 학습 완료→퀴즈 생성→통과/실패 상태 반영, 생성 실패→다시 받기, 새 retry 세션 결과, submission_id 중복 이벤트 방지를 함께 확인해야 합니다.
 
 전체 회귀 검증: 2026-10-08 `python -m unittest discover -s tests -q` 59개 통과. 실패 로그는 오류 처리 테스트에서 의도한 예외입니다.
+
+
+## 2026-10-13 인증·Stage 5 확정
+
+운영에서는 `DEV_MODE=false`로 설정하고 통합 앱에서 `dependencies.get_current_user_id`를 실제 JWT 서명·만료를 검증하는 공통 인증 함수로 override하세요. 퀴즈 의존성은 검증된 사용자 ID를 받아 조회·제출 모두 소유권을 확인합니다. 단순 JWT 디코딩과 운영 X-User-Id 신뢰를 제거했습니다. 공통 인증이 없으면 401로 거절합니다.
+
+quiz.html은 모든 API 요청에 아래 provider가 반환한 로그인 토큰을 전달합니다. 통합 프론트는 페이지 스크립트 실행 전에 등록하세요. 미리보기 서버는 테스트 사용자 의존성을 별도로 override하므로 토큰 없이 동작합니다.
+
+```javascript
+window.quizAccessTokenProvider = async () => {
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  return data.session?.access_token;
+};
+```
+
+생성 실패 콜백 순서는 유빈님 쪽 수정으로 해결되었으며 퀴즈 쪽 순서는 변경하지 않았습니다. 유빈님 보고 기준 생성·통과·재학습·실패 재요청 통합 테스트가 완료되었습니다.
+
+2026-10-13 인증 변경 검증: 전체 회귀 61개, 퀴즈 전용 폴더 23개 통과. 운영 위조 JWT·X-User-Id 거절, 검증된 사용자 조회, 타 사용자 제출 거절 포함. 이번 인증 변경 후 실제 공통 인증과의 통합 재검증은 통합 담당자가 진행해야 합니다.

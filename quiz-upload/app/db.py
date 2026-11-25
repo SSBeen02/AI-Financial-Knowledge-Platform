@@ -73,6 +73,7 @@ def get_engine() -> AsyncEngine:
             kwargs["poolclass"] = NullPool
         else:
             kwargs["pool_pre_ping"] = True
+            kwargs.update(pool_size=1, max_overflow=0, pool_timeout=15)
         _engine = create_async_engine(url, **kwargs)
         _enable_sqlite_foreign_keys(_engine)
     return _engine
@@ -123,7 +124,20 @@ async def init_quiz_models() -> None:
     import app.models.quiz  # noqa: F401
 
     async with get_engine().begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
+        # Preserve standalone SQLite development; production never creates tables.
+        default = "true" if database_url().startswith("sqlite") else "false"
+        if os.getenv("DB_AUTO_CREATE", default).strip().lower() == "true":
+            await connection.run_sync(Base.metadata.create_all)
+        else:
+            def verify_schema(sync_connection):
+                inspector = inspect(sync_connection)
+                for table in Base.metadata.sorted_tables:
+                    if not inspector.has_table(table.name):
+                        raise RuntimeError("퀴즈 DB migration을 먼저 적용하세요: " + table.name)
+                    columns = {column["name"] for column in inspector.get_columns(table.name)}
+                    if set(table.columns.keys()) - columns:
+                        raise RuntimeError("퀴즈 DB 컬럼 migration이 필요합니다: " + table.name)
+            await connection.run_sync(verify_schema)
         def verify_first_submission(sync_connection):
             inspector = inspect(sync_connection)
             constraints = inspector.get_unique_constraints("quiz_submissions")
@@ -131,7 +145,7 @@ async def init_quiz_models() -> None:
             return any(c.get("column_names") == ["quiz_set_id"] for c in constraints) or any(
                 i.get("unique") and i.get("column_names") == ["quiz_set_id"] for i in indexes)
         if not await connection.run_sync(verify_first_submission):
-            raise RuntimeError("퀴즈당 최초 제출 유일 제약이 없습니다. 기존 DB를 백업·중복 검사한 뒤 quiz_002_first_submission.sql 또는 SQLite 마이그레이션을 적용하세요. create_all은 기존 테이블 제약을 갱신하지 않습니다.")
+            raise RuntimeError("퀴즈당 최초 제출 유일 제약이 없습니다. 기존 데이터의 중복을 확인한 뒤 quiz_002_first_submission.sql을 적용하세요.")
 
 
 @asynccontextmanager

@@ -1,0 +1,44 @@
+{
+  "mode": "normal",
+  "active_session": {
+    "session_id": "session-example-1",
+    "stage_id": "stage1",
+    "concept_id": "sisa_1281",
+    "term": "분업/특화",
+    "attempt": 1,
+    "start_type": "keyword",
+    "status": "active",
+    "created_at": "2026-10-06T03:00:00Z",
+    "completed_at": null
+  },
+  "locked_concept": {
+    "concept_id": "sisa_1281",
+    "term": "분업/특화",
+    "term_full": "분업/특화",
+    "subcategory": "경제 기본",
+    "order": 1
+  },
+  "notice": "지금 분업/특화 개념을 학습 중이오. 학습을 마치고 퀴즈를 통과하면 다음 개념을 고를 수 있소.",
+  "complete_hint": null,
+  "learning_guide": "아래 키워드를 눌러 물어본 개념만 학습과 스테이지 성장에 반영되오.",
+  "status_labels": {
+    "not_started": "미학습",
+    "in_progress": "학습중",
+    "passed": "통과"
+  },
+  "progress": {
+    "stage_id": "stage1",
+    "name_ko": "사회경제현상과 소비생활",
+    "total_count": 30,
+    "passed_count": 3,
+    "in_progress_count": 1,
+    "not_started_count": 26,
+    "remaining_count": 27,
+    "percent": 10
+  },
+  "quick_prompts": [
+    "분업/특화에 대해 더 자세히 알려줘",
+    "분업/특화의 예시를 더 들어줘",
+    "분업/특화와 비슷한 개념은 뭐야?"
+  ]
+}
