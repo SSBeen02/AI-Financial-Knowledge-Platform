@@ -14,6 +14,7 @@ from pretest.services.grading import grade_attempt
 from pretest.services.llm_report import generate_llm_report
 from pretest.services.question_bank import load_questions
 from pretest.services.report_language import validate_report_language
+from pretest.services.report_tone import normalize_haoche_text, normalize_report_tone
 from pretest.services.report_safety import validate_report_safety
 from pretest.services.report_summary import add_lowest_stage_summary, normalize_report_labels
 
@@ -104,12 +105,14 @@ class DiagnosticService:
         return self._submit_response(attempt)
 
     def _submit_response(self, attempt: dict) -> SubmitResponse:
-        return SubmitResponse.model_validate(normalize_report_labels(dict(
+        response = SubmitResponse.model_validate(normalize_report_labels(dict(
             id=attempt["id"], report_id=attempt["id"], user_id=attempt["user_id"],
             status=attempt["status"], submitted_at=attempt["submitted_at"],
             summary=attempt["summary"], domain_scores=attempt["domain_scores"],
             question_results=attempt["question_results"],
         )))
+        response.summary.analysis = normalize_haoche_text(response.summary.analysis)
+        return response
 
     def generate_report(self, attempt_id: str, user_id: str) -> None:
         """라우터가 최초 접수에만 실행. 답안·채점 데이터는 이미 저장되어 있다."""
@@ -126,7 +129,7 @@ class DiagnosticService:
             if elapsed >= REPORT_DEADLINE_SECONDS:
                 from pretest.services.report_parallel import ReportDeadlineError
                 raise ReportDeadlineError("리포트 처리 대기 시간이 목표를 초과했소.")
-            llm = generate_llm_report(graded, budget=min(28.0, REPORT_DEADLINE_SECONDS - elapsed))
+            llm = normalize_report_tone(generate_llm_report(graded, budget=min(28.0, REPORT_DEADLINE_SECONDS - elapsed)))
             validate_report_safety(llm)
             validate_report_language(llm)
             if (datetime.now(timezone.utc) - datetime.fromisoformat(began.replace("Z", "+00:00"))).total_seconds() >= REPORT_DEADLINE_SECONDS:
@@ -202,6 +205,7 @@ class DiagnosticService:
         response = ReportResponse.model_validate(normalize_report_labels(result))
         if response.llm_report is not None:
             try:
+                response.llm_report = normalize_report_tone(response.llm_report)
                 validate_report_safety(response.llm_report)
                 validate_report_language(response.llm_report)
             except Exception:
@@ -211,6 +215,12 @@ class DiagnosticService:
             response.llm_report = add_lowest_stage_summary(
                 response.llm_report, [row.model_dump() for row in response.domain_scores]
             )
+        if response.summary is not None:
+            response.summary.analysis = normalize_haoche_text(response.summary.analysis)
+        for item in response.vulnerabilities or []:
+            item.recommendation = normalize_haoche_text(item.recommendation)
+        if response.error is not None:
+            response.error.message = normalize_haoche_text(response.error.message)
         return response
 
     def _validate_answers(self, payload: SubmitRequest, questions: list[dict]) -> None:
