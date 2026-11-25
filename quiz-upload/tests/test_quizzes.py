@@ -120,8 +120,8 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
                 generator=fake_generator,
             )
 
-    async def test_schema_has_no_note_tables(self):
-        self.assertEqual(set(Base.metadata.tables), {"quiz_sets", "quiz_submissions"})
+    async def test_schema_has_quiz_and_review_storage(self):
+        self.assertEqual(set(Base.metadata.tables), {"quiz_sets", "quiz_submissions", "quiz_reviews"})
 
     async def test_get_hides_answer_and_explanation(self):
         created = await self._create()
@@ -192,6 +192,7 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(passed.json()["correct_count"], 2)
         self.assertTrue(passed.json()["is_passed"])
 
+        created = await self._create(concept_id="one-correct-concept", session_id="one-correct-session")
         failed = await self.client.post(
             f"/api/v1/quiz-sets/{created.id}/submit",
             json={"submitted_answers": _answers("X", "X", "B"), "idempotency_key": "one"},
@@ -472,7 +473,7 @@ class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
                 learning_session_id="session-9",
                 learning_context="복리 설명",
             )
-        factory.assert_called_once_with(api_key="test-key-not-real", timeout=40.0, max_retries=1)
+        factory.assert_called_once_with(api_key="test-key-not-real", timeout=30.0, max_retries=1)
         self.assertEqual(questions, SAMPLE_QUESTIONS)
         args = parse.call_args.kwargs
         self.assertEqual(args["model"], "gpt-4o-mini")

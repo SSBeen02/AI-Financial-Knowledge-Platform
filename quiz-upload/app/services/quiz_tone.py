@@ -98,7 +98,7 @@ _NOMINAL_WORDS = frozenset("""
 자유무역협정 판매 절상 존재 주인 총부채원리금상환비율 실업자 침체 탄력적 투자수익률
 피구세 한계효용 행사가격 혼합 확산 완료 압박 가격 금리 물가 이자 원금 예금 저축 투자
 본원소득수지 한계비용 한계소비성향 우수성 의존도 인수합병 상장지수펀드 사물인터넷 제어기
-주식 채권 적금 정기적금 상품 보장 금융상품 원금보장 보기
+주식 채권 적금 정기적금 상품 보장 금융상품 원금보장 보기 비율 주택담보인정비율 국내총생산
 """.split())
 _FORMAL_ENDINGS = ('니다', '니까', '세요', '십시오')
 
@@ -115,6 +115,9 @@ def _is_nominal(text: str) -> bool:
     label = re.fullmatch(r'(.+)\s+[A-D갑을병정]', text)
     if label:
         return _is_nominal(label.group(1))
+    # 금융 약어로 끝나는 명사구는 문장 종결을 요구하지 않습니다.
+    if re.fullmatch(r'[가-힣A-Za-z0-9\s&·/\-]+', text) and re.search(r'[A-Za-z]$', text):
+        return True
     last = re.search(r'[가-힣]+$', text)
     return bool(last and last.group() in _NOMINAL_WORDS)
 
