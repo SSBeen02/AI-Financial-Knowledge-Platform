@@ -56,11 +56,11 @@ class OriginalQuizRequirementsTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_foreign_language_is_rejected_and_regenerated(self):
         bad_prompt = copy.deepcopy(SAMPLE)
-        bad_prompt[0]["prompt"] = "GDP의 의미는 무엇이오?"
+        bad_prompt[0]["prompt"] = "What is the ratio? 비율을 확인합니다."
         bad_choice = copy.deepcopy(SAMPLE)
         bad_choice[2]["choices"][0]["text"] = "価格"
         bad_explanation = copy.deepcopy(SAMPLE)
-        bad_explanation[0]["explanation"] = "이 문항은 English 설명이오."
+        bad_explanation[0]["explanation"] = "The ratio is high. 비율을 확인합니다."
         for questions in (bad_prompt, bad_choice, bad_explanation):
             with self.assertRaisesRegex(ValueError, "한글|한국어"):
                 normalize_questions(questions)
