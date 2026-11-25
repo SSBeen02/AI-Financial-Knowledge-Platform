@@ -233,7 +233,7 @@ def require_database_tables(
     if missing:
         raise DatabaseSchemaNotReadyError(
             "DB_AUTO_CREATE=false인데 필요한 테이블이 없습니다: "
-            f"{', '.join(missing)}. migrations SQL(001 → 002 → 003 → 004)을 먼저 적용하세요."
+            f"{', '.join(missing)}. migrations SQL(001 → 002 → 003 → 004 → 005 → 006)을 먼저 적용하세요."
         )
     if require_catalog_seed:
         with engine.connect() as connection:

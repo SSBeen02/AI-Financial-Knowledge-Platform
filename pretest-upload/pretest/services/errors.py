@@ -30,6 +30,10 @@ class ReportNotFoundError(DiagnosticError):
         super().__init__(message)
 
 
+class ReportRetryLimitError(DiagnosticError):
+    pass
+
+
 class LlmReportError(DiagnosticError):
     def __init__(self, message: str = "맞춤 리포트를 생성하지 못했습니다."):
         self.message = message

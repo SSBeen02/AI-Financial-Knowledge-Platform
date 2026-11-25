@@ -66,6 +66,7 @@ class QuizSubmission(Base):
     __tablename__ = "quiz_submissions"
     __table_args__ = (
         UniqueConstraint("user_id", "idempotency_key", name="uq_quiz_submissions_user_idempotency"),
+        UniqueConstraint("quiz_set_id", name="uq_quiz_submissions_quiz_set"),
         Index("ix_quiz_submissions_quiz_set_id", "quiz_set_id"),
     )
 

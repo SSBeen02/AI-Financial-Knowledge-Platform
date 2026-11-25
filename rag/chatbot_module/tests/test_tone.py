@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
+from chatbot.config import Settings
+
 from chatbot.tone import (
+    answer_tone_instruction,
     excluded_concept_notice,
     extra_concept_notice,
     has_korean_final_consonant,
@@ -11,6 +14,22 @@ from chatbot.tone import (
     suggested_concept_notice,
     with_korean_particle,
 )
+
+
+def test_excluded_concept_notice_uses_free_question_wording() -> None:
+    assert excluded_concept_notice("비경제용어", "hao") == (
+        "비경제용어에 대해 물어본 것은 자유 질문이라 학습과 성장, 퀴즈에는 반영되지 않소."
+    )
+    assert excluded_concept_notice("비경제용어", "modern") == (
+        "비경제용어에 대해 물어본 것은 자유 질문이라 학습과 성장, 퀴즈에는 반영되지 않아요."
+    )
+
+
+def test_hao_default_and_full_answer_instruction() -> None:
+    assert Settings.model_fields["chat_tone"].default == "hao"
+    instruction = answer_tone_instruction("hao")
+    assert "~합니다·~습니다·~해요·~답니다·~지요·~ㅂ니다 형태 같은 다른 종결어미를 섞지 마시오." in instruction
+    assert "출처·고지 문구를 제외한 본문의 마지막 문장까지 하오체를 유지하시오." in instruction
 
 
 @pytest.mark.parametrize(
@@ -73,7 +92,7 @@ def test_has_no_korean_final_consonant(term: str) -> None:
     [
         (passed_concept_notice, "정부실패는 이미 통과한"),
         (extra_concept_notice, "정부실패는 학당의 정규 과정에는"),
-        (excluded_concept_notice, "정부실패는 경제 학습 범위 밖의"),
+        (excluded_concept_notice, "정부실패에 대해 물어본 것은 자유 질문이라"),
         (suggested_concept_notice, "정부실패는 이번 스테이지에서"),
     ],
 )

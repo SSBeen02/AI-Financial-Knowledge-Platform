@@ -421,7 +421,7 @@ backend/
 ├─ app/                 # 팀 공통 FastAPI 앱
 ├─ chatbot/             # 이 저장소의 chatbot/ 전체
 ├─ data/stages.json     # 이 저장소의 data/ 아래 동일 경로
-├─ migrations/          # 001~004 및 이후 SQL
+├─ migrations/          # 001~006 SQL
 ├─ requirements.txt
 └─ ...
 ```
@@ -440,7 +440,7 @@ backend/
 
 코드 기본값인 `DB_AUTO_CREATE=false`에서는 DDL·시드를 전혀 변경하지 않고 필요한 테이블과
 `stages`/`concepts` 시드가 준비됐는지만 확인한다. 빠진 것이 있으면 서버 시작 단계에서
-`migrations SQL(001 → 002 → 003 → 004)을 먼저 적용하세요`라는 오류로 실패한다. `create_all()`은 컬럼 변경·삭제를
+`migrations SQL(001 → 002 → 003 → 004 → 005 → 006)을 먼저 적용하세요`라는 오류로 실패한다. `create_all()`은 컬럼 변경·삭제를
 처리하는 migration 도구가 아니므로 공유 Supabase에서는 반드시 `false`로 두고, 팀 검토를 마친 SQL을
 적용한다.
 
@@ -478,6 +478,17 @@ backend/
    2. [002_enable_rls.sql](migrations/002_enable_rls.sql): 이 모듈의 모든 테이블에 RLS 활성화, 정책 없음
    3. [003_seed_stages_concepts.sql](migrations/003_seed_stages_concepts.sql): 5개 스테이지·250개 스테이지별 개념 시드
    4. [004_rename_learning_sessions_stage.sql](migrations/004_rename_learning_sessions_stage.sql): 기존 `learning_sessions.stage`를 `stage_id`로 데이터 보존 변경
+   5. [005_mark_stage5_optional.sql](migrations/005_mark_stage5_optional.sql): Stage 5를 선택 과정으로 표시
+   6. [006_add_learning_message_notice.sql](migrations/006_add_learning_message_notice.sql): `learning_messages.notice`를 nullable TEXT로 추가해 안내 복원
+
+   이미 001~005를 적용한 공유 DB는 팀 검토 후 006만 추가 적용한다. 006은 기존 메시지를
+   NULL로 유지하며 재실행할 수 있다. 새 코드를 배포하기 전에 006을 적용해야 한다.
+   `DB_AUTO_CREATE=false`에서 컬럼이 없으면 서버는 마이그레이션 안내와 함께 시작을 중단한다.
+   로컬 `DB_AUTO_CREATE=true` SQLite는 기존 파일의 누락 컬럼을 시작 시 추가한다.
+   프론트는 `/learning/history`의 assistant 항목에 있는 `notice`를 답변과 함께 표시한다.
+   기록 응답의 각 메시지 항목은 `notice: string | null`을 포함한다. 예전 메시지와 user 행은
+   `null`이며, 새 assistant 행에는 당시 응답의 최종 안내가 저장된다. 이 필드는
+   `/learning/sessions/{id}/messages`에도 동일하게 반환된다. 퀴즈용 `turns`는 변하지 않는다.
 
    `data/stages.json`이 바뀌면 `python scripts/generate_stage_seed_sql.py`로 003을 다시 생성하고 변경 내용을
    함께 검토한다. 003은 `ON CONFLICT DO UPDATE`를 사용해 재적용할 수 있다.
@@ -985,3 +996,23 @@ Stage 5는 앞 단계와 겹치는 개념도 `(concept_id, stage5)`로 별도 �
 
 현재 평가는 **16개 전부 충족**이다. Stage 5의 중복 개념도 `(concept_id, stage_id)` 상태 키로 독립 관리하며,
 재학습·심화 프롬프트, 서버 생성 안내, 전체 세션 기반 `mentioned_concepts`, 스테이지별 진행률까지 회귀 테스트로 확인한다.
+# 로컬 수동 질문 점검
+
+개발 도구를 켠 로컬 서버를 먼저 실행한다. 별도 PowerShell 창에서 질문 목록을 전송한다.
+스크립트는 서버를 시작하지 않으며 실제 LLM·Qdrant·DB 설정을 사용한다.
+
+```powershell
+$env:DEV_ENABLE_TOOLS="true"
+python -m uvicorn main_dev:app --host 127.0.0.1 --port 8000
+```
+
+```powershell
+python scripts/run_manual_check.py --stage stage1 --user-id manual-check-user
+```
+
+실행하면 지정한 사용자 **한 명의 기록만** `/learning/dev/reset`으로 초기화한다.
+김아주 등 실제 통합테스트 계정은 `--user-id`에 넣지 않는다. 다른 서버는
+`--base-url`, 질문 목록은 `--questions`, 타임아웃은 `--timeout`으로 지정한다.
+결과는 `eval_outputs/manual_check_YYYYMMDD_HHMM.md`에 기록된다. 질문별 오류는
+FAIL로 남기고 다음 질문으로 계속 진행한다. 개발 API가 비활성화되었으면
+초기화 단계에서 중단하며 질문을 전송하지 않는다.

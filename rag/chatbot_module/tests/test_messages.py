@@ -1006,7 +1006,7 @@ def test_chat_emoji_setting_does_not_enable_emphasis(message_env: MessageEnv) ->
     assert "이모지와 이모티콘을 사용하지 마세요" in enabled_prompt
 
 
-def test_notice_for_other_stage_is_returned_inside_active_session(
+def test_other_stage_notice_is_hidden_inside_active_session(
     message_env: MessageEnv,
 ) -> None:
     started = message_env.client.post(
@@ -1020,12 +1020,31 @@ def test_notice_for_other_stage_is_returned_inside_active_session(
 
     assert body["session_id"] == started["session_id"]
     assert body["concept"]["concept_id"] == DIVISION
-    assert body["notice"] == (
-        "인플레이션을 궁금해하는 그대의 배움의 자세, 참으로 감탄스럽소! 다만 이 개념은 "
-        "지금 공부하는 사회경제현상과 소비생활이 아니라 거시경제와 통화·재정정책에서 배우는 것이라, "
-        "이번 스테이지 성장과 퀴즈에는 반영되지 않소. 훗날 그 스테이지에 이르면 다시 도전해 보시겠소?"
-    )
+    assert body["notice"] is None
     assert message_env.status.get_statuses(USER, "stage3")[INFLATION] == STATUS_NOT_STARTED
+
+
+def test_extra_follow_up_hides_notice_even_when_related_in_both_paths(
+    message_env: MessageEnv,
+) -> None:
+    started = message_env.client.post(
+        "/learning/messages", headers=HEADERS,
+        json={"message": "분업/특화를 알려줘", "concept_id": DIVISION},
+    ).json()
+    message_env.llm.judgment = True
+    question = "경제상식별칭을 설명해줘"
+    regular = message_env.client.post(
+        "/learning/messages", headers=HEADERS, json={"message": question},
+    ).json()
+    streamed = message_env.client.post(
+        "/learning/messages/stream", headers=HEADERS, json={"message": question},
+    )
+    done = next(data for event, data in _sse_events(streamed.text) if event == "done")
+    assert regular["session_id"] == done["session_id"] == started["session_id"]
+    assert regular["is_related"] is done["is_related"] is True
+    assert regular["notice"] is done["notice"] is None
+    history = message_env.client.get("/learning/history", headers=HEADERS).json()
+    assert history[-1]["notice"] is None
 
 
 def test_notice_for_passed_current_stage_concept(scenario_env: MessageEnv) -> None:
@@ -1059,10 +1078,10 @@ def test_extra_and_excluded_notice_require_explicit_term_or_alias(
         "다만 성장과 퀴즈에는 반영되지 않소."
     )
     assert excluded["notice"] == (
-        "비경제용어는 경제 학습 범위 밖의 용어라, 성장과 퀴즈에는 반영되지 않소."
+        "비경제용어에 대해 물어본 것은 자유 질문이라 학습과 성장, 퀴즈에는 반영되지 않소."
     )
     assert "경제 학습 범위 밖 용어" not in excluded["answer"]
-    assert incidental["notice"] is None
+    assert incidental["notice"] == "이 물음은 자유 질문이라 학습과 성장, 퀴즈에는 반영되지 않소."
 
 
 def test_retrieval_failure_returns_502_without_writes(message_env: MessageEnv) -> None:
@@ -1408,6 +1427,41 @@ def test_message_history_restores_session_and_free_messages(message_env: Message
     assert hidden.status_code == 404
 
 
+def test_two_free_questions_restore_in_order(message_env: MessageEnv) -> None:
+    for question in ("오늘 날씨 어때?", "내일 날씨 어때?"):
+        response = message_env.client.post("/learning/messages", headers=HEADERS, json={"message": question})
+        assert response.status_code == 200
+        assert response.json()["session_id"] is None
+    history = message_env.client.get("/learning/history", params={"limit": 10}, headers=HEADERS).json()
+    assert [item["content"] for item in history if item["role"] == "user"] == ["오늘 날씨 어때?", "내일 날씨 어때?"]
+    assert len(history) == 4
+    assert all(item["session_id"] is None for item in history)
+
+
+def test_etf_synonym_prefers_regular_concept_over_extra(message_env: MessageEnv) -> None:
+    etf_id = "sisa_1410"
+    for concept in load_stage_catalog(STAGES_PATH).stages["stage1"].concepts:
+        force_concept_status(message_env.status, USER, concept.concept_id, "stage1", STATUS_PASSED)
+    message_env.cache._docs[etf_id] = CachedConcept(etf_id, "상장지수펀드", (), "설명: 지수를 추종하는 펀드", None)
+    original_search = message_env.retriever.search
+
+    def search(question: str) -> RetrievalResult:
+        if "ETF" in question:
+            hit = _doc("extra_etf", "ETF", 0.8, stage="extra")
+        elif "상장지수펀드" in question:
+            hit = _doc(etf_id, "상장지수펀드", 0.8, stage="stage2")
+        else:
+            return original_search(question)
+        return RetrievalResult([hit], [hit], "high", hit.score)
+
+    message_env.retriever.search = search  # type: ignore[method-assign]
+    for question in ("ETF가 뭐야?", "상장지수펀드가 뭐야?"):
+        body = message_env.client.post("/learning/messages", headers=HEADERS, json={"message": question}).json()
+        assert body["suggested_concept"] == {"concept_id": etf_id, "term": "상장지수펀드"}
+        assert "이번 스테이지에서 배우는 개념" in body["notice"]
+        assert body["session_id"] is None
+
+
 def test_stream_completes_then_persists_and_sends_done_metadata(
     message_env: MessageEnv,
 ) -> None:
@@ -1685,7 +1739,7 @@ def test_termless_follow_up_low_uses_current_concept_with_fake_llm(
     assert "[현재 개념] sisa_2173 장수리스크:" in message_env.llm.prompts[-1].input
 
 
-def test_unrelated_low_during_learning_keeps_out_of_scope_notice(message_env: MessageEnv) -> None:
+def test_unrelated_low_during_learning_hides_out_of_scope_notice(message_env: MessageEnv) -> None:
     started = message_env.client.post(
         "/learning/messages", headers=HEADERS,
         json={"message": "장수리스크에 대해 알려줘", "concept_id": LONGEVITY},
@@ -1696,7 +1750,7 @@ def test_unrelated_low_during_learning_keeps_out_of_scope_notice(message_env: Me
     ).json()
     assert body["band"] == "low"
     assert body["is_related"] is False
-    assert body["notice"] == "이 물음은 학당의 경제 공부 범위 밖이라 사전의 근거 없이 답하였소."
+    assert body["notice"] is None
     assert "핵심 정의 출처" not in body["answer"]
     assert "참고한 사전 항목" not in body["answer"]
 

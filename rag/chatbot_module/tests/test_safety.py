@@ -61,6 +61,24 @@ def test_personal_recommendation_is_reviewed() -> None:
     ) == "REVIEW"
 
 
+@pytest.mark.parametrize("question", [
+    "비트코인 지금 사야 돼?", "삼성전자 팔아야 할까?",
+    "이 코인 사야 할까?", "지금 ETF 사도 돼?", "아파트 지금 사야 할까?",
+])
+def test_buy_sell_decision_requests_are_reviewed(question: str) -> None:
+    assert classify_question(question, FakeLLMAdapter()) == "REVIEW"
+
+
+@pytest.mark.parametrize("question", [
+    "주식을 사고파는 원리가 뭐야?", "ETF가 뭐야?",
+    "왜 사람들은 가격이 오를 때 더 살까?", "소비자는 왜 할인할 때 살까?",
+    "기업은 언제 자사주를 팔까?", "편의점에서 뭐 살까?",
+    "지금 살까?", "지금 팔까?",
+])
+def test_buy_sell_educational_questions_remain_allowed(question: str) -> None:
+    assert classify_question(question, FakeLLMAdapter()) == "ALLOW"
+
+
 def test_ambiguous_caution_uses_existing_llm(monkeypatch: pytest.MonkeyPatch) -> None:
     llm = FakeLLMAdapter()
     prompts = []

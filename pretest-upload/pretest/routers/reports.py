@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, Response, status
 
 from pretest.dependencies import CurrentUserId
 from pretest.schemas.diagnostic import ReportResponse
@@ -21,4 +21,16 @@ router = APIRouter(tags=["리포트"])
 )
 def get_report(id: str, user_id: CurrentUserId,
                service: Annotated[DiagnosticService, Depends(get_diagnostic_service)]) -> ReportResponse:
+    return service.get_report(id, user_id)
+
+
+@router.post("/reports/{id}/retry", response_model=ReportResponse,
+             response_model_exclude_none=True, status_code=status.HTTP_200_OK,
+             summary="실패한 리포트 다시 생성")
+def retry_report(id: str, user_id: CurrentUserId, background_tasks: BackgroundTasks,
+                 response: Response,
+                 service: Annotated[DiagnosticService, Depends(get_diagnostic_service)]) -> ReportResponse:
+    if service.prepare_report_retry(id, user_id):
+        background_tasks.add_task(service.generate_report, id, user_id)
+        response.status_code = status.HTTP_202_ACCEPTED
     return service.get_report(id, user_id)

@@ -10,16 +10,25 @@ import {
   Send,
   Sparkles,
 } from "lucide-react";
-import QuizModal from "@/components/explore/QuizModal";
+import QuizModal, { type QuizProgress } from "@/components/explore/QuizModal";
 import ChatMessageBody from "@/components/explore/ChatMessageBody";
 import RecommendKeywords from "@/components/explore/RecommendKeywords";
 import type { ChatMessage, ExploreQuizQuestion } from "@/lib/explore/types";
 
 interface ExploreChatProps {
   preTestScore?: number | null;
+  userId?: string | null;
 }
 
-export default function ExploreChat({ preTestScore = null }: ExploreChatProps) {
+type QuizDraft = {
+  messages: ChatMessage[];
+  keywords: string[];
+  questions: ExploreQuizQuestion[];
+  progress?: QuizProgress;
+};
+
+export default function ExploreChat({ preTestScore = null, userId = null }: ExploreChatProps) {
+  const draftKey = "explore-quiz-draft-v1:" + (userId ?? "guest");
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: "assistant",
@@ -32,13 +41,35 @@ export default function ExploreChat({ preTestScore = null }: ExploreChatProps) {
   const [error, setError] = useState<string>();
   const [showCompletionCard, setShowCompletionCard] = useState(false);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
-  const [quizData, setQuizData] = useState<{
-    keywords: string[];
-    questions: ExploreQuizQuestion[];
-  } | null>(null);
+  const [quizData, setQuizData] = useState<QuizDraft | null>(null);
   const [showQuizModal, setShowQuizModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    try {
+      const draft = JSON.parse(sessionStorage.getItem(draftKey) ?? "null") as QuizDraft | null;
+      if (!draft || !Array.isArray(draft.messages) || !Array.isArray(draft.keywords)
+          || !Array.isArray(draft.questions) || !draft.questions.length) return;
+      const progress = draft.progress;
+      if (progress && (!Number.isInteger(progress.currentIndex)
+          || !draft.questions[progress.currentIndex] || !Array.isArray(progress.attempts))) return;
+      setMessages(draft.messages);
+      setQuizData(draft);
+      setShowQuizModal(true);
+    } catch {
+      // A failed storage read should not prevent a new quiz.
+    }
+  }, [draftKey]);
+
+  const saveQuizDraft = (draft: QuizDraft | null) => {
+    try {
+      if (draft) sessionStorage.setItem(draftKey, JSON.stringify(draft));
+      else sessionStorage.removeItem(draftKey);
+    } catch {
+      // A blocked or full browser store should not interrupt the quiz.
+    }
+  };
 
   const handleKeywordSelect = (prompt: string) => {
     setInput(prompt);
@@ -122,10 +153,9 @@ export default function ExploreChat({ preTestScore = null }: ExploreChatProps) {
         return;
       }
 
-      setQuizData({
-        keywords: data.keywords,
-        questions: data.questions,
-      });
+      const draft = { messages, keywords: data.keywords, questions: data.questions };
+      saveQuizDraft(draft);
+      setQuizData(draft);
       setShowQuizModal(true);
       setShowCompletionCard(false);
     } catch {
@@ -269,8 +299,14 @@ export default function ExploreChat({ preTestScore = null }: ExploreChatProps) {
         <QuizModal
           questions={quizData.questions}
           keywords={quizData.keywords}
-          messages={messages}
-          onClose={() => setShowQuizModal(false)}
+          messages={quizData.messages}
+          initialProgress={quizData.progress}
+          onProgress={(progress) => saveQuizDraft({ ...quizData, progress })}
+          onFinish={() => saveQuizDraft(null)}
+          onClose={() => {
+            saveQuizDraft(null);
+            setShowQuizModal(false);
+          }}
         />
       )}
     </div>

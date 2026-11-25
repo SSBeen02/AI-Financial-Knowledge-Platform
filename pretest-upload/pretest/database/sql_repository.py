@@ -2,7 +2,9 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from sqlalchemy import DateTime, MetaData, Table, insert, select, update
+import json
+
+from sqlalchemy import DateTime, MetaData, Table, insert, select, text, update
 from sqlalchemy.exc import SQLAlchemyError
 
 from pretest.services.errors import DiagnosticStorageError
@@ -17,6 +19,8 @@ class SqlDiagnosticRepository:
         required = {"id", "user_id", "status", "started_at", "submitted_at", "created_at", "updated_at",
                     "questions_snapshot", "submission_key", "answers", "summary", "domain_scores",
                     "question_results", "vulnerabilities", "llm_report", "report", "error"}
+        if engine.dialect.name != "sqlite":
+            required.update({"retry_count", "report_started_at"})
         if not required <= set(self.table.c.keys()):
             raise RuntimeError("사전테스트 diagnostic_attempts 스키마를 먼저 적용하세요.")
 
@@ -50,6 +54,31 @@ class SqlDiagnosticRepository:
         except SQLAlchemyError as exc:
             raise DiagnosticStorageError("사전테스트 저장에 실패했습니다.") from exc
 
+    def start_once(self, record):
+        try:
+            if self.engine.dialect.name == "sqlite":
+                # The local integration fixture retains the original table shape.
+                with self.engine.begin() as connection:
+                    existing = connection.execute(
+                        select(self.table).where(self.table.c.user_id == record["user_id"])
+                        .order_by((self.table.c.status == "pending"), self.table.c.started_at, self.table.c.id)
+                        .limit(1)
+                    ).mappings().first()
+                    if existing is not None:
+                        return self._record(existing)
+                    values = {key: value for key, value in record.items() if key in self.table.c}
+                    row = connection.execute(insert(self.table).values(**self._values(values))
+                                             .returning(self.table)).mappings().one()
+                    return self._record(row)
+            with self.engine.begin() as connection:
+                row = connection.execute(
+                    text("select * from public.start_diagnostic_once(cast(:record as jsonb))"),
+                    {"record": json.dumps(record, ensure_ascii=False)},
+                ).mappings().one()
+                return self._record(row)
+        except SQLAlchemyError as exc:
+            raise DiagnosticStorageError("최초 응시 저장에 실패했습니다. start_diagnostic_once 마이그레이션을 확인해 주세요.") from exc
+
     def get_attempt(self, attempt_id, user_id):
         try:
             UUID(str(attempt_id))
@@ -68,9 +97,11 @@ class SqlDiagnosticRepository:
         except SQLAlchemyError as exc:
             raise DiagnosticStorageError("사전테스트 조회에 실패했습니다.") from exc
 
-    def update_attempt(self, attempt_id, user_id, expected_status, changes):
+    def update_attempt(self, attempt_id, user_id, expected_status, changes, expected_retry_count=None):
         query = update(self.table).where(self.table.c.id == attempt_id,
             self.table.c.user_id == user_id, self.table.c.status == expected_status).values(**self._values(changes))
+        if expected_retry_count is not None and "retry_count" in self.table.c:
+            query = query.where(self.table.c.retry_count == expected_retry_count)
         try:
             with self.engine.begin() as connection:
                 return self._record(connection.execute(query.returning(self.table)).mappings().first())

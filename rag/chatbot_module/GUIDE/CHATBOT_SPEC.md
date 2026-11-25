@@ -227,7 +227,7 @@
 ### 4.6 대화 기록 조회 (화면 복원용)
 - `GET /learning/sessions/{session_id}/messages` — 본인 세션의 전체 메시지 (관련 여부 무관), 타 사용자는 404
 - `GET /learning/history?limit=50` — 세션 메시지와 `free` 메시지를 포함한 최신 N개를 고른 뒤 시간순 반환
-- 각 메시지는 `role`, `content`, `is_related`, `band`, `display_sources`, `created_at`과
+- 각 메시지는 `role`, `content`, `is_related`, `band`, `display_sources`, `notice`(nullable), `created_at`과
   `session_id`, `attempt`, `concept_id`, `start_type`을 포함한다. free 메시지의 세션 메타데이터는 null이다.
 - 퀴즈 실패 후 재학습하면 화면은 이전 시도 대화를 이어서 표시하고, `session_id` 또는 `attempt`가
   바뀌는 지점에 시도 구분선을 표시한다. LLM 프롬프트와 퀴즈용 학습 맥락은 현재 규칙을 유지한다.
@@ -325,13 +325,13 @@
   로컬은 SQLite, 배포는 Supabase PostgreSQL에서 같은 코드로 동작하게 한다.
 - `DB_AUTO_CREATE=true`인 로컬 환경에서만 SQLAlchemy 저장소가 시작 시 대화·학습 관리 테이블을
   자동 생성하고 `stages.json`을 멱등 시드한다. 코드 기본값은 `false`이며, 이때 스키마·시드를 변경하지
-  않고 누락 시 migration 적용 안내와 함께 시작에 실패한다. 공유 Supabase는 검토된 001→002→003→004 SQL로 관리한다.
+  않고 누락 시 migration 적용 안내와 함께 시작에 실패한다. 공유 Supabase는 검토된 001→002→003→004→005→006 SQL로 관리한다.
 - 실제 상태는 `stages`, `concepts`, `user_concept_progress`, `user_stage_progress`, `learning_events`에
   저장한다. 이전 `dev_concept_status` 데이터는 보존 이전 후 제거한다. 현재 스테이지는 별도 저장하지 않는다.
 - `ChatStore` 인터페이스를 두고 서비스는 인터페이스에만 의존한다.
 - 테이블 (모든 테이블에 `user_id` 인덱스)
   - `learning_sessions`: session_id, user_id, stage_id, concept_id, term, attempt, start_type(`keyword`/`detected`/`relearn`/`quiz_retry`), status(`active`/`completed`), created_at, completed_at
-  - `learning_messages`: message_id, session_id(free 메시지는 null), user_id, role, content, is_related, band, top_score, sources(JSON), display_sources(JSON), latency_ms, created_at
+  - `learning_messages`: message_id, session_id(free 메시지는 null), user_id, role, content, is_related, band, top_score, sources(JSON), display_sources(JSON), notice(TEXT NULL), latency_ms, created_at
   - `learning_contexts`: session_id, user_id, concept_id, payload(JSON, 4.5 구조와 stage_id 포함), created_at. 유일한 상태 갱신 대상은 `(concept_id, stage_id)`
   - `learning_completion_requests`: user_id, session_id, idempotency_key, response_payload, created_at.
     같은 사용자의 완료 멱등 키를 유일하게 보장한다.
@@ -549,3 +549,12 @@ install_learning_error_handlers(app)
 57. **권유 제한과 조건부 AI 고지**: 모든 답변 생성 프롬프트는 특정 금융상품의 매수·매도 지시, 소득·자산·부채에 따른 개인 맞춤 투자상품 추천, 특정 대출상품 추천 및 대출 실행·한도 확대 권유를 금지한다. 일반적인 상품 구조·위험·비용·금리·상환 조건·비교 기준의 교육 설명은 허용한다. 고정 문구 `AI 작성, 투자 조언 아님`은 애플리케이션이 질문의 개인별 투자·대출 판단 의도 또는 특정 상품의 비교·위험 분석 의도와 실제 답변의 판단·위험·비용 내용을 함께 확인한 경우에만 답변 끝에 한 번 붙인다. 단순 개념·구조·저축·소비·신용관리·사기 예방 설명과 BLOCK·오류 응답에는 붙이지 않는다. 모델이 문구를 출력해도 서버가 제거한 뒤 조건에 맞을 때만 붙인다. 비스트리밍·SSE 토큰·저장 답변은 같은 결과를 사용한다.
 58. **금융감독원 교재 검색 추가**: `fss_practical_finance_4e_3p_kure_v1`의 502개 청크를 답변 보조 근거로 검색한다. KURE-v1 Dense와 Kiwi BM25 Sparse를 각각 상위 200개까지 검색하고 Qdrant 동일 가중 RRF(k=2)로 결합한다. BM25 질의는 적재 당시의 `data/fss_hybrid_sparse_model.json` 어휘 ID·IDF와 동일한 Kiwi 형태소 규칙을 사용한다. RRF 상위 5개 청크의 KURE-v1 Dense 유사도를 확인하고 0.50 이상인 것 중 최대 2개만 답변 근거와 화면 출처에 포함한다. 이 기준은 교재의 무관한 RRF 상위 결과를 줄이기 위한 후처리이며, RRF 순위와 화면에 반환하는 RRF 점수는 유지한다. 사용자 표시 출처는 `대학생을 위한 실용금융(제4판)_금융감독원_2024`다. 이 소스는 `concept_source=False`이며 개념 감지·band 기준·학습 상태는 기존 `sisa_terms` Dense 검색을 유지한다. 교재의 `section`이 본문 문장처럼 길면 `chapter_title`을 제목으로 쓴다. 제공된 기존 30문항 MRR@10 0.928, 추가 10문항 0.925는 이 후처리 전 평가이며 재측정하지 않았다.
 59. **한국은행 2026 용어집 검색 추가**: `bok_economic_financial_terms_2026_kure_v1_rrf`의 790개 청크를 KURE-v1 정규화 Dense 임베딩으로 검색한다. 상위 5개 중 최대 2개를 기존 소스 결과에 이어 답변 근거로 전달한다. `payload.content_markdown`을 본문으로 사용하고 `term`, 정수형 `printed_page`, HTTP(S) `source_url`을 `sources`·`display_sources`·학습 맥락의 선택적 출처 메타데이터로 전달한다. 사용자 표시 label은 `2026_경제금융용어 800선_한국은행`이다. 이 소스는 `concept_source=False`이며 기존 `sisa_terms`의 band·개념 감지·학습 상태 판정 기준을 바꾸지 않는다. 추후 hybrid 비교를 켤 때는 적재 당시의 별도 어휘·IDF 모델과 동일한 Kiwi 규칙을 사용한다.
+60. **자유 질문 안내·정규 동의어·답변 기준**: 세션 없는 자유 질문도 일반 대화 기록에 저장하고 `/learning/history`에서 세션 메시지와 시간순으로 조회한다. 퀴즈 학습 맥락은 해당 세션의 메시지만 사용한다. 정규 학습 개념의 확인된 동의어(ETF→상장지수펀드)는 별도 extra·excluded 항목보다 먼저 학습 개념으로 판정한다. 기존 안내가 없고 학습·추천 개념도 없는 자유 질문에는 자유 질문 안내를 제공한다. 챗봇 이름은 해태이며, 시점에 따라 달라지는 수치는 근거에 기준 시점이 있을 때만 해당 시점과 함께 쓴다. 고정 제도 기준과 가정임을 밝힌 예시는 허용한다.
+61. **답변 정의 용어에 따른 자유 질문 안내**: 학습 개념과 추천이 없고 일반 자유 질문 안내가 붙은 경우, 확정된 답변의 첫 문장에 시사경제용어사전 검색 근거의 용어·별칭이 정의 대상으로 일치하면 그 용어로 기존 안내·추천 규칙을 다시 적용한다. 다른 안내와 low band, 학습·퀴즈 흐름은 유지한다. 비스트리밍 응답과 SSE `done`은 같은 저장 함수를 사용한다.
+62. **메시지별 안내 복원**: 확정된 응답 `notice`를 assistant `learning_messages.notice`에 저장하고 user 행은 NULL로 둔다. `/learning/history`와 `/learning/sessions/{id}/messages`의 각 항목에 nullable `notice`를 반환한다. 기존 행은 NULL이며 퀴즈 학습 맥락의 `turns` 구조는 변경하지 않는다. 로컬 기존 SQLite는 `DB_AUTO_CREATE=true` 시작 시 컬럼을 보강하고, 공유 PostgreSQL은 `006_add_learning_message_notice.sql`을 적용한다.
+63. **스테이지 표기 영문 동의어 자동 등록**: 서버 시작 시 `data/stages.json`의 `term_full` 괄호·슬래시 및 `:`·`;`·`,` 구분 표기에서 후보를 추출하고 프로세스 내 캐시한다. 대문자 2~5자 약어(`M&A`처럼 `&` 포함 가능)와 두 단어 이상 영문 이름만 등록한다. 한글 다른 이름, 영어 단일어, 서로 다른 `concept_id`에 걸리는 후보는 자동 등록하지 않고 검토 목록에 둔다. ETF 수동 등록이 자동 등록보다 우선한다. 영문 이름·약어는 영문자·숫자 경계의 단어 단위로 감지하며 한글 용어는 기존 공백 무시 매칭을 유지한다. 개념 감지와 메시지 안내에 같은 매칭을 사용한다.
+64. **정식 개념명 분리와 검토된 수동 동의어**: `term` 자체에 `/` 또는 `·`가 있으면 두 글자 이상 각 조각을 같은 `concept_id`의 동의어로 등록한다. 서로 다른 개념에 걸리는 조각은 등록하지 않고 보고한다. 추가 수동 동의어는 `concept_synonyms.py`의 `SYNONYMS_BY_CONCEPT_ID`에만 기록하며 영어 표기는 대소문자 구분 없이 영문자·숫자 경계로 매칭한다. 한글 조사는 영어 표기 바로 뒤에 올 수 있다. 공매·Securities·Millenials·Returoo族·ForMe족·순현재가치·NEET 설명 문구 조각은 자동·수동 등록하지 않는다.
+65. **첫 문장 정의 대상 판정**: 답변 첫 문장에 용어가 등장하는 것만으로 핵심 정의 출처나 답변 기반 안내를 붙이지 않는다. 용어 바로 뒤(괄호 표기 허용)의 `은/는`, `이란/란`, `(이)라는 것은`, `(이)라고 부르·불러·하`, `(이)라 하`만 정의 대상으로 인정한다. `과는/와는 다른·상관없`, `가/이 아니라`, `와/과 달리`처럼 대조·부정으로 언급한 용어는 인정하지 않는다. 두 기능은 `_first_definition_sources()`와 `_definition_term_matches()`를 공유한다. `분업/특화`의 `분업`과 `특화` 단독 표기는 모두 같은 개념의 동의어로 유지한다.
+66. **영문 동의어의 조사 경계와 긴 용어 우선**: 영문 약어·이름 뒤에 한글이 바로 붙으면 완전한 조사·명명 어미만 허용한다. `GDP가`·`ETF랑`·`inflation이`는 일치하고 `GDP갭`·`ETF형`·`CPI상승률`은 일치하지 않는다. 질문의 검색 문서 용어·별칭과 정규 개념 동의어가 겹치면 긴 용어가 포함하는 짧은 별칭을 제외한다(`레버리지 ETF` 우선). 개념 감지·질문 기반 안내·첫 문장 정의 출처에 같은 긴 용어 우선 규칙을 적용한다. 일상 질문에는 질문 자체에 먼저 답하고 관련 경제 용어는 끝에 짧게 소개한다. 검색 근거를 이미 배운 내용으로 표현하지 않으며, 자기소개는 `경세학당의 튜터 해태`로만 한다.
+67. **말투 요청과 투자 결정 질문**: `CHAT_TONE=hao`에서 반말 등 다른 말투를 요청받으면 하오체를 유지한다고 정중히 안내하고 말투 변경을 약속하지 않는다. 답변 본문에는 `~답니다`·`~지요`·`~ㅂ니다` 종결을 섞지 않는다. `지금 사야`, `사야 돼`, `사야 할까`, `살까`, `팔아야`, `팔까` 등 매수·매도 결정 표현은 투자 대상과 질문자 본인의 결정 의도가 함께 있고 원인·현상을 묻는 교육 질문이 아닐 때만 REVIEW로 분류한다. 투자 대상 없는 일상 구매 질문, 매매 원리나 ETF 정의를 묻는 교육 질문은 ALLOW다.
+68. **활성 학습 세션의 후속 질문 안내**: 키워드로 연 활성 세션의 후속 질문은 검색 용어가 extra·다른 스테이지인지 또는 `is_related`가 참인지와 무관하게 메시지별 `notice`를 표시·저장하지 않는다. 세션 밖 자유 질문의 안내와 학습 시작 메시지의 규칙은 유지한다. 비스트리밍 응답, SSE `done`, 기록 조회에 같은 null 값이 반영된다.
