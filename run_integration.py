@@ -97,6 +97,7 @@ async def lifespan(app: FastAPI):
             deps.get_dense_encoder()
             deps.get_concept_cache()
             deps.get_retriever()
+            deps.warm_up_retrieval()
             deps.get_llm_adapter()
             yield
         finally:
