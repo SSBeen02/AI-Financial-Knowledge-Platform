@@ -56,6 +56,8 @@ export const KEYWORD_QUIZ_PROMPT = `아래 대화 내용을 바탕으로 학습 
 2. 각 키워드와 대화 내용을 반영한 객관식 또는 O/X 퀴즈 3문항 생성
 3. 객관식은 options 4개, answer는 1~4 정수 (1-based)
 4. O/X는 options ["O", "X"], answer는 true(O) 또는 false(X)
+5. question과 explanation의 모든 문장은 한국어 존댓말(합니다·입니다·습니까)로 작성합니다. 반말과 하오체를 쓰지 않습니다.
+6. 문장형 options도 존댓말로 작성하며, 명사구·숫자·O/X 식별자는 유지합니다. 대화의 말투를 따라 하지 않습니다.
 
 JSON 형식:
 {

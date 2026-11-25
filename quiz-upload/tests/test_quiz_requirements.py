@@ -136,6 +136,49 @@ class OriginalQuizRequirementsTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaises(ValueError): normalize_questions(sample)
         self.assertEqual(len(normalize_questions(copy.deepcopy(SAMPLE))[2]['choices']),4)
 
+    async def test_unconverted_tone_is_regenerated_before_saving(self):
+        bad = copy.deepcopy(SAMPLE)
+        bad[0]['explanation'] = '이 선택이 옳겠구나.'
+        generator = AsyncMock(side_effect=[bad, copy.deepcopy(SAMPLE)])
+        created = await self.create(generator)
+        self.assertEqual(created.status, 'completed')
+        self.assertEqual(generator.await_count, 2)
+        async with self.factory() as session:
+            saved = await session.get(QuizSet, created.id)
+            self.assertNotIn('옳겠구나', str(saved.questions))
+
+    async def test_repeated_bad_tone_cannot_be_saved_as_completed(self):
+        bad = copy.deepcopy(SAMPLE)
+        bad[0]['prompt'] = '이것을 살펴봤노라.'
+        generator = AsyncMock(return_value=bad)
+        with patch('app.services.quiz_service.report_quiz_generation_failed', AsyncMock()):
+            created = await self.create(generator)
+        self.assertEqual(created.status, 'failed')
+        self.assertEqual(generator.await_count, 3)
+        async with self.factory() as session:
+            self.assertEqual((await session.get(QuizSet, created.id)).questions, [])
+
+
+    async def test_parenthesis_and_bare_command_are_rejected_then_regenerated(self):
+        for text in ['이 선택이 맞습니다. (다른 방법도 살펴보게.)', '은행에 돈을 맡겨라']:
+            for field in ['prompt', 'explanation', 'choice']:
+                with self.subTest(text=text, field=field):
+                    bad = copy.deepcopy(SAMPLE)
+                    if field == 'choice':
+                        bad[2]['choices'][0]['text'] = text
+                    else:
+                        bad[0][field] = text
+                    generator = AsyncMock(side_effect=[bad, copy.deepcopy(SAMPLE)])
+                    async with self.factory() as session:
+                        created = await QuizService(generator).create_quiz_set(
+                            session, user_id='owner', session_id=text + field,
+                            concept_id='concept-' + text + field, stage_id='stage1', learning_context='학습 맥락')
+                        self.assertEqual(created.status, 'completed')
+                        self.assertEqual(generator.await_count, 2)
+                        saved = await session.get(QuizSet, created.id)
+                        self.assertNotIn(text, str(saved.questions))
+
+
 class SQLiteMigrationTests(unittest.TestCase):
     def test_duplicate_migration_aborts_without_deleting_records(self):
         spec=importlib.util.spec_from_file_location('first_submission_migration',ROOT/'scripts/migrate_first_submission_sqlite.py')

@@ -59,7 +59,7 @@ class QuizNoveltyTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(generator.await_args_list[0].kwargs['learning_context']['previous_questions']), 3)
         async with self.factory() as session:
             saved = await session.get(QuizSet, created.id)
-            self.assertEqual([q['prompt'] for q in saved.questions], [q['prompt'] for q in alternative()])
+            self.assertEqual([q['prompt'] for q in saved.questions], [q['prompt'] for q in normalize_questions(alternative())])
             old_saved = await session.get(QuizSet, old.id)
             self.assertEqual([q['prompt'] for q in old_saved.questions], [q['prompt'] for q in normalize_questions(copy.deepcopy(ORIGINAL))])
 
