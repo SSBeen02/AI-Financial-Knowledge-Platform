@@ -156,6 +156,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     noteId: note.id,
-    message: "학습노트에 저장했어!",
+    message: "학습노트에 저장했습니다.",
   });
 }

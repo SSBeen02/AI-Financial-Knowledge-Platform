@@ -332,7 +332,7 @@ export default function QuizModal({
 
                 <CheckCircle2 className="h-4 w-4" />
 
-                학습노트에 저장했어!
+                학습노트에 저장했습니다.
 
               </p>
 
