@@ -42,7 +42,7 @@ from app.schemas.quiz import (
     SubmittedAnswer,
 )
 from app.services.learning_callbacks import report_quiz_generation_failed, report_quiz_result
-from app.services.quiz_language import localize_quiz_text, validate_korean_text
+from app.services.quiz_language import QuizLanguageError, localize_quiz_text, validate_korean_text
 from app.services.quiz_tone import choice_in_polite, explanation_in_polite, question_in_polite
 from app.timeutil import to_utc_iso, utc_now
 from database.settings import load_settings
@@ -67,8 +67,9 @@ questions 배열은 길이 3입니다.
 - question_index 1과 2는 question_type "ox"입니다. choices는 key "O"와 "X" 두 개입니다. answer는 "O" 또는 "X"입니다.
 - question_index 3은 question_type "situation"입니다. 학습자가 처한 상황을 제시하고, 행동 선택지 4개(key A, B, C, D) 중 알맞은 하나를 answer로 둡니다.
 각 문항은 prompt, choices, answer, explanation을 모두 포함합니다.
-문제, 상황형 보기, 해설은 한글로만 작성합니다. 외국어와 영문 약어는 한국어로 풀어 씁니다.
+문제, 상황형 보기, 해설의 설명 문장은 한국어로 작성합니다. 금융 용어의 영문 명칭과 약어는 원문 그대로 사용할 수 있습니다.
 숫자와 계산 기호는 사용할 수 있습니다. O/X와 A~D는 기존 보기 식별자로 사용합니다.
+금융 용어가 영문이나 약어라면 그대로 표시하되, 의미 설명은 한국어로 작성합니다.
 모든 prompt의 문장과 질문은 반드시 현대 존댓말(~합니다/~입니다/~있습니다/~습니까?)로 씁니다.
 OX choices의 text는 각각 "O", "X"만 씁니다. 맞소·아니오·맞아요 등의 설명은 붙이지 않습니다.
 상황형 choices의 text는 존댓말 평서문(~합니다/~입니다) 또는 간결한 명사구로 씁니다. 반말과 하오체를 쓰지 않습니다.
@@ -207,8 +208,15 @@ def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, A
     normalized: list[dict[str, Any]] = []
     for item in raw_questions:
         question_type = str(item.get("question_type", "")).strip().lower()
-        prompt = question_in_polite(str(item.get("prompt", "")).strip(), strict=True)
-        explanation = explanation_in_polite(str(item.get("explanation", "")).strip(), strict=True)
+        # Apply the same localization to generated, fixed and stored quiz text.
+        prompt = localize_quiz_text(str(item.get("prompt", "")).strip())
+        explanation = localize_quiz_text(str(item.get("explanation", "")).strip())
+        field_prefix = f"questions[{item['question_index']}]"
+        _validate_public_text(prompt)
+        validate_korean_text(prompt, field=field_prefix + ".prompt")
+        validate_korean_text(explanation, field=field_prefix + ".explanation")
+        prompt = question_in_polite(prompt, strict=True)
+        explanation = explanation_in_polite(explanation, strict=True)
         if question_type not in {"ox", "situation"} or not prompt or not explanation:
             raise ValueError("문항 형식이 올바르지 않습니다.")
         _validate_public_text(prompt)
@@ -248,11 +256,12 @@ def normalize_questions(raw_questions: list[dict[str, Any]]) -> list[dict[str, A
             ]
             answer = mapped
         else:
-            for choice in choices:
-                validate_korean_text(localize_quiz_text(choice["text"]), allow_numeric=True)
-            choices = [dict(choice, text=choice_in_polite(localize_quiz_text(choice["text"]), strict=True)) for choice in choices]
-            for choice in choices:
-                validate_korean_text(choice["text"], allow_numeric=True)
+            for index, choice in enumerate(choices):
+                localized = localize_quiz_text(choice["text"])
+                field = f"{field_prefix}.choices[{index}].text"
+                validate_korean_text(localized, allow_numeric=True, allow_finance_terms=True, field=field)
+                choice["text"] = choice_in_polite(localized, strict=True)
+                validate_korean_text(choice["text"], allow_numeric=True, allow_finance_terms=True, field=field)
             keys = [choice["key"] for choice in choices]
             if len(keys) != len(set(keys)):
                 raise ValueError("상황형 보기 키가 중복되었습니다.")
@@ -303,7 +312,7 @@ def _quiz_display_text(
 ) -> str:
     localized = localize_quiz_text(text)
     try:
-        validate_korean_text(localized, allow_numeric=allow_numeric)
+        validate_korean_text(localized, allow_numeric=allow_numeric, allow_finance_terms=allow_numeric)
     except ValueError as exc:
         if fallback is not None:
             return fallback
@@ -508,7 +517,22 @@ class QuizService:
                             if duplicates >= NOVELTY_GENERATION_ATTEMPTS or attempts == MAX_GENERATION_ATTEMPTS:
                                 raise
                             excluded.extend(candidate)
-                        except ValueError:
+                        except ValueError as error:
+                            if isinstance(error, QuizLanguageError):
+                                logger.warning(
+                                    "퀴즈 언어 검증 실패 quiz_set_id=%s concept_id=%s stage_id=%s "
+                                    "attempt=%s field=%s reason=%s rejected_tokens=%s codepoints=%s text_sha256=%s",
+                                    quiz_id, concept_id, stage_for_log, attempts,
+                                    error.field, error.reason,
+                                    json.dumps(error.rejected_tokens, ensure_ascii=True),
+                                    json.dumps(error.codepoints), error.text_sha256,
+                                )
+                            else:
+                                logger.warning(
+                                    "퀴즈 문항 검증 실패 quiz_set_id=%s concept_id=%s stage_id=%s "
+                                    "attempt=%s reason=%s",
+                                    quiz_id, concept_id, stage_for_log, attempts, type(error).__name__,
+                                )
                             if attempts == MAX_GENERATION_ATTEMPTS:
                                 raise
                         else:

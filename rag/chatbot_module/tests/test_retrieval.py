@@ -246,7 +246,9 @@ def test_real_three_source_search_reuses_one_query_embedding(caplog) -> None:
     assert result.band == "high" and result.top_score == 0.7
     phases = [record.message for record in caplog.records if "timing-test" in record.message]
     assert sum("embedding_complete" in phase for phase in phases) == 1
-    assert sum("embedding_reused" in phase for phase in phases) == 2
+    # 임베딩은 병렬 검색 전에 한 번 계산하고 세 컬렉션 모두 재사용한다.
+    assert sum("embedding_reused" in phase for phase in phases) == 3
+    assert sum("phase=sparse_encode_complete" in phase for phase in phases) == 1
     retriever.search("신용관리")
     assert dense.calls == 2  # A later request must compute its own embedding.
 

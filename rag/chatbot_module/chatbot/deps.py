@@ -64,9 +64,10 @@ def get_qdrant_client() -> Any:
 def get_dense_encoder() -> Any:
     global _dense
     if _dense is None:
+        from chatbot.embedding_cache import CachedQueryEncoder
         from rag_common import DenseEncoder
 
-        _dense = DenseEncoder(get_cached_settings().dense_model)
+        _dense = CachedQueryEncoder(DenseEncoder(get_cached_settings().dense_model))
     return _dense
 
 
@@ -120,3 +121,52 @@ def get_quiz_service() -> QuizService:
     if _quiz_service is None:
         _quiz_service = DevQuizService(get_cached_settings())
     return _quiz_service
+
+
+WARMUP_QUERY = "복리이자란 무엇인가"
+
+
+def warm_up_retrieval() -> float | None:
+    """서버 시작 시 임베딩·Kiwi·Qdrant 연결을 한 번 실행해 첫 요청의 지연을 줄인다.
+
+    LLM 호출과 DB 저장은 하지 않는다. 실패해도 서버 기동은 계속한다.
+    `CHATBOT_WARMUP=false`이면 건너뛴다. 반환값은 소요 초(건너뛰거나 실패하면 None).
+    """
+    import logging
+    import os
+    from time import perf_counter
+
+    logger = logging.getLogger("uvicorn.error")
+    _log_cpu_threads(logger)
+    if os.getenv("CHATBOT_WARMUP", "true").strip().lower() in {"0", "false", "no", "off"}:
+        logger.info("chatbot_warmup skipped (CHATBOT_WARMUP=false)")
+        return None
+    started = perf_counter()
+    try:
+        get_retriever().search(WARMUP_QUERY)
+    except Exception:
+        logger.warning("chatbot_warmup failed; server continues", exc_info=True)
+        return None
+    finally:
+        clear = getattr(get_dense_encoder(), "clear", None)
+        if callable(clear):
+            clear()  # 워밍업 질문은 질문 캐시에 남기지 않는다.
+    elapsed = perf_counter() - started
+    logger.info("chatbot_warmup done elapsed_s=%.2f", elapsed)
+    return elapsed
+
+
+def _log_cpu_threads(logger: Any) -> None:
+    import os
+
+    try:
+        import torch
+
+        torch_threads: Any = torch.get_num_threads()
+    except Exception:
+        torch_threads = "unavailable"
+    logger.info(
+        "chatbot_runtime cpu_count=%s torch_threads=%s OMP_NUM_THREADS=%s MKL_NUM_THREADS=%s",
+        os.cpu_count(), torch_threads,
+        os.getenv("OMP_NUM_THREADS", "unset"), os.getenv("MKL_NUM_THREADS", "unset"),
+    )

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 import re
+from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -64,6 +65,32 @@ class _RequestDense:
         if cacheable:
             self._cached = result
         return result
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._delegate, name)
+
+
+class _RequestSparse:
+    """한 검색 요청 안에서 같은 질문의 Kiwi BM25 질의 벡터를 한 번만 만든다.
+
+    병렬 검색 전에 호출 스레드에서 미리 계산해, Kiwi를 여러 스레드가 동시에 쓰지 않게 한다.
+    """
+
+    def __init__(self, delegate: Any, query: str) -> None:
+        self._delegate = delegate
+        self._query = query
+        self._cached: Any = None
+        self._ready = False
+
+    def prepare(self) -> None:
+        if not self._ready:
+            self._cached = self._delegate.encode_query(self._query)
+            self._ready = True
+
+    def encode_query(self, text: str) -> Any:
+        if self._ready and text == self._query:
+            return self._cached
+        return self._delegate.encode_query(text)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._delegate, name)
@@ -228,14 +255,43 @@ class Retriever:
         concept_scores: list[float] = []
         timing = current_timing()
         dense = _RequestDense(self._dense, query)
-        for name, profile in self._profiles.items():
-            hits = self._search_profile(query, name, profile, timing=timing, dense=dense)
+        profiles = list(self._profiles.items())
+        sparse = self._sparse
+        if self._use_real_search and profiles:
+            # 임베딩과 Kiwi 분석은 CPU 작업이라 병렬로 나누기 전에 한 번만 계산한다.
+            first_name = profiles[0][0]
+            warm = _TimedDense(dense, timing, first_name) if timing is not None else dense
+            warm.encode([query])
+            if sparse is not None and any(profile["mode"] != "dense" for _, profile in profiles):
+                sparse = _RequestSparse(sparse, query)
+                sparse.prepare()
+                if timing is not None:
+                    timing.mark("sparse_encode_complete")
+
+        def run(name: str, profile: SearchProfile) -> tuple[list[RetrievedDoc], float | None]:
+            hits = self._search_profile(
+                query, name, profile, timing=timing, dense=dense, sparse=sparse
+            )
             if timing is not None:
                 timing.mark(f"{name}.search_complete")
+            top = (
+                self._dense_top(query, name, profile, hits, dense=dense)
+                if profile["concept_source"] else None
+            )
+            return hits, top
+
+        if self._use_real_search and len(profiles) > 1:
+            # Qdrant 왕복(네트워크 대기)만 겹친다. 결과는 원래 순서대로 합친다.
+            with ThreadPoolExecutor(max_workers=len(profiles)) as pool:
+                futures = [pool.submit(run, name, profile) for name, profile in profiles]
+                outcomes = [future.result() for future in futures]
+        else:
+            outcomes = [run(name, profile) for name, profile in profiles]
+        for (name, profile), (hits, top) in zip(profiles, outcomes):
             merged.extend(hits[: profile["slots"]])
             if profile["concept_source"]:
                 concept_hits.extend(hits)
-                concept_scores.append(self._dense_top(query, name, profile, hits, dense=dense))
+                concept_scores.append(top if top is not None else 0.0)
         top_score = max(concept_scores) if concept_scores else 0.0
         band = judge_band(top_score, high=self._settings.band_high, low=self._settings.band_low)
         return RetrievalResult(
@@ -248,9 +304,10 @@ class Retriever:
 
     def _search_profile(
         self, query: str, collection: str, profile: SearchProfile,
-        *, timing: RequestTiming | None = None, dense: Any = None,
+        *, timing: RequestTiming | None = None, dense: Any = None, sparse: Any = None,
     ) -> list[RetrievedDoc]:
-        if profile["mode"] != "dense" and self._sparse is None:
+        sparse = sparse if sparse is not None else self._sparse
+        if profile["mode"] != "dense" and sparse is None:
             raise RetrievalError(f"{collection}의 {profile['mode']} 검색에는 희소 인코더가 필요합니다.")
         search_kwargs = dict(
             mode=profile["mode"],
@@ -263,31 +320,34 @@ class Retriever:
         encoder = dense if dense is not None else self._dense
         dense = _TimedDense(encoder, timing, collection) if timing is not None else encoder
         if self._use_real_search and profile.get("sparse_vector"):
-            points = self._search_named_sparse(query, collection, profile, client=client, dense=dense)
+            points = self._search_named_sparse(
+                query, collection, profile, client=client, dense=dense, sparse=sparse
+            )
         else:
             points = self._search(
                 client,
                 query,
                 dense,
-                self._sparse,
+                sparse,
                 **search_kwargs,
             )
         return [_retrieved(point, collection, profile["label"]) for point in points]
 
     def _search_named_sparse(
         self, query: str, collection: str, profile: SearchProfile,
-        *, client: Any = None, dense: Any = None,
+        *, client: Any = None, dense: Any = None, sparse: Any = None,
     ) -> list[Any]:
         """공용 검색 함수를 바꾸지 않고 교재의 bm25 벡터 이름을 사용한다."""
+        sparse = sparse if sparse is not None else self._sparse
         from qdrant_client import models
         from rag_common import DENSE_NAME
         import numpy as np
 
-        if getattr(self._sparse, "collection", collection) != collection:
+        if getattr(sparse, "collection", collection) != collection:
             raise RetrievalError(f"{collection}에 맞는 희소 인코더가 설정되지 않았습니다.")
 
         dense_query = (dense if dense is not None else self._dense).encode([query])[0].tolist()
-        sparse_query = self._sparse.encode_query(query)
+        sparse_query = sparse.encode_query(query)
         candidates = profile.get("prefetch_k", 30)
         prefetch = [models.Prefetch(query=dense_query, using=DENSE_NAME, limit=candidates)]
         if sparse_query.indices:

@@ -12,6 +12,9 @@ _EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0E\uFE0F\u200D\u20E3
 _EMOTICON = re.compile(r"(?<!\w)(?:[:;=8][\-oO]?[)(DPp/\\|]|\^\^|ㅠㅠ|ㅜㅜ)(?!\w)")
 _LINK = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
 _SOURCE_LINE = re.compile(r"^\s*(?:핵심 정의\s*)?출처\s*:\s*.*$", re.MULTILINE)
+# 첫 화면 표시를 앞당기기 위해 답변의 첫 덩어리만 문장 끝을 기다리지 않고 내보낸다.
+FIRST_CHUNK_MIN_CHARS = 30
+FIRST_CHUNK_MAX_CHARS = 60
 _MODEL_FOOTER_LINE = re.compile(
     r"^\s*(?:참고한 (?:사전 항목|자료)\s*:|※\s*(?:핵심 정의는|보충 설명은)).*$",
     re.MULTILINE,
@@ -68,6 +71,16 @@ class IncrementalAnswerFormatter:
                         and self.pending[index + 1].isdigit()):
                     continue
                 return index + 1
+        # 첫 덩어리는 30자 이상 모이면 단어 경계에서 먼저 내보낸다.
+        if (not self.body and len(self.pending) >= FIRST_CHUNK_MIN_CHARS
+                and not source_line and not advice_line):
+            split = self.pending.rfind(" ", 0, FIRST_CHUNK_MAX_CHARS)
+            if split >= FIRST_CHUNK_MIN_CHARS // 2:
+                link_start = self.pending.rfind("](", 0, split)
+                link_open = link_start >= 0 and ")" not in self.pending[link_start:split]
+                bold_open = self.pending[:split].count("**") % 2 == 1
+                if not link_open and not bold_open and self.pending[:split].strip():
+                    return split + 1
         # 긴 문장도 무한히 버퍼에 쌓이지 않게 단어 경계에서 내보낸다.
         if len(self.pending) >= 160 and not source_line and not advice_line:
             split = self.pending.rfind(" ", 0, 120)
