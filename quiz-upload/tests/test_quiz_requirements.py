@@ -22,6 +22,10 @@ SAMPLE=next(ast.literal_eval(n.value) for n in tree.body if isinstance(n,ast.Ass
 
 class OriginalQuizRequirementsTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        # 내용 검토 자체는 test_quiz_content.py에서 별도로 검증한다.
+        reviewer_patch = patch("app.services.quiz_service.review_quiz_content", new=AsyncMock())
+        reviewer_patch.start()
+        self.addCleanup(reviewer_patch.stop)
         self.temp=tempfile.TemporaryDirectory(prefix='quiz-requirements-')
         self.engine=create_async_engine('sqlite+aiosqlite:///'+(Path(self.temp.name)/'test.db').as_posix())
         async with self.engine.begin() as conn:
@@ -68,7 +72,9 @@ class OriginalQuizRequirementsTests(unittest.IsolatedAsyncioTestCase):
         generator = AsyncMock(side_effect=[bad_prompt, bad_choice, copy.deepcopy(SAMPLE)])
         result = await self.create(generator)
         self.assertEqual(result.status, "completed")
-        self.assertEqual(generator.await_count, 3)
+        # 첫 시도의 정상 2·3번을 보존하므로 다음 응답에서는 1번만 사용합니다.
+        self.assertEqual(generator.await_count, 2)
+        self.assertEqual(generator.await_args_list[1].kwargs['learning_context']['quiz_repair_request']['question_indexes'], [1])
 
     async def test_transport_error_not_retried_by_format_loop(self):
         generator=AsyncMock(side_effect=RuntimeError('transport failure'))

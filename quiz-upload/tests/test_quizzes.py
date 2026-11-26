@@ -89,6 +89,10 @@ def _assert_no_keys(value, banned: set[str]) -> None:
 
 class QuizModuleTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        # 내용 검토 자체는 test_quiz_content.py에서 별도로 검증한다.
+        reviewer_patch = patch("app.services.quiz_service.review_quiz_content", new=AsyncMock())
+        reviewer_patch.start()
+        self.addCleanup(reviewer_patch.stop)
         if TEST_DB.exists():
             TEST_DB.unlink()
         os.environ["QUIZ_DATABASE_URL"] = f"sqlite+aiosqlite:///{TEST_DB.as_posix()}"

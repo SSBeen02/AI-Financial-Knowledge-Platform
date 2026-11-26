@@ -110,6 +110,10 @@ def _is_nominal(text: str) -> bool:
         return bool(re.fullmatch(r'[A-Za-z0-9\s.,%+−*/=÷×→~&:_\-]+', text))
     if ',' in text:
         return all(_is_nominal(part.strip()) for part in text.split(',') if part.strip())
+    # 금액 자체인 보기는 존댓말 종결이 필요하지 않습니다(120만원, 3억5천만원).
+    # 전체 문자열을 검사해 금액 앞뒤에 붙은 문장을 새로 허용하지 않습니다.
+    if re.fullmatch(r'[+−-]?\d+(?:\.\d+)?(?:\s*[십백천만억조]+\s*\d+(?:\.\d+)?)*\s*[십백천만억조]*\s*원', text):
+        return True
     if re.search(r'\d\s*(?:%|원|개|접시|명|회|배|년|월|일)$', text):
         return True
     label = re.fullmatch(r'(.+)\s+[A-D갑을병정]', text)
