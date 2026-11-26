@@ -64,6 +64,10 @@ class RaceSession(AsyncSession):
 
 class QuizConcurrencyTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        # 내용 검토 자체는 test_quiz_content.py에서 별도로 검증한다.
+        reviewer_patch = patch("app.services.quiz_service.review_quiz_content", new=AsyncMock())
+        reviewer_patch.start()
+        self.addCleanup(reviewer_patch.stop)
         await dispose_quiz_database()
         self.old_url = os.environ.get('QUIZ_DATABASE_URL')
         self.temp = tempfile.TemporaryDirectory(prefix='quiz-race-')

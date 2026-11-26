@@ -6,6 +6,15 @@ from app.services.quiz_service import normalize_questions
 
 
 class QuizToneTests(unittest.TestCase):
+    def test_korean_money_amount_choices_keep_their_values(self):
+        from app.services.quiz_tone import PoliteToneError
+        for amount in ['120만원', '121만원', '2천만원', '3억5천만원', '3억 5천만 원', '1.5억원', '1,200만원', '-10만원']:
+            with self.subTest(amount=amount):
+                self.assertEqual(choice_in_polite(amount, strict=True), amount)
+        for text in ['돈을 모아 120만원', '120만원을 넣어', '120만원이 좋겠네']:
+            with self.subTest(text=text), self.assertRaises(PoliteToneError):
+                choice_in_polite(text, strict=True)
+
     def test_question_polite_endings_regression(self):
         cases = {
             '옳지 않나요?':'옳지 않습니까?', '올바른 선택이 아닌가요?':'올바른 선택이 아닙니까?',

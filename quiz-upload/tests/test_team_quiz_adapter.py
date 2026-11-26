@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, AsyncMock
 from types import ModuleType
 from dataclasses import dataclass
 
@@ -39,6 +39,10 @@ SAMPLE_QUESTIONS = [
 
 class TeamQuizAdapterTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        # 내용 검토 자체는 test_quiz_content.py에서 별도로 검증한다.
+        reviewer_patch = patch("app.services.quiz_service.review_quiz_content", new=AsyncMock())
+        reviewer_patch.start()
+        self.addCleanup(reviewer_patch.stop)
         # 유빈님 패키지는 현재 폴더에 없어 공개 계약의 대역으로 호출 경계만 검증한다.
         package = ModuleType("chatbot")
         contract = ModuleType("chatbot.quiz")
@@ -100,7 +104,7 @@ class TeamQuizAdapterTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(quiz.stage_id, "stage1")
         self.assertEqual(quiz.concept_id, "sisa_1281")
 
-    async def test_saved_failure_is_returned_without_retry(self):
+    async def test_saved_failure_without_reserve_is_returned_without_retry(self):
         calls = []
 
         async def fail(**kwargs):
@@ -108,8 +112,9 @@ class TeamQuizAdapterTests(unittest.IsolatedAsyncioTestCase):
             raise RuntimeError("simulated generation failure")
 
         adapter = TeamQuizService(asyncio.get_running_loop(), QuizService(fail))
-        first = await asyncio.to_thread(adapter.create_quiz_set, **self.inputs)
-        second = await asyncio.to_thread(adapter.create_quiz_set, **self.inputs)
+        inputs = dict(self.inputs, concept_id="no-reserve-concept")
+        first = await asyncio.to_thread(adapter.create_quiz_set, **inputs)
+        second = await asyncio.to_thread(adapter.create_quiz_set, **inputs)
         self.assertEqual(first.status, "failed")
         self.assertEqual(first, second)
         self.assertEqual(len(calls), 1)
