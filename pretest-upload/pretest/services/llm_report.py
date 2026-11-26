@@ -11,6 +11,7 @@ from pretest.schemas.llm_report import (
     WrongAnswerItem,
 )
 from pretest.services.errors import LlmReportError
+from pretest.services.report_tone import normalize_haoche_text, normalize_report_tone
 
 logger = logging.getLogger("diagnostics")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
@@ -192,7 +193,7 @@ def align_llm_report(report: LlmReportAnalysis, graded: dict) -> LlmReportAnalys
     else:
         wrong_summary = report.wrong_answer_analysis.summary.strip() or "틀린 문항이 없습니다."
 
-    return LlmReportAnalysis(
+    return normalize_report_tone(LlmReportAnalysis(
         level_diagnosis=LevelDiagnosis(
             overall_level=summary["level"],
             summary=level_summary,
@@ -200,7 +201,7 @@ def align_llm_report(report: LlmReportAnalysis, graded: dict) -> LlmReportAnalys
         ),
         wrong_answer_analysis=WrongAnswerAnalysis(summary=wrong_summary, items=wrong_items),
         recommendations=_align_recommendations(report.recommendations, domain_scores, wrong, graded["question_results"]),
-    )
+    ))
 
 
 def _resolved_mode(settings) -> str:
@@ -305,8 +306,5 @@ def _study_guide(row: dict, wrong: list[dict], maintain: bool, question_results:
 
 
 def _haoche(text: str) -> str:
-    """Convert only trusted local fallback text, never rewrite a model's narrative."""
-    replacements = {"확인해 보세요": "살펴보시오", "좋습니다": "좋겠소", "해야 합니다": "해야 하오", "할 수 있습니다": "할 수 있소", "없습니다": "없소", "있습니다": "있소", "맞혔습니다": "맞혔소", "구분했습니다": "구분했소", "됩니다": "되오", "합니다": "하오", "입니다": "이오", "하세요": "하시오"}
-    for old, new in replacements.items():
-        text = text.replace(old, new)
-    return text
+    """결과 리포트 안의 로컬 설명에 고정 하오체를 적용한다."""
+    return normalize_haoche_text(text)

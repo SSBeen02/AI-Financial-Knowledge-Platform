@@ -101,10 +101,10 @@ class OpenAiReportParseTest(unittest.TestCase):
         self.assertIs(client.chat.completions.kwargs["response_format"], LlmReportAnalysis)
         self.assertEqual(client.chat.completions.kwargs["model"], "gpt-4o-mini")
         self.assertEqual(report.level_diagnosis.overall_level, graded["summary"]["level"])
-        self.assertEqual(report.level_diagnosis.summary, "금융 기초를 다시 봐야 합니다.")
+        self.assertEqual(report.level_diagnosis.summary, "금융 기초를 다시 봐야 하오.")
         self.assertEqual(report.level_diagnosis.domain_comments[0].score, graded["domain_scores"][0]["score"])
         self.assertEqual([item.question_id for item in report.wrong_answer_analysis.items], ["a1"])
-        self.assertEqual(report.wrong_answer_analysis.items[0].vulnerability, "이자 계산 방식을 혼동했습니다.")
+        self.assertEqual(report.wrong_answer_analysis.items[0].vulnerability, "이자 계산 방식을 혼동했소.")
         self.assertEqual(report.wrong_answer_analysis.items[0].concept, "개념-a1")
 
     def test_unparsed_response_is_rejected(self):
