@@ -14,7 +14,6 @@ from pretest.services.errors import LlmReportError
 from pretest.services.report_tone import normalize_haoche_text, normalize_report_tone
 
 logger = logging.getLogger("diagnostics")
-GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 from pretest.services.report_parallel import STYLE_PROMPT
 SYSTEM_PROMPT = STYLE_PROMPT + """\n기존 JSON 구조를 유지하시오. 등급·점수·문항 ID는 입력과 일치시켜야 하오. 총평은 2문장, 영역 진단은 1~2문장, 오답 분석은 실제 선택과 정답의 차이 및 단서를 2문장으로 설명하시오. 학습 권장은 낮은 점수부터 동점이면 입력 영역 순서로 두고, 취약 영역이 없으면 첫 최저점 영역의 유지 방향 하나만 두시오."""
@@ -26,8 +25,6 @@ def describe_llm_mode() -> str:
     mode = _resolved_mode(settings)
     if mode == "local":
         return "local"
-    if mode == "gemini":
-        return f"gemini:{settings.gemini_model}"
     return f"openai:{settings.openai_model}"
 
 
@@ -39,11 +36,6 @@ def generate_llm_report(graded: dict, *, budget: float = 28.0) -> LlmReportAnaly
         return generate_local_report(graded)
     from openai import OpenAI
 
-    if mode == "gemini":
-        if not settings.gemini_api_key:
-            raise LlmReportError("GEMINI_API_KEY가 없어 맞춤 리포트를 생성하지 못했습니다.")
-        with OpenAI(api_key=settings.gemini_api_key, base_url=GEMINI_BASE_URL, timeout=60.0, max_retries=1) as client:
-            return generate_openai_report(client, graded, settings.gemini_model, provider="Gemini")
     if not settings.openai_api_key:
         raise LlmReportError("OPENAI_API_KEY가 없어 맞춤 리포트를 생성하지 못했습니다.")
     from pretest.services.report_parallel import generate_parallel_report, REPORT_BUDGET_SECONDS
@@ -206,16 +198,12 @@ def align_llm_report(report: LlmReportAnalysis, graded: dict) -> LlmReportAnalys
 
 def _resolved_mode(settings) -> str:
     mode = settings.llm_report_mode
-    if mode not in {"auto", "openai", "gemini", "local"}:
-        raise LlmReportError("LLM_REPORT_MODE는 auto, openai, gemini, local 중 하나여야 합니다.")
+    if mode not in {"auto", "openai", "local"}:
+        raise LlmReportError("LLM_REPORT_MODE는 auto, openai, local 중 하나여야 합니다.")
     if mode == "local":
         return "local"
     if mode == "openai":
         return "openai"
-    if mode == "gemini":
-        return "gemini"
-    if settings.gemini_api_key:
-        return "gemini"
     if settings.openai_api_key:
         return "openai"
     return "local"

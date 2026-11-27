@@ -79,8 +79,8 @@ SSE 시작 전 검색 준비 단계의 실패다. `/health 200`은 이 검색 �
 | `CHAT_DB_URL` | 동기 PostgreSQL 접속: `postgresql+psycopg://...` |
 | `QUIZ_DATABASE_URL` | 비동기 PostgreSQL 접속: `postgresql+asyncpg://...` |
 | `GAME_ENABLED`, `GAME_DATABASE_URL` | 게임 활성화 여부(기본 `false`). URL이 비어 있으면 `CHAT_DB_URL`을 재사용하며, 활성화 전에 게임 스키마·RLS를 적용해야 함 |
-| `PRETEST_ENABLED`, `LLM_REPORT_MODE`, `GEMINI_API_KEY`, `GEMINI_MODEL` | 사전테스트 활성화 여부(기본 `false`). 리포트 제공자는 `gemini` 또는 `openai`; `gemini`이면 Gemini 키, `openai`이면 `OPENAI_API_KEY` 필요 |
-| `OPENAI_API_KEY`, `OPENAI_MODEL` | 퀴즈 생성. 모델 기본값은 퀴즈 설정을 따름 |
+| `PRETEST_ENABLED`, `LLM_REPORT_MODE` | 사전테스트 활성화 여부(기본 `false`). 운영 리포트는 `LLM_REPORT_MODE=openai`와 `OPENAI_API_KEY` 필요 |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | 사전테스트 리포트·퀴즈 생성. 각 모듈은 해당 설정의 모델을 사용하며, 미설정 시 각 모듈의 기본값을 따름 |
 | `SUPABASE_URL` | 프론트 로그인과 같은 Supabase 프로젝트의 HTTPS origin |
 | `SUPABASE_PUBLISHABLE_KEY` | 인증 서버 호출용 publishable key. 대체 이름 `SUPABASE_ANON_KEY` |
 | `CORS_ALLOW_ORIGINS` | 게시 사이트 등 고정 origin의 쉼표 구분 목록. 통합 서버는 `app-…makeproxy-c.figma.site`, `ta-…makeproxy-m.figma.site`, UUID형 `…-figmacachedpreview.figma.site` Figma Make Preview origin도 허용 |

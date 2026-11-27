@@ -134,19 +134,22 @@ class OpenAiReportParseTest(unittest.TestCase):
 
 
 class ResolveModeTest(unittest.TestCase):
-    def test_auto_prefers_gemini_key_then_openai_then_local(self):
-        self.assertEqual(_resolved_mode(_settings("auto", gemini="g")), "gemini")
+    def test_auto_selects_openai_when_key_is_present_otherwise_local(self):
         self.assertEqual(_resolved_mode(_settings("auto", openai="o")), "openai")
         self.assertEqual(_resolved_mode(_settings("auto")), "local")
-        self.assertEqual(_resolved_mode(_settings("gemini")), "gemini")
-        self.assertEqual(_resolved_mode(_settings("local", gemini="g")), "local")
+        self.assertEqual(_resolved_mode(_settings("openai")), "openai")
+        self.assertEqual(_resolved_mode(_settings("local", openai="o")), "local")
+
+    def test_removed_provider_is_rejected_instead_of_silently_switching(self):
+        with self.assertRaises(LlmReportError):
+            _resolved_mode(_settings("gemini", openai="o"))
 
 
-def _settings(mode: str, openai: str | None = None, gemini: str | None = None):
+def _settings(mode: str, openai: str | None = None):
     return type(
         "Settings",
         (),
-        {"llm_report_mode": mode, "openai_api_key": openai, "gemini_api_key": gemini},
+        {"llm_report_mode": mode, "openai_api_key": openai},
     )()
 
 
