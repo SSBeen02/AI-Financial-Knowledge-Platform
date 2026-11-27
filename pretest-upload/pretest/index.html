@@ -297,9 +297,19 @@
       wrongSection.className = "report-section";
       wrongSection.append(heading("선택한 답과 정답의 차이", 3), paragraph(llm.wrong_answer_analysis.summary));
       const resultById = new Map((body.question_results || []).map(item => [item.question_id, item]));
+      const reportStageByDomain = {
+        socioeconomic_phenomena_consumer_life: 1,
+        finance_investment: 2,
+        macroeconomy_monetary_fiscal_policy: 3,
+        international_economy_industry_technology: 4,
+      };
       const groups = new Map();
       for (const item of llm.wrong_answer_analysis.items) {
-        if (!groups.has(item.domain)) groups.set(item.domain, { label: item.domain_label, items: [] });
+        const stage = reportStageByDomain[item.domain];
+        const label = stage
+          ? `Stage${stage} ${item.domain_label}`
+          : `미등록 영역 (${item.domain_label || item.domain || "알 수 없음"})`;
+        if (!groups.has(item.domain)) groups.set(item.domain, { label, items: [] });
         groups.get(item.domain).items.push(item);
       }
       for (const group of groups.values()) {
