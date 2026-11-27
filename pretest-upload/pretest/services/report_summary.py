@@ -37,7 +37,8 @@ def add_lowest_stage_summary(report: LlmReportAnalysis, domain_scores: list[dict
     lowest = min(row["score"] for row in domain_scores)
     rows = sorted(
         (row for row in domain_scores if row["score"] == lowest),
-        key=lambda row: REPORT_STAGE_ORDER.get(row["domain"], 99),
+        # Unknown domains sort after known stages without using a displayable Stage99 value.
+        key=lambda row: REPORT_STAGE_ORDER.get(row["domain"], len(REPORT_STAGE_ORDER) + 1),
     )
     labels = []
     for row in rows:
